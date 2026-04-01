@@ -1,0 +1,48 @@
+<svg viewBox="0 0 84 64" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Snack time animation">
+  <style>
+    .line { fill: none; stroke: #44514b; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+    .ink { fill: #44514b; }
+    .shell { fill: #b7c7b5; stroke: #44514b; stroke-width: 2.2; }
+    .candy { fill: #f1c8bf; stroke: #44514b; stroke-width: 2.2; }
+    .wrap { fill: #f7e8dd; stroke: #44514b; stroke-width: 2.2; }
+    .pet { transform-origin: 60px 45px; animation: petMunch 320ms steps(2, end) infinite; }
+    .mouth { transform-origin: 56px 47px; animation: mouthMunch 320ms steps(2, end) infinite; }
+    .food { animation: foodSlide 900ms linear infinite; }
+    .spark { animation: sparkPop 900ms ease-out infinite; opacity: 0; }
+    .spark.two { animation-delay: 140ms; }
+    @keyframes foodSlide {
+      0%, 18% { transform: translate(0px, 0px) scale(1); opacity: 0; }
+      30% { opacity: 1; }
+      62% { transform: translate(24px, -1px) scale(1.02); opacity: 1; }
+      100% { transform: translate(34px, -1px) scale(0.72); opacity: 0; }
+    }
+    @keyframes petMunch {
+      0%, 100% { transform: translateY(0px) scaleX(1); }
+      50% { transform: translateY(1px) scaleX(1.05); }
+    }
+    @keyframes mouthMunch {
+      0%, 100% { transform: scaleX(1); }
+      50% { transform: scaleX(0.45); }
+    }
+    @keyframes sparkPop {
+      0%, 55% { transform: translateY(6px) scale(0.2); opacity: 0; }
+      70% { opacity: 0.9; }
+      100% { transform: translateY(-4px) scale(1); opacity: 0; }
+    }
+  </style>
+  <g class="food">
+    <rect class="candy" x="7" y="36" width="16" height="16" rx="8"/>
+    <path class="wrap" d="M2 39h5v10H2l-2-5Z"/>
+    <path class="wrap" d="M28 39h-5v10h5l2-5Z"/>
+  </g>
+  <g class="pet">
+    <path class="shell" d="M48 30c0-7.7 6.3-14 14-14s14 6.3 14 14v10c0 5-4 9-9 9H57c-5 0-9-4-9-9Z"/>
+    <path class="shell" d="M54 18l5 5-7 1Z"/>
+    <path class="shell" d="M70 18l-5 5 7 1Z"/>
+    <circle class="ink" cx="58" cy="34" r="2"/>
+    <circle class="ink" cx="66" cy="34" r="2"/>
+    <rect class="ink mouth" x="57" y="41" width="10" height="3" rx="1.5"/>
+  </g>
+  <circle class="ink spark one" cx="65" cy="11" r="2.5"/>
+  <circle class="ink spark two" cx="55" cy="16" r="2.5"/>
+</svg>

@@ -31,3 +31,11 @@ Open the project folder and run the Live Server extension.
 
 - Load the game once while online so the service worker can cache the assets.
 - On supported mobile browsers, use "Add to Home Screen" to install it.
+
+## Save and offline progress
+
+- Game state is saved in `localStorage` with automatic saves during play and UI actions.
+- When the game boots, it loads the previous save and calculates offline progress from the elapsed real time since `lastUpdatedAt`.
+- Offline progress is applied by calling `tickState(state, elapsedSeconds)`, so the same simulation rules are used both online and offline.
+- This means hunger, happiness, energy, age, cleanliness, sickness rolls, poop rolls, health changes, evolution checks, and death checks all continue while the game is closed.
+- Offline progress can cause the pet to die if hunger or health reaches `0` during the simulated elapsed time.

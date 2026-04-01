@@ -1,0 +1,6 @@
+- menu indicator
+- multiple pet
+- load only current pet asset on boot
+- game effective to weight
+- separate game method
+- deny to eat

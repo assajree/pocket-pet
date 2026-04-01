@@ -1,0 +1,3 @@
+export const MINI_GAME_SUMMARY_DURATION_MS = 3000;
+export const FEED_ANIMATION_DURATION_MS = 3000;
+export const SLEEP_OK_ENERGY_BOOST = 6;

@@ -4,44 +4,31 @@ import {
   clearState,
   createNewState,
   getMoodList,
-  getStatusText,
   saveState
 } from "../gameState.js";
-
-const MAIN_MENU = [
-  { key: "status", label: "STATUS", caption: "View your pet status." },
-  { key: "feed", label: "FEED", caption: "Open the feeding menu." },
-  { key: "play", label: "PLAY", caption: "Open the mini game list." },
-  { key: "sleep", label: "SLEEP", caption: "Turn the lights off for sleep." },
-  { key: "clean", label: "CLEAN", caption: "Clean the room and the mess." },
-  { key: "medicine", label: "MEDICINE", caption: "Use medicine when your pet is sick." },
-];
-
-const FEED_MENU = [
-  { key: "meal", label: "RICE", caption: "Serve rice to fill hunger." },
-  { key: "snack", label: "SNACK", caption: "Snack adds fun and weight." }
-];
-
-const PLAY_MENU = [{ key: "tap-sprint", label: "TAP SPRINT", caption: "Press O fast for five seconds." }];
-const MINI_GAME_SUMMARY_DURATION_MS = 3000;
+import {
+  applyMiniGameInput,
+  createMiniGameState,
+  finalizeMiniGameResult,
+  getMiniGameStatusText as buildMiniGameStatusText,
+  getMiniGameSummaryText as buildMiniGameSummaryText,
+  initializeMiniGameSession
+} from "./minigames/index.js";
+import { MENUS, isMenuView } from "./menus.js";
+import { getMenuStatusText } from "./menuFormatters.js";
+import { FEED_ANIMATION_DURATION_MS, MINI_GAME_SUMMARY_DURATION_MS, SLEEP_OK_ENERGY_BOOST } from "./uiConfig.js";
 
 export default class UIScene extends Phaser.Scene {
   constructor() {
     super("UIScene");
     this.view = "closed";
-    this.menuIndexes = {
-      main: 0,
-      feed: 0,
-      play: 0
-    };
-    this.miniGame = {
-      active: false,
-      elapsed: 0,
-      duration: 5,
-      taps: 0
-    };
+    this.menuIndexes = Object.fromEntries(Object.keys(MENUS).map((menuKey) => [menuKey, 0]));
+    this.miniGame = createMiniGameState();
     this.inputLockedUntil = 0;
     this.summaryTimer = null;
+    this.feedAnimationTimer = null;
+    this.feedAnimationAction = null;
+    this.activeMiniGameItem = null;
   }
 
   create() {
@@ -63,6 +50,7 @@ export default class UIScene extends Phaser.Scene {
       this.gameScene.events.off("state-changed", this.handleStateChanged, this);
       window.removeEventListener("keydown", this.handleKeydown);
       this.summaryTimer?.remove(false);
+      this.feedAnimationTimer?.remove(false);
     });
   }
 
@@ -72,6 +60,7 @@ export default class UIScene extends Phaser.Scene {
     this.petMood = document.getElementById("pet-mood");
     this.screenMenu = document.getElementById("screen-menu");
     this.screenMenuTitle = document.getElementById("screen-menu-title");
+    this.screenMenuIcon = document.getElementById("screen-menu-icon");
     this.screenMenuStatus = document.getElementById("screen-menu-status");
     this.hardwareLeft = document.getElementById("hardware-left");
     this.hardwareRight = document.getElementById("hardware-right");
@@ -128,6 +117,11 @@ export default class UIScene extends Phaser.Scene {
   };
 
   handleDirectionalInput(button) {
+    if (this.view === "feeding-animation" && (button === "ok" || button === "cancel")) {
+      this.skipFeedAnimation();
+      return;
+    }
+
     if (this.isInputLocked()) {
       return;
     }
@@ -142,7 +136,27 @@ export default class UIScene extends Phaser.Scene {
         return;
       }
 
+      if (button === "cancel") {
+        this.view = "status";
+        this.render(this.state);
+        return;
+      }
+
+      if (this.state.isSleeping && button === "ok") {
+        this.boostSleepingEnergy();
+        return;
+      }
+
       this.openMainMenu();
+      return;
+    }
+
+    if (!this.state.isAlive) {
+      return;
+    }
+
+    if (this.view === "minigame") {
+      this.handleMiniGameInput(button);
       return;
     }
 
@@ -151,22 +165,8 @@ export default class UIScene extends Phaser.Scene {
       return;
     }
 
-    if (!this.state.isAlive) {
-      return;
-    }
-
-    if (this.view === "menu") {
-      this.handleMenuNavigation("main", button);
-      return;
-    }
-
-    if (this.view === "feed") {
-      this.handleMenuNavigation("feed", button);
-      return;
-    }
-
-    if (this.view === "play") {
-      this.handleMenuNavigation("play", button);
+    if (isMenuView(this.view)) {
+      this.handleMenuNavigation(this.view, button);
       return;
     }
 
@@ -184,84 +184,89 @@ export default class UIScene extends Phaser.Scene {
       return;
     }
 
-    if (this.view === "minigame" && button === "ok") {
-      this.tapMiniGame();
-      return;
-    }
-
-    if (this.view === "minigame" && button === "cancel") {
-      this.finishMiniGame(true);
-      return;
-    }
   }
 
   handleMenuNavigation(menuKey, button) {
-    const menus = {
-      main: MAIN_MENU,
-      feed: FEED_MENU,
-      play: PLAY_MENU
-    };
+    const menu = MENUS[menuKey]?.items;
+    if (!menu) {
+      return;
+    }
 
     if (button === "left" || button === "right") {
       const delta = button === "right" ? 1 : -1;
-      const menu = menus[menuKey];
       this.menuIndexes[menuKey] = (this.menuIndexes[menuKey] + delta + menu.length) % menu.length;
       this.render(this.state);
       return;
     }
 
     if (button === "ok") {
-      const item = menus[menuKey][this.menuIndexes[menuKey]];
+      const item = menu[this.menuIndexes[menuKey]];
       this.selectMenuItem(menuKey, item);
     }
   }
 
   selectMenuItem(menuKey, item) {
-    if (menuKey === "main") {
-      if (item.key === "status") {
-        this.view = "status";
-        this.render(this.state);
-        return;
-      }
-
-      if (item.key === "feed") {
-        this.view = "feed";
-        this.render(this.state);
-        return;
-      }
-
-      if (item.key === "play") {
-        this.view = "play";
-        this.render(this.state);
-        return;
-      }
-
-      this.runAction(item.key);
-      return;
-    }
-
-    if (menuKey === "feed") {
-      this.runAction(item.key);
-      return;
-    }
-
-    if (menuKey === "play" && item.key === "tap-sprint") {
-      this.startMiniGame();
-    }
-  }
-
-  runAction(action) {
-    const result = applyAction(this.state, action);
-    this.gameScene.syncVisuals();
-    saveState(this.state);
-
-    if (result.ok) {
-      this.view = "closed";
+    if (item.submenu) {
+      this.view = item.submenu;
       this.render(this.state);
       return;
     }
 
-    this.showMessage(result.message || this.getSuccessMessage(action), false);
+    if (item.minigame) {
+      this.startMiniGame(item);
+      return;
+    }
+
+    this.runAction(item);
+  }
+
+  runAction(item) {
+    const result = applyAction(this.state, item.key, item.effectStatus);
+    this.gameScene.syncVisuals();
+    saveState(this.state);
+
+    if (result.ok) {
+      if (item.key === "meal" || item.key === "snack") {
+        this.showFeedAnimation(item.key);
+        return;
+      }
+
+      if (this.view !== "feed") {
+        this.view = "closed";
+      }
+      this.render(this.state);
+      return;
+    }
+
+    this.showMessage(result.message || this.getSuccessMessage(item.key), false);
+  }
+
+  showFeedAnimation(action) {
+    this.feedAnimationTimer?.remove(false);
+    this.feedAnimationAction = action;
+    this.view = "feeding-animation";
+    this.inputLockedUntil = this.time.now + FEED_ANIMATION_DURATION_MS;
+    this.render(this.state);
+    this.feedAnimationTimer = this.time.delayedCall(FEED_ANIMATION_DURATION_MS, () => {
+      this.feedAnimationAction = null;
+      this.inputLockedUntil = 0;
+      this.view = "feed";
+      this.render(this.state);
+      this.feedAnimationTimer = null;
+    });
+  }
+
+  skipFeedAnimation() {
+    if (this.view !== "feeding-animation") {
+      return;
+    }
+
+    this.feedAnimationTimer?.remove(false);
+    this.feedAnimationTimer = null;
+    this.feedAnimationAction = null;
+    this.inputLockedUntil = 0;
+    this.view = "feed";
+    this.render(this.state);
   }
 
   getSuccessMessage(action) {
@@ -281,21 +286,34 @@ export default class UIScene extends Phaser.Scene {
     }
   }
 
-  startMiniGame() {
-    this.miniGame.active = true;
-    this.miniGame.elapsed = 0;
-    this.miniGame.taps = 0;
+  startMiniGame(item) {
+    this.activeMiniGameItem = item;
+    this.miniGame = initializeMiniGameSession(item, (pool) => Phaser.Utils.Array.GetRandom(pool));
     this.view = "minigame";
     this.render(this.state);
   }
 
-  tapMiniGame() {
-    if (!this.miniGame.active) {
+  handleMiniGameInput(button) {
+    const outcome = applyMiniGameInput(this.miniGame, this.activeMiniGameItem, button);
+    this.miniGame = outcome.miniGame;
+
+    if (outcome.type === "cancel") {
+      this.finishMiniGame(true);
       return;
     }
 
-    this.miniGame.taps += 1;
-    this.render(this.state);
+    if (outcome.type === "complete") {
+      this.finishMiniGame(false);
+      return;
+    }
+
+    if (outcome.type === "update") {
+      this.render(this.state);
+    }
+  }
+
+  finalizeMiniGameResult() {
+    this.miniGame = finalizeMiniGameResult(this.miniGame);
   }
 
   finishMiniGame(cancelled = false) {
@@ -306,15 +324,35 @@ export default class UIScene extends Phaser.Scene {
     this.miniGame.active = false;
 
     if (cancelled) {
+      this.activeMiniGameItem = null;
       this.view = "closed";
       this.render(this.state);
       return;
     }
 
-    addMiniGameReward(this.state, this.miniGame.taps);
+    this.finalizeMiniGameResult();
+    const result = addMiniGameReward(
+      this.state,
+      this.activeMiniGameItem?.effectStatus,
+      { score: this.miniGame.score, taps: this.miniGame.score, success: this.miniGame.success }
+    );
+    if (!result.ok) {
+      this.activeMiniGameItem = null;
+      this.showMessage(result.message || "Unable to finish the mini game.", false);
+      return;
+    }
+
     this.gameScene.syncVisuals();
     saveState(this.state);
     this.showMiniGameSummary();
+  }
+
+  getMiniGameStatusText() {
+    return buildMiniGameStatusText(this.miniGame, this.activeMiniGameItem);
+  }
+
+  getMiniGameSummaryText() {
+    return buildMiniGameSummaryText(this.miniGame, this.activeMiniGameItem);
   }
 
   showMiniGameSummary() {
@@ -325,6 +363,7 @@ export default class UIScene extends Phaser.Scene {
     this.summaryTimer = this.time.delayedCall(MINI_GAME_SUMMARY_DURATION_MS, () => {
       this.inputLockedUntil = 0;
       this.view = "closed";
+      this.activeMiniGameItem = null;
       this.render(this.state);
       this.summaryTimer = null;
     });
@@ -332,6 +371,52 @@ export default class UIScene extends Phaser.Scene {
 
   isInputLocked() {
     return this.time.now < this.inputLockedUntil;
+  }
+
+  boostSleepingEnergy() {
+    if (!this.state.isSleeping) {
+      return;
+    }
+
+    this.state.energy = Math.min(100, this.state.energy + SLEEP_OK_ENERGY_BOOST);
+    if (this.state.energy >= 100) {
+      this.state.isSleeping = false;
+      this.state.actionLockUntil = 0;
+    }
+
+    this.gameScene.syncVisuals();
+    saveState(this.state);
+    this.render(this.state);
+  }
+
+  setMenuIcon(iconKey) {
+    const markup = this.getUiAssetMarkup(iconKey);
+    this.screenMenuIcon.innerHTML = markup;
+    this.screenMenuIcon.classList.toggle("hidden", !markup);
+    this.screenMenuIcon.classList.remove("feeding-icon");
+  }
+
+  setFeedAnimationIcon(action) {
+    const assetKey = action === "snack" ? "feeding-snack" : "feeding-meal";
+    this.screenMenuIcon.innerHTML = this.getUiAssetMarkup(assetKey);
+    this.screenMenuIcon.classList.toggle("hidden", !this.screenMenuIcon.innerHTML);
+    this.screenMenuIcon.classList.add("feeding-icon");
+  }
+
+  getUiAssetMarkup(assetKey) {
+    return this.cache.text.get(`ui-${assetKey}`) || "";
+  }
+
+  getMiniGameConfig() {
+    return this.activeMiniGameItem?.minigame || {};
+  }
+
+  getMiniGameTitle() {
+    return this.activeMiniGameItem?.name || this.activeMiniGameItem?.label || "Mini Game";
+  }
+
+  getMiniGameIcon() {
+    return this.activeMiniGameItem?.icon || "play";
   }
 
   showMessage(text, success = true) {
@@ -342,10 +427,10 @@ export default class UIScene extends Phaser.Scene {
   }
 
   openMainMenu() {
-    this.menuIndexes.main = 0;
-    this.menuIndexes.feed = 0;
-    this.menuIndexes.play = 0;
-    this.view = "menu";
+    Object.keys(this.menuIndexes).forEach((menuKey) => {
+      this.menuIndexes[menuKey] = 0;
+    });
+    this.view = "main";
     this.render(this.state);
   }
 
@@ -372,6 +457,10 @@ export default class UIScene extends Phaser.Scene {
     this.inputLockedUntil = 0;
     this.summaryTimer?.remove(false);
     this.summaryTimer = null;
+    this.feedAnimationTimer?.remove(false);
+    this.feedAnimationTimer = null;
+    this.feedAnimationAction = null;
+    this.activeMiniGameItem = null;
     saveState(freshState);
     this.scene.stop("GameScene");
     this.scene.start("GameScene");
@@ -381,19 +470,29 @@ export default class UIScene extends Phaser.Scene {
   }
 
   renderScreenMenu(state) {
+    const moodList = getMoodList(state);
+    const shouldShowMood = !(moodList.length === 1 && moodList[0] === "Happy");
+
     this.brandTitle.textContent = "Pocket Pet";
     this.brandStatus.textContent = state.isAlive ? "Pet View" : "New Egg";
     const fullScreenMenu = this.view !== "closed";
+    const shouldShowSleepEnergy = state.isSleeping && !fullScreenMenu;
     this.gameScene.setMenuVisible(fullScreenMenu);
     this.screenMenu.classList.toggle("status-view", this.view === "status");
+    this.screenMenu.classList.toggle("feeding-view", this.view === "feeding-animation");
     const inputLocked = this.isInputLocked();
+    const allowFeedSkip = this.view === "feeding-animation";
     this.hardwareLeft.disabled = inputLocked;
     this.hardwareRight.disabled = inputLocked;
-    this.hardwareCancel.disabled = inputLocked;
-    this.hardwareOk.disabled = inputLocked;
+    this.hardwareCancel.disabled = inputLocked && !allowFeedSkip;
+    this.hardwareOk.disabled = inputLocked && !allowFeedSkip;
     this.petMood.textContent = `Mood: ${getMoodList(state).join(" • ")}`;
-    this.petMood.textContent = `Mood: ${getMoodList(state).join(" | ")}`;
-    this.petMood.classList.toggle("hidden", fullScreenMenu);
+    this.petMood.textContent = shouldShowSleepEnergy
+      ? `Energy: ${Math.round(state.energy)}`
+      : shouldShowMood
+        ? `Mood: ${moodList.join(" | ")}`
+        : "";
+    this.petMood.classList.toggle("hidden", fullScreenMenu || (!shouldShowMood && !shouldShowSleepEnergy));
 
     if (!fullScreenMenu) {
       this.screenMenu.classList.add("hidden");
@@ -402,28 +501,17 @@ export default class UIScene extends Phaser.Scene {
 
     this.screenMenu.classList.remove("hidden");
 
-    if (this.view === "menu") {
-      const item = MAIN_MENU[this.menuIndexes.main];
-      this.screenMenuTitle.textContent = item.label;
-      this.screenMenuStatus.textContent = "L/R move  O select  X exit";
-      return;
-    }
-
-    if (this.view === "feed") {
-      const item = FEED_MENU[this.menuIndexes.feed];
-      this.screenMenuTitle.textContent = item.label;
-      this.screenMenuStatus.textContent = "Food menu";
-      return;
-    }
-
-    if (this.view === "play") {
-      const item = PLAY_MENU[this.menuIndexes.play];
-      this.screenMenuTitle.textContent = item.label;
-      this.screenMenuStatus.textContent = "Game menu";
+    if (isMenuView(this.view)) {
+      const menu = MENUS[this.view];
+      const item = menu.items[this.menuIndexes[this.view]];
+      this.setMenuIcon(item.icon || item.key);
+      this.screenMenuTitle.textContent = item.name || item.label;
+      this.screenMenuStatus.textContent = getMenuStatusText(menu, item, state);
       return;
     }
 
     if (this.view === "status") {
+      this.setMenuIcon("status");
       const average = Math.round(
         (state.hunger + state.happiness + state.energy + state.health + state.cleanliness) / 5
       );
@@ -456,23 +544,31 @@ export default class UIScene extends Phaser.Scene {
     }
 
     if (this.view === "message") {
+      this.setMenuIcon("message");
       this.screenMenuTitle.textContent = this.messageSuccess ? "Done" : "Notice";
       this.screenMenuStatus.textContent = this.messageText;
       return;
     }
 
     if (this.view === "minigame") {
-      this.screenMenuTitle.textContent = "Tap Sprint";
-      this.screenMenuStatus.textContent = `O tap  X exit\n${this.miniGame.taps} taps ${Math.max(
-        0,
-        this.miniGame.duration - this.miniGame.elapsed
-      ).toFixed(1)}s`;
+      this.setMenuIcon(this.getMiniGameIcon());
+      this.screenMenuTitle.textContent = this.getMiniGameTitle();
+      this.screenMenuStatus.textContent = this.getMiniGameStatusText();
       return;
     }
 
     if (this.view === "summary") {
-      this.screenMenuTitle.textContent = "Result";
-      this.screenMenuStatus.textContent = `${this.miniGame.taps} taps\nPlease wait...`;
+      this.setMenuIcon("summary");
+      this.screenMenuTitle.textContent = this.getMiniGameConfig().summaryTitle || "Result";
+      this.screenMenuStatus.textContent = this.getMiniGameSummaryText();
+      return;
+    }
+
+    if (this.view === "feeding-animation") {
+      this.setFeedAnimationIcon(this.feedAnimationAction);
+      this.screenMenuTitle.textContent = this.feedAnimationAction === "snack" ? "Snack Time" : "Rice Time";
+      this.screenMenuStatus.textContent =
+        this.feedAnimationAction === "snack" ? "Chomp chomp\nFun is going up." : "Munch munch\nHunger is going down.";
     }
   }
 

@@ -1,0 +1,9 @@
+<svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Debug icon">
+  <path d="M12 8h8" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+  <path d="M10 12h12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+  <rect x="8" y="12" width="16" height="10" rx="3" fill="none" stroke="currentColor" stroke-width="2.2"/>
+  <path d="M13 17h.01" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+  <path d="M19 17h.01" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+  <path d="M5 16h3" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+  <path d="M24 16h3" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+</svg>

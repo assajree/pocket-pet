@@ -6,6 +6,14 @@ const STAGE_TEXTURES = {
   Teen: "pet-teen",
   Adult: "pet-adult"
 };
+const PET_MOVE_BLOCK_SIZE = 16;
+const PET_MOVE_BLOCK_RANGE = 1;
+const PET_MOVE_STEP_FPS = 1;
+const PET_JUMP_STEP_FPS = 2;
+const PET_FRAME_MOVE_JUMP_CHANCE = 0.15;
+const PET_JUMP_HEIGHT_MIN = 30;
+const PET_JUMP_HEIGHT_MAX = 60;
+const PET_JUMP_HOLD_FRAMES = 1;
 
 export default class GameScene extends Phaser.Scene {
   constructor() {
@@ -16,7 +24,9 @@ export default class GameScene extends Phaser.Scene {
     this.idleTween = null;
     this.movementTween = null;
     this.jumpTween = null;
-    this.nextMovementEvent = null;
+    this.jumpFramesRemaining = 0;
+    this.moveStepAccumulator = 0;
+    this.jumpStepAccumulator = 0;
   }
 
   create() {
@@ -55,12 +65,10 @@ export default class GameScene extends Phaser.Scene {
       this.idleTween?.stop();
       this.idleTween = null;
       this.stopMovementTweens();
-      this.nextMovementEvent?.remove(false);
     });
 
     this.syncVisuals();
     this.updateIdleAnimation();
-    this.queueNextMovement();
     this.events.emit("state-changed", this.state);
   }
 
@@ -68,11 +76,22 @@ export default class GameScene extends Phaser.Scene {
     const { width, height } = gameSize;
     this.basePetX = width / 2;
     this.basePetY = height / 2 + 20;
-    this.pet.setPosition(this.basePetX, this.basePetY);
+    this.snapPetToGrid();
     this.sickIcon.setPosition(this.pet.x + 72, this.pet.y - 72);
     this.sleepText.setPosition(this.pet.x + 86, this.pet.y - 28);
     this.layoutPoop();
-    this.queueNextMovement(true);
+  }
+
+  getSnappedPetX(targetX = this.basePetX) {
+    const minX = 72;
+    const maxX = this.scale.width - 72;
+    const relativeX = targetX - this.basePetX;
+    const snappedOffset = Math.round(relativeX / PET_MOVE_BLOCK_SIZE) * PET_MOVE_BLOCK_SIZE;
+    return Phaser.Math.Clamp(this.basePetX + snappedOffset, minX, maxX);
+  }
+
+  snapPetToGrid(targetX = this.basePetX) {
+    this.pet.setPosition(this.getSnappedPetX(targetX), this.basePetY);
   }
 
   layoutPoop() {
@@ -134,59 +153,21 @@ export default class GameScene extends Phaser.Scene {
 
   stopMovementTweens() {
     this.movementTween?.stop();
-    this.jumpTween?.stop();
     this.movementTween = null;
     this.jumpTween = null;
+    this.jumpFramesRemaining = 0;
+    this.pet?.setY(this.basePetY);
   }
 
   updateIdleAnimation() {
-    const shouldIdle = this.canAnimatePet() && !this.jumpTween;
-
-    if (!shouldIdle) {
-      this.idleTween?.stop();
-      this.idleTween = null;
-      this.pet.setScale(1, 1);
-      return;
-    }
-
-    if (this.idleTween) {
-      return;
-    }
-
-    this.idleTween = this.tweens.add({
-      targets: this.pet,
-      scaleX: 1.03,
-      scaleY: 0.97,
-      duration: Phaser.Math.Between(420, 620),
-      yoyo: true,
-      repeat: -1,
-      ease: "Sine.easeInOut"
-    });
+    this.idleTween?.stop();
+    this.idleTween = null;
+    this.pet.setScale(1, 1);
   }
 
-  queueNextMovement(resetPosition = false) {
-    this.nextMovementEvent?.remove(false);
-    this.nextMovementEvent = null;
-
-    if (resetPosition) {
-      this.stopMovementTweens();
-      this.pet.setPosition(this.basePetX, this.basePetY);
-      this.layoutPoop();
-    }
-
+  stepPetMovement() {
     if (!this.canAnimatePet()) {
-      return;
-    }
-
-    const delay = Phaser.Math.Between(700, 1800);
-    this.nextMovementEvent = this.time.delayedCall(delay, () => {
-      this.performRandomMovement();
-    });
-  }
-
-  performRandomMovement() {
-    if (!this.canAnimatePet()) {
-      this.pet.setPosition(this.basePetX, this.basePetY);
+      this.snapPetToGrid();
       this.layoutPoop();
       this.updateIdleAnimation();
       return;
@@ -195,52 +176,23 @@ export default class GameScene extends Phaser.Scene {
     this.stopMovementTweens();
     const roll = Math.random();
 
-    if (roll < 0.25) {
-      this.updateIdleAnimation();
-      this.queueNextMovement();
-      return;
-    }
-
-    if (roll < 0.65) {
-      this.updateIdleAnimation();
-      const moveOffset = Phaser.Math.Between(-48, 48);
-      const targetX = Phaser.Math.Clamp(this.basePetX + moveOffset, 72, this.scale.width - 72);
+    if (roll >= PET_FRAME_MOVE_JUMP_CHANCE) {
+      const blockStep = Phaser.Math.Between(-PET_MOVE_BLOCK_RANGE, PET_MOVE_BLOCK_RANGE);
+      const fallbackStep = blockStep === 0 ? 1 : blockStep;
+      const targetX = this.getSnappedPetX(this.pet.x + fallbackStep * PET_MOVE_BLOCK_SIZE);
       this.pet.setFlipX(targetX < this.pet.x);
-      this.movementTween = this.tweens.add({
-        targets: this.pet,
-        x: targetX,
-        duration: Phaser.Math.Between(500, 1100),
-        ease: "Sine.easeInOut",
-        onUpdate: () => {
-          this.sickIcon.setPosition(this.pet.x + 72, this.pet.y - 72);
-          this.sleepText.setPosition(this.pet.x + 86, this.pet.y - 28);
-        },
-        onComplete: () => {
-          this.queueNextMovement();
-        }
-      });
+      this.snapPetToGrid(targetX);
+      this.sickIcon.setPosition(this.pet.x + 72, this.pet.y - 72);
+      this.sleepText.setPosition(this.pet.x + 86, this.pet.y - 28);
       return;
     }
 
-    this.updateIdleAnimation();
-    const jumpHeight = Phaser.Math.Between(16, 30);
-    this.jumpTween = this.tweens.add({
-      targets: this.pet,
-      y: this.basePetY - jumpHeight,
-      duration: Phaser.Math.Between(180, 280),
-      yoyo: true,
-      ease: "Quad.easeOut",
-      onUpdate: () => {
-        this.sickIcon.setPosition(this.pet.x + 72, this.pet.y - 72);
-        this.sleepText.setPosition(this.pet.x + 86, this.pet.y - 28);
-      },
-      onComplete: () => {
-        this.jumpTween = null;
-        this.pet.setY(this.basePetY);
-        this.updateIdleAnimation();
-        this.queueNextMovement();
-      }
-    });
+    const jumpHeight = Phaser.Math.Between(PET_JUMP_HEIGHT_MIN, PET_JUMP_HEIGHT_MAX);
+    this.jumpTween = { active: true };
+    this.jumpFramesRemaining = PET_JUMP_HOLD_FRAMES;
+    this.pet.setY(this.basePetY - jumpHeight);
+    this.sickIcon.setPosition(this.pet.x + 72, this.pet.y - 72);
+    this.sleepText.setPosition(this.pet.x + 86, this.pet.y - 28);
   }
 
   setMenuVisible(isVisible) {
@@ -251,25 +203,49 @@ export default class GameScene extends Phaser.Scene {
     this.sleepText.setVisible(petVisible && this.state.isSleeping && this.state.isAlive);
     this.poopSprites.getChildren().forEach((sprite) => sprite.setVisible(petVisible));
     this.updateIdleAnimation();
-    this.queueNextMovement(isVisible || !this.canAnimatePet());
+    if (isVisible || !this.canAnimatePet()) {
+      this.stopMovementTweens();
+      this.snapPetToGrid();
+    }
   }
 
   update(_time, delta) {
     const deltaSeconds = delta / 1000;
+    const moveStepInterval = 1000 / PET_MOVE_STEP_FPS;
+    const jumpStepInterval = 1000 / PET_JUMP_STEP_FPS;
     this.elapsedAccumulator += deltaSeconds;
     this.saveAccumulator += deltaSeconds;
+    this.moveStepAccumulator += delta;
 
     if (this.elapsedAccumulator >= 1) {
       tickState(this.state, this.elapsedAccumulator);
       this.elapsedAccumulator = 0;
       this.syncVisuals();
       this.updateIdleAnimation();
-      if (!this.canAnimatePet()) {
-        this.queueNextMovement(true);
-      } else if (!this.movementTween && !this.jumpTween && !this.nextMovementEvent) {
-        this.queueNextMovement();
-      }
       this.events.emit("state-changed", this.state);
+    }
+
+    if (this.jumpTween) {
+      this.jumpStepAccumulator += delta;
+      while (this.jumpStepAccumulator >= jumpStepInterval && this.jumpTween) {
+        this.jumpFramesRemaining -= 1;
+        this.jumpStepAccumulator -= jumpStepInterval;
+        if (this.jumpFramesRemaining <= 0) {
+          this.jumpTween = null;
+          this.pet.setY(this.basePetY);
+          this.sickIcon.setPosition(this.pet.x + 72, this.pet.y - 72);
+          this.sleepText.setPosition(this.pet.x + 86, this.pet.y - 28);
+        }
+      }
+    } else {
+      this.jumpStepAccumulator = 0;
+    }
+
+    while (this.moveStepAccumulator >= moveStepInterval) {
+      this.moveStepAccumulator -= moveStepInterval;
+      if (this.canAnimatePet() && !this.jumpTween) {
+        this.stepPetMovement();
+      }
     }
 
     if (this.saveAccumulator >= 5) {

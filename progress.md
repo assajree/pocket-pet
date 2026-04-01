@@ -6,3 +6,44 @@ Original prompt: อยากได้หน้าหน้าจอประม
 - Verified JavaScript syntax with `node --check` on `gameState.js`, `main.js`, and all scene files.
 - Tried to run the Playwright validation loop after serving the app locally; browser automation is still blocked by module resolution for the cached `playwright` package, so visual verification is still pending.
 - Updated the mini game flow in `scenes/UIScene.js` so finishing a run shows a result screen for 3 seconds via a dedicated duration constant and ignores both keyboard and on-screen button input during that summary pause.
+- Updated the pet view mood label so the default `Happy` state is hidden, while non-happy moods still show as before.
+- Changed the pet view controls so pressing `cancel` from the closed pet screen opens the status screen directly.
+- Removed `status` from the main menu, keeping status access only through the pet-view `cancel` shortcut.
+- Added inline SVG menu icons for the main menu, feed submenu, status screen, mini game, notices, and result summary, plus the supporting icon slot in the overlay markup/styles.
+- Updated the pet HUD so sleeping state shows the current `Energy` value on the pet screen.
+- Added a sleep shortcut so pressing `ok` on the closed pet screen while sleeping boosts `Energy` faster via a dedicated constant in `scenes/UIScene.js`.
+- Updated sleep logic so the pet wakes up automatically as soon as `Energy` reaches `100`, including when boosted with the `ok` shortcut.
+- Changed passive energy recovery so sleeping now restores `2` energy per second via a dedicated constant in `gameState.js`.
+- Refactored menu handling in `scenes/UIScene.js` to use a shared multi-submenu config and added a new `debug` submenu with max-stats, low-stats, and toggle-sick actions backed by `gameState.js`.
+- Updated the `feed > rice` menu entry to show the current hunger value directly on the menu screen.
+- Updated the `feed > snack` menu entry to show current happiness and weight values on the menu screen.
+- Adjusted the `feed > snack` details so happiness and weight render on separate lines for readability.
+- Updated `feed > rice` and `feed > snack` to show both current values and the positive effect amounts in the menu details.
+- Refactored `feed` menu items to support future additions via per-item `name`, `icon`, and `status` config instead of hardcoded render branches.
+- Removed the extra `Food menu` footer text from the feed submenu details.
+- Added permanent README notes describing save behavior and how offline progress is calculated, including that it can cause death.
+- Changed pet wandering in `scenes/GameScene.js` to snap between LCD-style movement blocks, with block size and range exposed as constants for tuning.
+- Slowed pet movement further by exposing movement delay and movement duration as separate constants in `scenes/GameScene.js`.
+- Removed the idle squash/stretch animation and increased the frequency of LCD-style movement steps instead.
+- Reworked pet movement again so it now steps on every frame update at the configured game FPS, with jump odds and jump timing exposed as constants.
+- Replaced tween-based jumping with a frame-held LCD-style hop so low-FPS movement no longer looks like slow motion.
+- Split pet movement cadence and jump cadence into separate FPS-style constants in `scenes/GameScene.js` using delta-based accumulators.
+- Removed the old global `PET_SCREEN_FPS` override from `main.js`; pet cadence is now tuned only through the movement/jump constants in `scenes/GameScene.js`.
+- Updated the `play` submenu so mini game entries can show current stats and expected stat changes in the same style as `feed`.
+- Cleaned up submenu status rendering so menus with per-item status but no footer text do not show extra blank lines.
+- Changed successful feed actions to keep the feed submenu open instead of closing back to the pet screen.
+- Added a short feeding animation overlay for `feed > rice` and `feed > snack`, with temporary input lock and auto-return to the feed submenu after the munch/chomp sequence.
+- Allowed `ok` and `cancel` to skip the feeding animation immediately and return to the `feed` submenu without waiting for the timer.
+- Kept on-screen `ok` and `cancel` buttons enabled during the feeding animation so skip works from both hardware UI buttons and keyboard input.
+- Moved menu icons and feeding animation artwork out of `scenes/UIScene.js` into SVG assets under `assets/ui`, and updated `BootScene`/`UIScene` to load and render them from Phaser text cache.
+- Refactored `feed` menu items so each item now stores current stat lines and effect stat lines separately, with shared rendering support in `UIScene.js`.
+- Changed `feed` item effect data to live directly on each item as stat objects like `{ hunger: 24 }`, with shared object-to-text formatting in `UIScene.js`.
+- Added `effectStatus` to the `play` submenu item too, and updated `applyAction()`/mini-game reward flow so both `feed` and `play` now apply stat changes from menu item config instead of hardcoded values.
+- Refactored the `play` submenu mini-game flow to read title, icon, duration, prompts, score labels, and summary text from each item config instead of hardcoding `tap-sprint` UI strings.
+- Added a second sample mini game, `CHEER BURST`, to demonstrate how new `play` items can be added with only config changes when they use the shared tap-count runtime.
+- Added a non-tap-count sample mini game, `QUICK MATCH`, where the player must follow a random 5-button sequence before time runs out, and expanded the mini-game runtime to branch on `minigame.type`.
+- Moved play-menu mini-game configs and shared mini-game runtime helpers out of `UIScene.js` into `scenes/minigames.js` so future mini-game additions can stay isolated from the main UI scene.
+- Refactored `scenes/minigames.js` again so each `miniGameType` owns its own session creation, input handling, and status-text method through dedicated handlers instead of one shared branching function.
+- Moved `feed` menu item configs out of `UIScene.js` into `scenes/feedItems.js`, so both feed and play menu content now live outside the main UI scene file.
+- Split UI constants into `scenes/uiConfig.js`, menu definitions into `scenes/menus.js`, and status-line rendering helpers into `scenes/menuFormatters.js` so `UIScene.js` focuses more tightly on scene flow and DOM updates.
+- Broke the mini-game system into `scenes/minigames/index.js`, `playItems.js`, `tapCount.js`, `sequenceMatch.js`, and `types.js` so each mini-game type owns its own runtime logic in a dedicated module.

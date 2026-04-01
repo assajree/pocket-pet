@@ -1,0 +1,8 @@
+<svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Tap sprint icon">
+  <path d="M12 22v-8a2 2 0 0 1 4 0v5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M16 19v-2a2 2 0 0 1 4 0v5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M12 22h10" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+  <path d="M8 12l2-2" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+  <path d="M22 10l2-2" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+  <path d="M16 8V5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+</svg>

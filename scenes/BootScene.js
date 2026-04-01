@@ -12,6 +12,30 @@ export default class BootScene extends Phaser.Scene {
     this.load.image("pet-teen", "pet-teen.svg");
     this.load.image("pet-adult", "pet-adult.svg");
     this.load.image("poop", "poop.svg");
+
+    const uiAssets = [
+      "feed",
+      "play",
+      "sleep",
+      "clean",
+      "medicine",
+      "meal",
+      "snack",
+      "tap-sprint",
+      "status",
+      "message",
+      "summary",
+      "debug",
+      "debug-fill",
+      "debug-drain",
+      "debug-sick",
+      "feeding-meal",
+      "feeding-snack"
+    ];
+
+    uiAssets.forEach((assetKey) => {
+      this.load.text(`ui-${assetKey}`, `ui/${assetKey}.svg`);
+    });
   }
 
   create() {

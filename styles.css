@@ -141,6 +141,37 @@ body {
   text-transform: uppercase;
 }
 
+.screen-menu-icon {
+  width: 52px;
+  height: 52px;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  background: rgba(244, 247, 240, 0.78);
+  border: 1px solid rgba(68, 81, 75, 0.16);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.26);
+}
+
+.screen-menu-icon svg {
+  width: 34px;
+  height: 34px;
+  stroke: #44514b;
+  fill: none;
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.screen-menu-icon.feeding-icon {
+  width: 84px;
+  height: 64px;
+  background: rgba(244, 247, 240, 0.64);
+}
+
+.screen-menu.feeding-view {
+  gap: 12px;
+}
+
 .screen-menu-status {
   max-width: 210px;
   font-size: 0.74rem;
@@ -158,6 +189,10 @@ body {
 .screen-menu.status-view .screen-menu-title {
   align-self: center;
   text-align: center;
+}
+
+.screen-menu.status-view .screen-menu-icon {
+  align-self: center;
 }
 
 .screen-menu.status-view .screen-menu-status {

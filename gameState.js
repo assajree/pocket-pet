@@ -1,5 +1,7 @@
 const SAVE_KEY = "pocket-pet-save-v1";
 const MAX_LOGS = 18;
+const SLEEP_ENERGY_PER_SECOND = 2;
+const AWAKE_ENERGY_CHANGE_PER_MINUTE = -4;
 const STAGE_RULES = [
   { stage: "Child", minAgeMinutes: 2, requiredAverage: 35 },
   { stage: "Teen", minAgeMinutes: 5, requiredAverage: 50 },
@@ -108,6 +110,16 @@ const updateEvolution = (state) => {
   }
 };
 
+const wakeIfFullyRested = (state) => {
+  if (!state.isSleeping || state.energy < 100) {
+    return;
+  }
+
+  state.isSleeping = false;
+  state.actionLockUntil = 0;
+  addLog(state, "Your pet woke up fully rested.");
+};
+
 const maybeDie = (state, reasonText) => {
   if (!state.isAlive) {
     return;
@@ -159,7 +171,52 @@ export const getStatusText = (state) => {
   return getMoodList(state)[0];
 };
 
-export const applyAction = (state, action) => {
+const clampStatValue = (stat, value) => {
+  if (stat === "weight") {
+    return clamp(value, 0, 999);
+  }
+
+  return clamp(value);
+};
+
+const resolveEffectValue = (effectConfig, context = {}) => {
+  if (typeof effectConfig === "function") {
+    return effectConfig(context);
+  }
+
+  if (typeof effectConfig === "number") {
+    return effectConfig;
+  }
+
+  if (effectConfig && typeof effectConfig === "object") {
+    if (typeof effectConfig.value === "function") {
+      return effectConfig.value(context);
+    }
+
+    if (typeof effectConfig.value === "number") {
+      return effectConfig.value;
+    }
+  }
+
+  return 0;
+};
+
+const applyEffectStatus = (state, effectStatus, context = {}) => {
+  if (!effectStatus || typeof effectStatus !== "object") {
+    return;
+  }
+
+  Object.entries(effectStatus).forEach(([stat, effectConfig]) => {
+    const effectValue = resolveEffectValue(effectConfig, context);
+    if (!effectValue || typeof state[stat] !== "number") {
+      return;
+    }
+
+    state[stat] = clampStatValue(stat, state[stat] + effectValue);
+  });
+};
+
+export const applyAction = (state, action, effectStatus = null, context = {}) => {
   if (!state.isAlive) {
     return { ok: false, message: "Your pet is gone. Start a new game." };
   }
@@ -167,24 +224,21 @@ export const applyAction = (state, action) => {
   switch (action) {
     case "feed":
     case "meal":
-      state.hunger = clamp(state.hunger + 24);
+      applyEffectStatus(state, effectStatus, context);
       state.cleanliness = clamp(state.cleanliness - 5);
       addLog(state, "You served rice and filled your pet up.");
       return { ok: true };
     case "snack":
-      state.happiness = clamp(state.happiness + 16);
-      state.weight = clamp(state.weight + 6, 0, 999);
-      state.hunger = clamp(state.hunger + 5);
+      applyEffectStatus(state, effectStatus, context);
       addLog(state, "A sweet snack made your pet happier and a little heavier.");
       return { ok: true };
     case "play":
+    case "tap-sprint":
       if (state.energy < 12) {
         return { ok: false, message: "Your pet is too tired to play." };
       }
       state.isSleeping = false;
-      state.happiness = clamp(state.happiness + 18);
-      state.energy = clamp(state.energy - 12);
-      state.hunger = clamp(state.hunger - 4);
+      applyEffectStatus(state, effectStatus, context);
       addLog(state, "Playtime lifted your pet's mood.");
       return { ok: true };
     case "sleep":
@@ -192,6 +246,7 @@ export const applyAction = (state, action) => {
       state.actionLockUntil = Date.now() + 12000;
       state.energy = clamp(state.energy + 18);
       addLog(state, "Your pet curled up for a nap.");
+      wakeIfFullyRested(state);
       return { ok: true };
     case "clean":
       if (state.poopCount <= 0 && state.cleanliness > 90) {
@@ -209,6 +264,32 @@ export const applyAction = (state, action) => {
       state.isSick = false;
       state.health = clamp(state.health + 24);
       addLog(state, "Medicine helped your pet recover.");
+      return { ok: true };
+    case "debug-fill":
+      state.hunger = 100;
+      state.happiness = 100;
+      state.energy = 100;
+      state.health = 100;
+      state.cleanliness = 100;
+      state.isSick = false;
+      state.poopCount = 0;
+      state.isSleeping = false;
+      state.actionLockUntil = 0;
+      addLog(state, "Debug: all core stats were maxed out.");
+      return { ok: true };
+    case "debug-drain":
+      state.hunger = 20;
+      state.happiness = 20;
+      state.energy = 20;
+      state.health = 20;
+      state.cleanliness = 20;
+      state.isSleeping = false;
+      state.actionLockUntil = 0;
+      addLog(state, "Debug: core stats were lowered for testing.");
+      return { ok: true };
+    case "debug-sick":
+      state.isSick = !state.isSick;
+      addLog(state, state.isSick ? "Debug: pet marked sick." : "Debug: pet cured.");
       return { ok: true };
     case "minigame":
       return { ok: true };
@@ -254,10 +335,14 @@ export const tickState = (state, deltaSeconds) => {
     state.timers.happinessTick -= 45;
   }
 
-  while (state.timers.energyTick >= 60) {
-    state.energy = clamp(state.energy + (state.isSleeping ? 14 : -4));
-    state.timers.energyTick -= 60;
+  while (state.timers.energyTick >= 1) {
+    state.energy = clamp(
+      state.energy + (state.isSleeping ? SLEEP_ENERGY_PER_SECOND : AWAKE_ENERGY_CHANGE_PER_MINUTE / 60)
+    );
+    state.timers.energyTick -= 1;
   }
+
+  wakeIfFullyRested(state);
 
   while (state.timers.ageTick >= 60) {
     state.ageMinutes += 1;
@@ -315,10 +400,11 @@ export const applyOfflineProgress = (state) => {
   }
 };
 
-export const addMiniGameReward = (state, taps) => {
-  const happinessBoost = Math.min(24, 8 + taps * 2);
-  state.happiness = clamp(state.happiness + happinessBoost);
-  state.energy = clamp(state.energy - Math.min(10, Math.floor(taps / 2)));
-  state.weight = clamp(state.weight - Math.min(4, Math.max(1, Math.floor(taps / 4))), 0, 999);
-  addLog(state, `Mini game complete. ${taps} taps earned extra joy.`);
+export const addMiniGameReward = (state, effectStatus, context = {}) => {
+  const score = context.score ?? context.taps ?? 0;
+  const result = applyAction(state, "play", effectStatus, { ...context, taps: score, score });
+  if (result.ok) {
+    addLog(state, `Mini game complete. ${score} score earned extra joy.`);
+  }
+  return result;
 };

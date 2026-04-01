@@ -1,0 +1,5 @@
+<svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Max stats icon">
+  <path d="M7 16h18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+  <path d="M16 7v18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+  <circle cx="16" cy="16" r="10" fill="none" stroke="currentColor" stroke-width="2.2"/>
+</svg>
