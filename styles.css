@@ -1,0 +1,284 @@
+:root {
+  --bg-top: #f5f2ef;
+  --bg-bottom: #e7e4df;
+  --shell-face: #fbfaf8;
+  --shell-edge: #d4d1cb;
+  --shell-shadow: rgba(92, 88, 84, 0.18);
+  --screen-frame: #d3d1d1;
+  --screen-bezel: #bdb8b8;
+  --button-face: #d8d8d8;
+  --button-shadow: #b3b3b3;
+  --button-text: #6a6782;
+  --ink-main: #2c2a2a;
+  --ink-soft: #656161;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+  background: linear-gradient(180deg, var(--bg-top), var(--bg-bottom));
+  color: var(--ink-main);
+  font-family: "Courier New", "Lucida Console", monospace;
+  image-rendering: pixelated;
+}
+
+body {
+  min-height: 100vh;
+}
+
+#app-shell {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: calc(18px + var(--safe-top)) 16px calc(18px + var(--safe-bottom));
+}
+
+#device-shell {
+  width: min(100%, 360px);
+  padding: 20px 20px 26px;
+  border-radius: 26px;
+  background: linear-gradient(180deg, var(--shell-face), #efede9);
+  border: 1px solid rgba(180, 176, 171, 0.7);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.72),
+    0 24px 50px var(--shell-shadow);
+}
+
+.brand-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  font-size: 0.76rem;
+  color: var(--ink-soft);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.brand-pill {
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(180, 176, 171, 0.8);
+}
+
+#game-wrapper {
+  display: flex;
+  flex-direction: column;
+}
+
+.screen-window {
+  position: relative;
+  aspect-ratio: 1 / 1;
+  border-radius: 18px;
+  background: linear-gradient(180deg, var(--screen-bezel), var(--screen-frame));
+  padding: 14px;
+  box-shadow:
+    inset 0 2px 0 rgba(255, 255, 255, 0.3),
+    inset 0 -3px 0 rgba(86, 81, 81, 0.12);
+}
+
+#game-container,
+#game-container canvas {
+  width: 100%;
+  height: 100%;
+}
+
+#game-container {
+  border-radius: 12px;
+  overflow: hidden;
+  background: #b7c7b5;
+  box-shadow: inset 0 0 0 1px rgba(78, 74, 74, 0.16);
+}
+
+.pet-mood {
+  position: absolute;
+  left: 22px;
+  top: 22px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: rgba(207, 220, 205, 0.92);
+  border: 1px solid rgba(68, 81, 75, 0.18);
+  color: #44514b;
+  font-size: 0.62rem;
+  line-height: 1;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18);
+  pointer-events: none;
+}
+
+.screen-menu {
+  position: absolute;
+  inset: 14px;
+  padding: 22px 16px;
+  border: 1px solid rgba(68, 81, 75, 0.16);
+  border-radius: 12px;
+  background: rgba(183, 199, 181, 0.98);
+  color: #44514b;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  text-align: center;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  pointer-events: none;
+}
+
+.screen-menu-title {
+  font-size: 1.2rem;
+  line-height: 1.1;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.screen-menu-status {
+  max-width: 210px;
+  font-size: 0.74rem;
+  line-height: 1.4;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: pre-line;
+}
+
+.screen-menu.status-view {
+  align-items: flex-start;
+  text-align: left;
+}
+
+.screen-menu.status-view .screen-menu-title {
+  align-self: center;
+  text-align: center;
+}
+
+.screen-menu.status-view .screen-menu-status {
+  max-width: none;
+}
+
+.status-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.status-separator {
+  height: 1px;
+  margin: 4px 0;
+  background: rgba(68, 81, 75, 0.22);
+}
+
+.status-line {
+  font-size: 0.74rem;
+  line-height: 1.35;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.status-name {
+  font-weight: 700;
+}
+
+.hardware-row {
+  display: flex;
+  justify-content: center;
+  gap: 18px;
+  margin-top: 8px;
+}
+
+.hardware-okutton {
+  width: 48px;
+  height: 48px;
+  min-height: 48px;
+  border: none;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #dfdfdf, var(--button-face));
+  color: var(--button-text);
+  font: inherit;
+  font-size: 1.5rem;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.8),
+    0 5px 0 var(--button-shadow);
+  transition: transform 100ms ease, box-shadow 100ms ease, filter 100ms ease;
+}
+
+.hardware-okutton:hover,
+.hardware-okutton:focus-visible {
+  filter: brightness(1.03);
+}
+
+.hardware-okutton:active {
+  transform: translateY(3px);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.8),
+    0 2px 0 var(--button-shadow);
+}
+
+.hardware-okutton:disabled {
+  cursor: default;
+  opacity: 0.45;
+  transform: none;
+}
+
+.hidden {
+  display: none;
+}
+
+@media (max-width: 480px) {
+  #app-shell {
+    padding: calc(12px + var(--safe-top)) 12px calc(12px + var(--safe-bottom));
+  }
+
+  #device-shell {
+    width: 100%;
+    padding: 16px 16px 22px;
+  }
+
+  .brand-row {
+    margin-bottom: 12px;
+    font-size: 0.68rem;
+  }
+
+  .hardware-row {
+    gap: 14px;
+  }
+
+  .screen-menu {
+    inset: 14px;
+    padding: 18px 12px;
+  }
+
+  .pet-mood {
+    left: 20px;
+    top: 20px;
+    font-size: 0.56rem;
+  }
+
+  .screen-menu-title {
+    font-size: 1rem;
+  }
+
+  .screen-menu-status {
+    font-size: 0.64rem;
+  }
+
+  .hardware-okutton {
+    width: 44px;
+    height: 44px;
+    min-height: 44px;
+    font-size: 1.35rem;
+  }
+}
