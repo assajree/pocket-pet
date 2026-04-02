@@ -82,7 +82,7 @@ export const getMenuStatusText = (menu, item, state) => {
   }
   const effectStatus = resolveStatusLines(item.effectStatus, state);
 
-  if (item.key && !item.currentStatus) {
+  if (!currentStatus.length && item.key && !item.currentStatus) {
     const extraStatsFn = (s) => {
       if (!item.effectStatus) return [];
       return Object.keys(item.effectStatus).map((k) => {

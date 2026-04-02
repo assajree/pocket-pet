@@ -133,9 +133,9 @@ export default class UIScene extends Phaser.Scene {
       return;
     }
 
-    if (!this.state.isAlive && this.view !== "status" && button !== "cancel" && button !== "ok") {
-      return;
-    }
+    // if (!this.state.isAlive && this.view !== "status" && button !== "cancel" && button !== "ok") {
+    //   return;
+    // }
 
     if (this.view === "closed") {
       if (button === "cancel") {

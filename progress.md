@@ -64,3 +64,5 @@ Original prompt: อยากได้หน้าหน้าจอประม
 - Updated the `FEED` menu to show item quantities in the title/status and hide feed entries entirely when their inventory count reaches `0`, with shared filtered-menu handling in `UIScene`.
 - Made `rice` unlimited by removing stock consumption and shop purchasing for meal, updating feed/status UI to show `INF` instead of a finite quantity.
 - Generalized item behavior with shared `ITEM_DEFS` metadata in `gameState.js` so items can now declare reusable traits like `consumable`, `infinite`, and `shopPrice`; feed/shop/status UI now read those helpers instead of hardcoding rice-specific behavior.
+- Fixed the shop purchase runtime crash by importing item helper bindings directly into `gameState.js` before re-exporting them; `purchaseItem()` can now resolve shop price/max quantity correctly at runtime.
+- Fixed `scenes/menuFormatters.js` so shop-specific status lines (money owned/cost) are no longer overwritten by the generic inventory fallback.

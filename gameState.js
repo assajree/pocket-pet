@@ -1,3 +1,12 @@
+import {
+  getItemInventoryLabel,
+  getItemLabel,
+  getMaxQty,
+  getShopPrice,
+  isConsumableItem,
+  isShopItem
+} from "./scenes/items.js";
+
 const SAVE_KEY = "pocket-pet-save-v1";
 const MAX_LOGS = 18;
 const MAX_POOP_COUNT = 10;
@@ -13,7 +22,7 @@ export {
   getShopPrice,
   getMaxQty,
   isShopItem
-} from "./scenes/items.js";
+};
 
 const STAGE_RULES = [
   { stage: "Child", minAgeMinutes: 2, requiredAverage: 35 },
