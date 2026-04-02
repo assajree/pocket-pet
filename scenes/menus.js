@@ -1,6 +1,7 @@
 import { buildShopStatus } from "./menuFormatters.js";
 import { ITEM_LIST } from "./items.js";
 import { PLAY_MENU_ITEMS } from "./minigames/index.js";
+import { getInventoryCount } from "../gameState.js";
 
 export const MENUS = {
   main: {
@@ -20,7 +21,7 @@ export const MENUS = {
     items: ITEM_LIST,
     visibleWhen: (item, state) => {
       if (item.key === "medicine") return false;
-      if (item.key === "snack") return (state.inventory?.snack ?? 0) > 0;
+      if (item.key === "snack") return getInventoryCount(state, item.key) > 0;
       return true;
     }
   },
@@ -38,6 +39,7 @@ export const MENUS = {
     statusText: "Debug menu",
     items: [
       { key: "debug-new-egg", label: "NEW EGG", caption: "Reset the pet back to a fresh egg.", icon: "" },
+      { key: "debug-reset-save", label: "RESET SAVE", caption: "Clear all save data and start again from an egg.", icon: "new-egg" },
       { key: "debug-fill", label: "MAX ALL", caption: "Fill all core stats.", icon: "" },
       { key: "debug-drain", label: "LOW ALL", caption: "Lower core stats for testing.", icon: "" },
       { key: "debug-evolve", label: "EVOLVE +1", caption: "Advance to the next pet stage.", icon: "" },

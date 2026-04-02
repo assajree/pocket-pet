@@ -5,7 +5,6 @@ import {
   clearState,
   createNewState,
   getEggHatchSecondsRemaining,
-  getItemInventoryLabel,
   getMoodList,
   isConsumableItem,
   purchaseItem,
@@ -666,7 +665,7 @@ export default class UIScene extends Phaser.Scene {
 
   renderScreenMenu(state) {
     const moodList = getMoodList(state);
-    const shouldShowMood = !(moodList.length === 1 && moodList[0] === "Happy");
+    const shouldShowMood = state.isAlive && !(moodList.length === 1 && moodList[0] === "NONE");
 
     this.brandTitle.textContent = "Pocket Pet";
     this.brandStatus.textContent = state.isAlive ? "Pet View" : "New Egg";
@@ -674,6 +673,7 @@ export default class UIScene extends Phaser.Scene {
     const eggCountdownSeconds = getEggHatchSecondsRemaining(state);
     const shouldShowEggCountdown = state.evolutionStage === "Egg" && !fullScreenMenu;
     const shouldShowSleepEnergy = state.isSleeping && !fullScreenMenu;
+    const shouldShowDeadText = !state.isAlive && !fullScreenMenu;
     this.gameScene.setMenuVisible(fullScreenMenu);
     this.screenMenu.classList.toggle("status-view", this.view === "status");
     this.screenMenu.classList.toggle("action-animation-view", this.view === "action-animation");
@@ -688,12 +688,14 @@ export default class UIScene extends Phaser.Scene {
       ? `Hatch in: ${formatCountdown(eggCountdownSeconds)}`
       : shouldShowSleepEnergy
       ? `Energy: ${Math.round(state.energy)}`
+      : shouldShowDeadText
+      ? "Your pet is dead.\nGet a new egg to continue."
       : shouldShowMood
-        ? `Mood: ${moodList.join(" | ")}`
+        ? `Need: ${moodList.join(" | ")}`
         : "";
     this.petMood.classList.toggle(
       "hidden",
-      fullScreenMenu || (!shouldShowMood && !shouldShowSleepEnergy && !shouldShowEggCountdown)
+      fullScreenMenu || (!shouldShowMood && !shouldShowSleepEnergy && !shouldShowEggCountdown && !shouldShowDeadText)
     );
 
     if (!fullScreenMenu) {

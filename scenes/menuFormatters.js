@@ -1,9 +1,9 @@
-import { getItemLabel, getShopPrice, getMaxQty, isConsumableItem } from "../gameState.js";
+import { getInventoryCount, getItemLabel, getShopPrice, getMaxQty, isConsumableItem } from "../gameState.js";
 
 export const buildShopStatus = (itemKey, stockKey, label) => ({ money, inventory }) => {
-  const qty = inventory?.[stockKey] ?? 0;
+  const qty = getInventoryCount({ inventory }, stockKey);
   const maxQty = getMaxQty(stockKey);
-  const ownedText = maxQty ? `${qty}/${maxQty}` : (!isConsumableItem(stockKey) ? "∞" : `${qty}`);
+  const ownedText = maxQty ? `${qty}/${maxQty}` : (!isConsumableItem(stockKey) ? "INF" : `${qty}`);
   return [
     `MONEY ${Math.round(money)}G`,
     `OWN ${ownedText} ${label}`,
@@ -12,10 +12,10 @@ export const buildShopStatus = (itemKey, stockKey, label) => ({ money, inventory
 };
 
 export const buildInventoryItemName = (itemKey) => ({ inventory }) =>
-  `${getItemLabel(itemKey)} x${!isConsumableItem(itemKey) ? "∞" : (inventory?.[itemKey] ?? 0)}`;
+  `${getItemLabel(itemKey)} x${!isConsumableItem(itemKey) ? "INF" : getInventoryCount({ inventory }, itemKey)}`;
 
 export const buildInventoryItemStatus = (itemKey, extraStatsFn) => (state) => {
-  const lines = [`QTY ${!isConsumableItem(itemKey) ? "∞" : (state.inventory?.[itemKey] ?? 0)}`];
+  const lines = [`QTY ${!isConsumableItem(itemKey) ? "INF" : getInventoryCount(state, itemKey)}`];
   if (extraStatsFn) {
     const extra = extraStatsFn(state);
     if (Array.isArray(extra)) {

@@ -1,5 +1,4 @@
 import {
-  getItemInventoryLabel,
   getItemLabel,
   getMaxQty,
   getShopPrice,
@@ -21,7 +20,6 @@ const CHILD_HATCH_COMBAT_STAT = 5;
 export {
   isConsumableItem,
   getItemLabel,
-  getItemInventoryLabel,
   getShopPrice,
   getMaxQty,
   isShopItem
@@ -38,6 +36,19 @@ const clamp = (value, min = 0, max = 100) => Math.min(max, Math.max(min, value))
 
 const createLogId = () =>
   typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `log-${Date.now()}-${Math.random()}`;
+
+const createInventoryState = (entries = {}) => ({ ...entries });
+
+const normalizeInventory = (inventory) => {
+  if (!inventory || typeof inventory !== "object" || Array.isArray(inventory)) {
+    return createInventoryState(baseState?.inventory ?? {});
+  }
+
+  return createInventoryState({
+    ...baseState.inventory,
+    ...inventory
+  });
+};
 
 export const createNewState = () => ({
   version: 1,
@@ -59,11 +70,11 @@ export const createNewState = () => ({
   isSleeping: false,
   isSick: false,
   poopCount: 0,
-  inventory: {
+  inventory: createInventoryState({
     meal: 1,
     snack: 1,
     medicine: 0
-  },
+  }),
   actionLockUntil: 0,
   timers: {
     hungerTick: 0,
@@ -110,10 +121,7 @@ export const loadState = () => {
         ...baseState.timers,
         ...parsed.timers
       },
-      inventory: {
-        ...baseState.inventory,
-        ...(parsed.inventory || {})
-      },
+      inventory: normalizeInventory(parsed.inventory),
       logs: Array.isArray(parsed.logs) && parsed.logs.length ? parsed.logs : createNewState().logs
     };
   } catch (error) {
@@ -269,36 +277,36 @@ const maybeDie = (state, reasonText) => {
 
 export const getMoodList = (state) => {
   if (!state.isAlive) {
-    return ["Dead"];
+    return ["REVIVE"];
   }
 
   if (state.evolutionStage === "Egg") {
-    return ["Egg"];
+    return ["HATCH"];
   }
 
   const moods = [];
 
   if (state.isSick) {
-    moods.push("Sick");
+    moods.push("MEDICINE");
   }
   if (state.poopCount > 0) {
-    moods.push("Dirty");
+    moods.push("CLEAN");
   }
   if (state.isSleeping) {
-    moods.push("Asleep");
+    moods.push("SLEEP");
   }
   if (state.energy < 25) {
-    moods.push("Tired");
+    moods.push("REST");
   }
   if (state.hunger < 30) {
-    moods.push("Hungry");
+    moods.push("FOOD");
   }
   if (state.happiness < 35) {
-    moods.push("Bored");
+    moods.push("PLAY");
   }
 
   if (!moods.length) {
-    moods.push("Happy");
+    moods.push("NONE");
   }
 
   return moods;
@@ -325,17 +333,33 @@ const clampStatValue = (stat, value) => {
   return clamp(value);
 };
 
+export const getInventoryCount = (state, itemKey) => normalizeInventory(state?.inventory)?.[itemKey] ?? 0;
+
+const ensureInventoryState = (state) => {
+  state.inventory = normalizeInventory(state.inventory);
+  return state.inventory;
+};
+
+const setInventoryCount = (state, itemKey, nextCount) => {
+  const inventory = ensureInventoryState(state);
+  inventory[itemKey] = Math.max(0, nextCount);
+  return inventory[itemKey];
+};
+
+const adjustInventoryCount = (state, itemKey, delta) =>
+  setInventoryCount(state, itemKey, getInventoryCount(state, itemKey) + delta);
+
 const useInventoryItem = (state, itemKey) => {
   if (!isConsumableItem(itemKey)) {
     return true;
   }
 
-  const count = state.inventory?.[itemKey] ?? 0;
+  const count = getInventoryCount(state, itemKey);
   if (count <= 0) {
     return false;
   }
 
-  state.inventory[itemKey] = count - 1;
+  setInventoryCount(state, itemKey, count - 1);
   return true;
 };
 
@@ -355,12 +379,12 @@ export const purchaseItem = (state, key) => {
   }
 
   const maxQty = getMaxQty(itemKey);
-  if (maxQty && (state.inventory[itemKey] ?? 0) >= maxQty) {
+  if (maxQty && getInventoryCount(state, itemKey) >= maxQty) {
     return { ok: false, message: "Inventory is full." };
   }
 
   state.money = clampStatValue("money", state.money - price);
-  state.inventory[itemKey] = (state.inventory[itemKey] ?? 0) + 1;
+  adjustInventoryCount(state, itemKey, 1);
   addLog(state, `Shop: bought ${itemKey} for ${price}g.`);
   return { ok: true };
 };
@@ -452,7 +476,7 @@ export const applyAction = (state, action, effectStatus = null, context = {}) =>
       }
       if (!state.isSick && state.health > 90) {
         if (isConsumableItem("medicine")) {
-          state.inventory.medicine += 1;
+          adjustInventoryCount(state, "medicine", 1);
         }
         return { ok: false, message: "Medicine is not needed right now." };
       }
@@ -470,8 +494,8 @@ export const applyAction = (state, action, effectStatus = null, context = {}) =>
       state.str = 25;
       state.agi = 25;
       state.int = 25;
-      state.inventory.snack = 9;
-      state.inventory.medicine = 9;
+      setInventoryCount(state, "snack", 9);
+      setInventoryCount(state, "medicine", 9);
       state.isSick = false;
       state.poopCount = 0;
       state.isSleeping = false;
@@ -484,6 +508,13 @@ export const applyAction = (state, action, effectStatus = null, context = {}) =>
       addLog(state, "Debug: reset pet to a fresh egg.");
       return { ok: true };
     }
+    case "debug-reset-save": {
+      clearState();
+      const freshEgg = createNewState();
+      Object.assign(state, freshEgg);
+      addLog(state, "Debug: cleared save data and reset to a fresh egg.");
+      return { ok: true };
+    }
     case "debug-drain":
       state.hunger = 20;
       state.happiness = 20;
@@ -494,8 +525,8 @@ export const applyAction = (state, action, effectStatus = null, context = {}) =>
       state.str = 5;
       state.agi = 5;
       state.int = 5;
-      state.inventory.snack = 0;
-      state.inventory.medicine = 0;
+      setInventoryCount(state, "snack", 0);
+      setInventoryCount(state, "medicine", 0);
       state.isSleeping = false;
       state.actionLockUntil = 0;
       addLog(state, "Debug: core stats were lowered for testing.");

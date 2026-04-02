@@ -1,8 +1,7 @@
 export const ITEM_LIST = [
   {
     key: "meal",
-    label: "RICE",
-    inventoryLabel: "Rice",
+    label: "Rice",
     caption: "Serve rice to fill hunger.",
     icon: "meal",
     consumable: false,
@@ -11,8 +10,7 @@ export const ITEM_LIST = [
   },
   {
     key: "snack",
-    label: "SNACK",
-    inventoryLabel: "Snack",
+    label: "Snack",
     caption: "Snack adds fun and weight.",
     icon: "snack",
     consumable: true,
@@ -22,8 +20,7 @@ export const ITEM_LIST = [
   },
   {
     key: "medicine",
-    label: "MED",
-    inventoryLabel: "Med",
+    label: "Med",
     caption: "Buy one medicine dose.",
     icon: "medicine",
     consumable: true,
@@ -37,7 +34,6 @@ const ITEM_MAP = Object.fromEntries(ITEM_LIST.map((item) => [item.key, item]));
 export const getItemDef = (itemKey) => ITEM_MAP[itemKey];
 export const isConsumableItem = (itemKey) => ITEM_MAP[itemKey]?.consumable !== false;
 export const getItemLabel = (itemKey) => ITEM_MAP[itemKey]?.label || itemKey.toUpperCase();
-export const getItemInventoryLabel = (itemKey) => ITEM_MAP[itemKey]?.inventoryLabel || getItemLabel(itemKey);
 export const getShopPrice = (itemKey) => ITEM_MAP[itemKey]?.shopPrice ?? 0;
 export const getMaxQty = (itemKey) => ITEM_MAP[itemKey]?.maxQty ?? 0;
 export const isShopItem = (itemKey) => isConsumableItem(itemKey);
