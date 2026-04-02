@@ -5,7 +5,7 @@ import {
   createNewState,
   getItemInventoryLabel,
   getMoodList,
-  isInfiniteItem,
+  isConsumableItem,
   purchaseItem,
   saveState
 } from "../gameState.js";
@@ -18,8 +18,8 @@ import {
   initializeMiniGameSession
 } from "./minigames/index.js";
 import { MENUS, isMenuView } from "./menus.js";
-import { getMenuStatusText } from "./menuFormatters.js";
-import { FEED_ANIMATION_DURATION_MS, MINI_GAME_SUMMARY_DURATION_MS, SLEEP_OK_ENERGY_BOOST } from "./uiConfig.js";
+import { getMenuStatusText, buildInventoryItemName } from "./menuFormatters.js";
+import { ACTION_ANIMATION_CONFIG, MINI_GAME_SUMMARY_DURATION_MS, SLEEP_OK_ENERGY_BOOST } from "./uiConfig.js";
 
 export default class UIScene extends Phaser.Scene {
   constructor() {
@@ -31,8 +31,8 @@ export default class UIScene extends Phaser.Scene {
     this.miniGame = createMiniGameState();
     this.inputLockedUntil = 0;
     this.summaryTimer = null;
-    this.feedAnimationTimer = null;
-    this.feedAnimationAction = null;
+    this.actionAnimationTimer = null;
+    this.currentActionAnimation = null;
     this.activeMiniGameItem = null;
   }
 
@@ -55,7 +55,7 @@ export default class UIScene extends Phaser.Scene {
       this.gameScene.events.off("state-changed", this.handleStateChanged, this);
       window.removeEventListener("keydown", this.handleKeydown);
       this.summaryTimer?.remove(false);
-      this.feedAnimationTimer?.remove(false);
+      this.actionAnimationTimer?.remove(false);
     });
   }
 
@@ -124,8 +124,8 @@ export default class UIScene extends Phaser.Scene {
   };
 
   handleDirectionalInput(button) {
-    if (this.view === "feeding-animation" && (button === "ok" || button === "cancel")) {
-      this.skipFeedAnimation();
+    if (this.view === "action-animation" && (button === "ok" || button === "cancel")) {
+      this.skipActionAnimation();
       return;
     }
 
@@ -256,8 +256,8 @@ export default class UIScene extends Phaser.Scene {
     saveState(this.state);
 
     if (result.ok) {
-      if (item.key === "meal" || item.key === "snack") {
-        this.showFeedAnimation(item.key);
+      if (item.key === "meal" || item.key === "snack" || item.key === "clean") {
+        this.showActionAnimation(item.key);
         return;
       }
 
@@ -271,31 +271,33 @@ export default class UIScene extends Phaser.Scene {
     this.showMessage(result.message || this.getSuccessMessage(item.key), false);
   }
 
-  showFeedAnimation(action) {
-    this.feedAnimationTimer?.remove(false);
-    this.feedAnimationAction = action;
-    this.view = "feeding-animation";
-    this.inputLockedUntil = this.time.now + FEED_ANIMATION_DURATION_MS;
+  showActionAnimation(action) {
+    const config = ACTION_ANIMATION_CONFIG[action] || { durationMs: 2000, nextView: "closed" };
+    this.actionAnimationTimer?.remove(false);
+    this.currentActionAnimation = action;
+    this.view = "action-animation";
+    this.inputLockedUntil = this.time.now + config.durationMs;
     this.render(this.state);
-    this.feedAnimationTimer = this.time.delayedCall(FEED_ANIMATION_DURATION_MS, () => {
-      this.feedAnimationAction = null;
+    this.actionAnimationTimer = this.time.delayedCall(config.durationMs, () => {
       this.inputLockedUntil = 0;
-      this.view = "feed";
+      this.view = config.nextView;
       this.render(this.state);
-      this.feedAnimationTimer = null;
+      this.actionAnimationTimer = null;
+      this.currentActionAnimation = null;
     });
   }
 
-  skipFeedAnimation() {
-    if (this.view !== "feeding-animation") {
+  skipActionAnimation() {
+    if (this.view !== "action-animation") {
       return;
     }
 
-    this.feedAnimationTimer?.remove(false);
-    this.feedAnimationTimer = null;
-    this.feedAnimationAction = null;
+    const config = ACTION_ANIMATION_CONFIG[this.currentActionAnimation] || { durationMs: 2000, nextView: "closed" };
+    this.actionAnimationTimer?.remove(false);
+    this.actionAnimationTimer = null;
+    this.currentActionAnimation = null;
     this.inputLockedUntil = 0;
-    this.view = "feed";
+    this.view = config.nextView;
     this.render(this.state);
   }
 
@@ -423,14 +425,14 @@ export default class UIScene extends Phaser.Scene {
     const markup = this.getUiAssetMarkup(iconKey);
     this.screenMenuIcon.innerHTML = markup;
     this.screenMenuIcon.classList.toggle("hidden", !markup);
-    this.screenMenuIcon.classList.remove("feeding-icon");
+    this.screenMenuIcon.classList.remove("action-icon");
   }
 
-  setFeedAnimationIcon(action) {
-    const assetKey = action === "snack" ? "feeding-snack" : "feeding-meal";
+  setActionAnimationIcon(action) {
+    const assetKey = action === "clean" ? "cleaning-room" : (action === "snack" ? "feeding-snack" : "feeding-meal");
     this.screenMenuIcon.innerHTML = this.getUiAssetMarkup(assetKey);
     this.screenMenuIcon.classList.toggle("hidden", !this.screenMenuIcon.innerHTML);
-    this.screenMenuIcon.classList.add("feeding-icon");
+    this.screenMenuIcon.classList.add("action-icon");
   }
 
   getUiAssetMarkup(assetKey) {
@@ -468,7 +470,9 @@ export default class UIScene extends Phaser.Scene {
     if (typeof item.name === "function") {
       return item.name(this.state);
     }
-
+    if (item.inventoryItemKey && !item.name) {
+      return buildInventoryItemName(item.inventoryItemKey)(this.state);
+    }
     return item.name || item.label;
   }
 
@@ -553,9 +557,9 @@ export default class UIScene extends Phaser.Scene {
           ["Agi", Math.round(state.agi)],
           ["Int", Math.round(state.int)],
           "separator",
-          [getItemInventoryLabel("meal"), isInfiniteItem("meal") ? "INF" : (state.inventory?.meal ?? 0)],
-          [getItemInventoryLabel("snack"), isInfiniteItem("snack") ? "INF" : (state.inventory?.snack ?? 0)],
-          [getItemInventoryLabel("medicine"), isInfiniteItem("medicine") ? "INF" : (state.inventory?.medicine ?? 0)],
+          [getItemInventoryLabel("meal"), !isConsumableItem("meal") ? "∞" : (state.inventory?.meal ?? 0)],
+          [getItemInventoryLabel("snack"), !isConsumableItem("snack") ? "∞" : (state.inventory?.snack ?? 0)],
+          [getItemInventoryLabel("medicine"), !isConsumableItem("medicine") ? "∞" : (state.inventory?.medicine ?? 0)],
           "separator",
           ["Clean", Math.round(state.cleanliness)],
           ["Poop", state.poopCount],
@@ -621,9 +625,9 @@ export default class UIScene extends Phaser.Scene {
     this.inputLockedUntil = 0;
     this.summaryTimer?.remove(false);
     this.summaryTimer = null;
-    this.feedAnimationTimer?.remove(false);
-    this.feedAnimationTimer = null;
-    this.feedAnimationAction = null;
+    this.actionAnimationTimer?.remove(false);
+    this.actionAnimationTimer = null;
+    this.currentActionAnimation = null;
     this.activeMiniGameItem = null;
     saveState(freshState);
     this.scene.stop("GameScene");
@@ -643,9 +647,9 @@ export default class UIScene extends Phaser.Scene {
     const shouldShowSleepEnergy = state.isSleeping && !fullScreenMenu;
     this.gameScene.setMenuVisible(fullScreenMenu);
     this.screenMenu.classList.toggle("status-view", this.view === "status");
-    this.screenMenu.classList.toggle("feeding-view", this.view === "feeding-animation");
+    this.screenMenu.classList.toggle("action-animation-view", this.view === "action-animation");
     const inputLocked = this.isInputLocked();
-    const allowFeedSkip = this.view === "feeding-animation";
+    const allowFeedSkip = this.view === "action-animation";
     this.hardwareLeft.disabled = inputLocked;
     this.hardwareRight.disabled = inputLocked;
     this.hardwareCancel.disabled = inputLocked && !allowFeedSkip;
@@ -735,13 +739,11 @@ export default class UIScene extends Phaser.Scene {
       return;
     }
 
-    if (this.view === "feeding-animation") {
-      this.setMenuParent(this.getMenuParentText());
-      this.setFeedAnimationIcon(this.feedAnimationAction);
-      this.screenMenuTitle.textContent = this.feedAnimationAction === "snack" ? "Snack Time" : "Rice Time";
-      this.screenMenuStatus.textContent =
-        this.feedAnimationAction === "snack" ? "Chomp chomp\nFun is going up." : "Munch munch\nHunger is going down.";
-      this.setMenuIndicator(0, 0);
+    if (this.view === "action-animation") {
+      const parentLabel = this.currentActionAnimation === "clean" ? "CLEAN" : "FEED";
+      this.setMenuParent(parentLabel);
+      this.setActionAnimationIcon(this.currentActionAnimation);
+      return;
     }
   }
 

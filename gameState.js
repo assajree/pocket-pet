@@ -10,21 +10,18 @@ export const ITEM_DEFS = {
     label: "RICE",
     inventoryLabel: "Rice",
     consumable: false,
-    infinite: true,
     shopPrice: 0
   },
   snack: {
     label: "SNACK",
     inventoryLabel: "Snack",
     consumable: true,
-    infinite: false,
     shopPrice: 6
   },
   medicine: {
     label: "MED",
     inventoryLabel: "Med",
     consumable: true,
-    infinite: false,
     shopPrice: 12
   }
 };
@@ -175,22 +172,22 @@ const maybeDie = (state, reasonText) => {
 
 export const getMoodList = (state) => {
   if (!state.isAlive) {
-    return ["Passed away"];
+    return ["Dead"];
   }
 
   const moods = [];
 
   if (state.isSick) {
-    moods.push("Feeling sick");
+    moods.push("Sick");
   }
   if (state.poopCount > 0) {
-    moods.push("Needs cleaning");
+    moods.push("Dirty");
   }
   if (state.isSleeping) {
-    moods.push("Sleeping");
+    moods.push("Asleep");
   }
   if (state.energy < 25) {
-    moods.push("Sleepy");
+    moods.push("Tired");
   }
   if (state.hunger < 30) {
     moods.push("Hungry");
@@ -210,7 +207,7 @@ export const getStatusText = (state) => {
   return getMoodList(state)[0];
 };
 
-export const isInfiniteItem = (itemKey) => ITEM_DEFS[itemKey]?.infinite === true;
+
 
 export const isConsumableItem = (itemKey) => ITEM_DEFS[itemKey]?.consumable !== false;
 
@@ -235,7 +232,7 @@ const clampStatValue = (stat, value) => {
 };
 
 const useInventoryItem = (state, itemKey) => {
-  if (isInfiniteItem(itemKey) || !isConsumableItem(itemKey)) {
+  if (!isConsumableItem(itemKey)) {
     return true;
   }
 
@@ -265,9 +262,7 @@ export const purchaseItem = (state, itemKey) => {
   }
 
   state.money = clampStatValue("money", state.money - price);
-  if (!isInfiniteItem(itemKey)) {
-    state.inventory[itemKey] = (state.inventory[itemKey] ?? 0) + 1;
-  }
+  state.inventory[itemKey] = (state.inventory[itemKey] ?? 0) + 1;
   addLog(state, `Shop: bought ${itemKey} for ${price}g.`);
   return { ok: true };
 };
@@ -358,7 +353,7 @@ export const applyAction = (state, action, effectStatus = null, context = {}) =>
         return { ok: false, message: "No medicine left. Visit the shop." };
       }
       if (!state.isSick && state.health > 90) {
-        if (!isInfiniteItem("medicine")) {
+        if (isConsumableItem("medicine")) {
           state.inventory.medicine += 1;
         }
         return { ok: false, message: "Medicine is not needed right now." };

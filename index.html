@@ -1,51 +1,52 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta
-      name="viewport"
-      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover, user-scalable=no"
-    />
-    <meta name="theme-color" content="#1f2a44" />
-    <meta name="mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="apple-mobile-web-app-title" content="Pocket Pet" />
-    <title>Pocket Pet Tamagotchi</title>
-    <link rel="manifest" href="./manifest.json" />
-    <link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png" />
-    <link rel="apple-touch-icon" href="./icons/icon-192.png" />
-    <link rel="stylesheet" href="./styles.css" />
-    <script src="https://cdn.jsdelivr.net/npm/phaser@3.90.0/dist/phaser.min.js" defer></script>
-    <script type="module" src="./main.js"></script>
-  </head>
-  <body>
-    <div id="app-shell">
-      <div id="device-shell">
-        <div class="brand-row">
-          <span id="brand-title" class="brand-pill">Pocket Pet</span>
-          <span id="brand-status" class="brand-model">Pet View</span>
-        </div>
-        <div id="game-wrapper">
-          <div class="screen-window">
-            <div id="game-container" aria-label="Pocket Pet game"></div>
-            <div id="pet-mood" class="pet-mood">MOOD: HAPPY</div>
-            <div id="screen-menu" class="screen-menu hidden" aria-live="polite">
-              <div id="screen-menu-parent" class="screen-menu-parent hidden"></div>
-              <div id="screen-menu-title" class="screen-menu-title">Menu</div>
-              <div id="screen-menu-icon" class="screen-menu-icon" aria-hidden="true"></div>
-              <div id="screen-menu-status" class="screen-menu-status">L/R move B select</div>
-              <div id="screen-menu-indicator" class="screen-menu-indicator hidden" aria-hidden="true"></div>
-            </div>
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport"
+    content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover, user-scalable=no" />
+  <meta name="theme-color" content="#1f2a44" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Pocket Pet" />
+  <title>Pocket Pet Tamagotchi</title>
+  <link rel="manifest" href="./manifest.json" />
+  <link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png" />
+  <link rel="apple-touch-icon" href="./icons/icon-192.png" />
+  <link rel="stylesheet" href="./styles.css" />
+  <script src="https://cdn.jsdelivr.net/npm/phaser@3.90.0/dist/phaser.min.js" defer></script>
+  <script type="module" src="./main.js"></script>
+</head>
+
+<body>
+  <div id="app-shell">
+    <div id="device-shell">
+      <div class="brand-row">
+        <span id="brand-title" class="brand-pill">Pocket Pet</span>
+        <span id="brand-status" class="brand-model">Pet View</span>
+      </div>
+      <div id="game-wrapper">
+        <div class="screen-window">
+          <div id="game-container" aria-label="Pocket Pet game"></div>
+          <div id="pet-mood" class="pet-mood">MOOD: HAPPY</div>
+          <div id="screen-menu" class="screen-menu hidden" aria-live="polite">
+            <div id="screen-menu-parent" class="screen-menu-parent hidden"></div>
+            <div id="screen-menu-title" class="screen-menu-title">Menu</div>
+            <div id="screen-menu-icon" class="screen-menu-icon" aria-hidden="true"></div>
+            <div id="screen-menu-status" class="screen-menu-status">L/R move B select</div>
+            <div id="screen-menu-indicator" class="screen-menu-indicator hidden" aria-hidden="true"></div>
           </div>
         </div>
-        <div class="hardware-row">
-          <button id="hardware-left" class="hardware-okutton" type="button" aria-label="Left button">&lt</button>
-          <button id="hardware-right" class="hardware-okutton" type="button" aria-label="Right button">&gt</button>
-          <button id="hardware-cancel" class="hardware-okutton" type="button" aria-label="A button">X</button>
-          <button id="hardware-ok" class="hardware-okutton" type="button" aria-label="B button">O</button>
-        </div>
+      </div>
+      <div class="hardware-row">
+        <button id="hardware-left" class="hardware-okutton" type="button" aria-label="Left button">&lt</button>
+        <button id="hardware-right" class="hardware-okutton" type="button" aria-label="Right button">&gt</button>
+        <button id="hardware-cancel" class="hardware-okutton" type="button" aria-label="A button">X</button>
+        <button id="hardware-ok" class="hardware-okutton" type="button" aria-label="B button">O</button>
       </div>
     </div>
-  </body>
+  </div>
+</body>
+
 </html>

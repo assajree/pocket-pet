@@ -187,14 +187,43 @@ body {
   stroke-linejoin: round;
 }
 
-.screen-menu-icon.feeding-icon {
-  width: 84px;
-  height: 64px;
-  background: rgba(244, 247, 240, 0.64);
+.screen-menu-icon.action-icon {
+  width: 168px;
+  height: 168px;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  margin: auto;
 }
 
-.screen-menu.feeding-view {
-  gap: 12px;
+.screen-menu-icon.action-icon svg {
+  width: 84px;
+  height: 64px;
+  transform: scale(1.6);
+}
+
+.screen-menu.action-animation-view {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  padding: 10px;
+  gap: 0;
+}
+
+.screen-menu.action-animation-view .screen-menu-title,
+.screen-menu.action-animation-view .screen-menu-status,
+.screen-menu.action-animation-view .screen-menu-indicator {
+  display: none !important;
+}
+
+.screen-menu.action-animation-view .screen-menu-parent {
+  position: static;
+  display: block;
+  font-size: 0.64rem;
+  letter-spacing: 0.1em;
+  color: #44514b;
+  margin-top: 14px;
+  margin-bottom: auto;
 }
 
 .screen-menu-status {

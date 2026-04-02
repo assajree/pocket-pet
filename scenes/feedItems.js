@@ -1,4 +1,5 @@
-import { getItemLabel, isInfiniteItem } from "../gameState.js";
+import { isConsumableItem, getItemLabel } from "../gameState.js";
+import { buildShopStatus } from "./menuFormatters.js";
 
 export const FEED_MENU_ITEMS = [
   {
@@ -6,13 +7,7 @@ export const FEED_MENU_ITEMS = [
     label: "RICE",
     caption: "Serve rice to fill hunger.",
     inventoryItemKey: "meal",
-    name: ({ inventory }) =>
-      `${getItemLabel("meal")} x${isInfiniteItem("meal") ? "INF" : (inventory?.meal ?? 0)}`,
     icon: "meal",
-    currentStatus: ({ hunger, inventory }) => [
-      `QTY ${isInfiniteItem("meal") ? "INF" : (inventory?.meal ?? 0)}`,
-      `HUNGER ${Math.round(hunger)}`
-    ],
     effectStatus: { hunger: 24 }
   },
   {
@@ -20,15 +15,28 @@ export const FEED_MENU_ITEMS = [
     label: "SNACK",
     caption: "Snack adds fun and weight.",
     inventoryItemKey: "snack",
-    name: ({ inventory }) =>
-      `${getItemLabel("snack")} x${isInfiniteItem("snack") ? "INF" : (inventory?.snack ?? 0)}`,
     icon: "snack",
     visibleWhen: ({ inventory }) => (inventory?.snack ?? 0) > 0,
-    currentStatus: ({ happiness, weight, inventory }) => [
-      `QTY ${inventory?.snack ?? 0}`,
-      `HAPPY ${Math.round(happiness)}`,
-      `WEIGHT ${Math.round(weight)}`
-    ],
     effectStatus: { happiness: 16, weight: 6 }
+  },
+  {
+    key: "buy-snack",
+    label: "BUY SNACK",
+    name: "BUY SNACK",
+    icon: "snack",
+    caption: "Buy one snack.",
+    shopItemKey: "snack",
+    currentStatus: buildShopStatus("snack", "snack", getItemLabel("snack")),
+    visibleWhen: () => isConsumableItem("snack")
+  },
+  {
+    key: "buy-medicine",
+    label: "BUY MED",
+    name: "BUY MED",
+    icon: "medicine",
+    caption: "Buy one medicine dose.",
+    shopItemKey: "medicine",
+    currentStatus: buildShopStatus("medicine", "medicine", getItemLabel("medicine")),
+    visibleWhen: () => isConsumableItem("medicine")
   }
 ];

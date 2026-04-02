@@ -1,3 +1,25 @@
+import { getItemLabel, getShopPrice, isConsumableItem } from "../gameState.js";
+
+export const buildShopStatus = (itemKey, stockKey, label) => ({ money, inventory }) => [
+  `MONEY ${Math.round(money)}G`,
+  `OWN ${!isConsumableItem(stockKey) ? "∞" : (inventory?.[stockKey] ?? 0)} ${label}`,
+  `COST ${getShopPrice(itemKey)}G`
+];
+
+export const buildInventoryItemName = (itemKey) => ({ inventory }) =>
+  `${getItemLabel(itemKey)} x${!isConsumableItem(itemKey) ? "∞" : (inventory?.[itemKey] ?? 0)}`;
+
+export const buildInventoryItemStatus = (itemKey, extraStatsFn) => (state) => {
+  const lines = [`QTY ${!isConsumableItem(itemKey) ? "∞" : (state.inventory?.[itemKey] ?? 0)}`];
+  if (extraStatsFn) {
+    const extra = extraStatsFn(state);
+    if (Array.isArray(extra)) {
+      lines.push(...extra);
+    }
+  }
+  return lines;
+};
+
 const STATUS_LABELS = {
   hunger: "HUNGER",
   happiness: "HAPPY",
@@ -48,8 +70,19 @@ export const resolveStatusLines = (statusConfig, state) => {
 };
 
 export const getMenuStatusText = (menu, item, state) => {
-  const currentStatus = resolveStatusLines(item.currentStatus, state);
+  let currentStatus = resolveStatusLines(item.currentStatus, state);
   const effectStatus = resolveStatusLines(item.effectStatus, state);
+
+  if (item.inventoryItemKey && !item.currentStatus) {
+    const extraStatsFn = (s) => {
+      if (!item.effectStatus) return [];
+      return Object.keys(item.effectStatus).map((k) => {
+        const val = Math.round(s[k]);
+        return `${STATUS_LABELS[k] || k.toUpperCase()} ${val}`;
+      });
+    };
+    currentStatus = resolveStatusLines(buildInventoryItemStatus(item.inventoryItemKey, extraStatsFn), state);
+  }
 
   if (currentStatus.length || effectStatus.length) {
     return [...currentStatus, ...effectStatus, menu.statusText].filter(Boolean).join("\n");

@@ -1,13 +1,11 @@
 import { FEED_MENU_ITEMS } from "./feedItems.js";
 import { PLAY_MENU_ITEMS } from "./minigames/index.js";
-import { SHOP_MENU_ITEMS } from "./shopItems.js";
 
 export const MENUS = {
   main: {
-    statusText: "L/R move  O select  X exit",
+    statusText: "",
     items: [
       { key: "feed", label: "FEED", caption: "Open the feeding menu.", submenu: "feed" },
-      { key: "shop", label: "SHOP", caption: "Buy food and medicine.", submenu: "shop" },
       { key: "play", label: "PLAY", caption: "Open the mini game list.", submenu: "play" },
       { key: "sleep", label: "SLEEP", caption: "Turn the lights off for sleep." },
       { key: "clean", label: "CLEAN", caption: "Clean the room and the mess." },
@@ -19,10 +17,7 @@ export const MENUS = {
     statusText: "",
     items: FEED_MENU_ITEMS
   },
-  shop: {
-    statusText: "",
-    items: SHOP_MENU_ITEMS
-  },
+
   play: {
     statusText: "",
     items: PLAY_MENU_ITEMS

@@ -34,7 +34,8 @@ export default class BootScene extends Phaser.Scene {
       "debug-drain",
       "debug-sick",
       "feeding-meal",
-      "feeding-snack"
+      "feeding-snack",
+      "cleaning-room"
     ];
 
     uiAssets.forEach((assetKey) => {

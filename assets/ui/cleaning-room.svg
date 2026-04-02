@@ -1,0 +1,41 @@
+<svg viewBox="0 0 84 64" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Cleaning animation">
+  <style>
+    .line { fill: none; stroke: #44514b; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+    .ink { fill: #44514b; }
+    .mop { animation: mopSwipe 2s linear infinite; }
+    .poop { transform-origin: 50px 48px; animation: poopVanish 2s linear infinite; }
+    .spark { animation: sparkPop 2s ease-out infinite; opacity: 0; }
+    .spark.two { animation-delay: 150ms; }
+    @keyframes mopSwipe {
+      0%, 15% { transform: translateX(50px); }
+      70%, 100% { transform: translateX(-40px); }
+    }
+    @keyframes poopVanish {
+      0%, 40% { transform: translateX(0) scale(1); opacity: 1; }
+      55%, 100% { transform: translateX(-15px) scale(0); opacity: 0; }
+    }
+    @keyframes sparkPop {
+      0%, 65% { transform: translateY(6px) scale(0.2); opacity: 0; }
+      75% { opacity: 0.9; }
+      100% { transform: translateY(-8px) scale(1.2); opacity: 0; }
+    }
+  </style>
+  <g class="poop">
+    <path class="ink" d="M38 48h24v-4H38z" />
+    <path class="ink" d="M42 44h16v-4H42z" />
+    <path class="ink" d="M46 40h8v-4h-8z" />
+  </g>
+  <g class="mop">
+    <path class="line" d="M20 10 L30 36"/>
+    <path class="ink" d="M22 36 L38 36 L44 48 L16 48 Z"/>
+    <path class="line" style="stroke: #b7c7b5;" d="M24 36 L20 48 M28 36 L28 48 M32 36 L36 48"/>
+  </g>
+  <g class="spark one">
+    <path class="line" d="M48 24 L52 20 M52 20 L56 24 M52 20 L52 15" />
+    <path class="line" d="M52 28 L52 30" />
+  </g>
+  <g class="spark two">
+    <path class="line" d="M30 32 L33 29 M33 29 L36 32 M33 29 L33 25" />
+    <path class="line" d="M33 35 L33 37" />
+  </g>
+</svg>
