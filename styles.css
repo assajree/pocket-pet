@@ -124,6 +124,33 @@ body {
   pointer-events: none;
 }
 
+.pet-mood.pet-mood-icon {
+  padding: 0;
+  white-space: normal;
+  box-shadow: none;
+  line-height: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+  max-width: 88px;
+}
+
+.pet-mood.pet-mood-icon .pet-mood-icon-item {
+  width: 26px;
+  height: 26px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pet-mood.pet-mood-icon svg {
+  width: 26px;
+  height: 26px;
+  display: block;
+  stroke: #44514b;
+}
+
 .screen-menu {
   position: absolute;
   inset: 14px;
@@ -297,6 +324,10 @@ body {
   line-height: 1.35;
   letter-spacing: 0.04em;
   text-transform: uppercase;
+}
+
+.status-line-text {
+  text-align: center;
 }
 
 .status-name {

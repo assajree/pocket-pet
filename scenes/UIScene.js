@@ -5,10 +5,10 @@ import {
   clearState,
   createNewState,
   getEggHatchSecondsRemaining,
-  getMoodList,
-  isConsumableItem,
+  getNeedList,
   purchaseItem,
-  saveState
+  saveState,
+  getMoodList,
 } from "../gameState.js";
 import {
   applyMiniGameInput,
@@ -28,10 +28,36 @@ const formatCountdown = (secondsRemaining) => {
   return `${minutes}:${String(seconds).padStart(2, "0")}`;
 };
 
+const getPetNeedIconKeys = (state) => {
+  if (!state.isAlive || state.evolutionStage === "Egg") {
+    return [];
+  }
+
+  const iconKeys = [];
+
+  if (state.isSick) {
+    iconKeys.push("medicine");
+  }
+  if (state.poopCount > 0) {
+    iconKeys.push("clean");
+  }
+  if (state.isSleeping || state.energy < 25) {
+    iconKeys.push("sleep");
+  }
+  if (state.hunger < 30) {
+    iconKeys.push("meal");
+  }
+  if (state.happiness < 35) {
+    iconKeys.push("play");
+  }
+
+  return iconKeys;
+};
+
 export default class UIScene extends Phaser.Scene {
   constructor() {
     super("UIScene");
-    this.view = "closed";
+    this.view = "pet";
     this.menuIndexes = Object.fromEntries(Object.keys(MENUS).map((menuKey) => [menuKey, 0]));
     this.menuPath = [];
     this.statusPageIndex = 0;
@@ -144,7 +170,7 @@ export default class UIScene extends Phaser.Scene {
     //   return;
     // }
 
-    if (this.view === "closed") {
+    if (this.view === "pet") {
       if (this.state.isAlive && this.state.evolutionStage === "Egg") {
         const hatchStep = accelerateEggHatch(this.state, 1);
         this.gameScene.syncVisuals();
@@ -173,7 +199,7 @@ export default class UIScene extends Phaser.Scene {
         return;
       }
 
-      this.openMainMenu();
+      this.openMainMenu({ selectLastItem: button === "left" });
       return;
     }
 
@@ -284,9 +310,9 @@ export default class UIScene extends Phaser.Scene {
         return;
       }
 
-      if (this.view !== "feed") {
-        this.view = "closed";
-      }
+        if (this.view !== "feed") {
+          this.view = "pet";
+        }
       this.render(this.state);
       return;
     }
@@ -295,7 +321,7 @@ export default class UIScene extends Phaser.Scene {
   }
 
   showActionAnimation(action) {
-    const config = ACTION_ANIMATION_CONFIG[action] || { durationMs: 2000, nextView: "closed" };
+    const config = ACTION_ANIMATION_CONFIG[action] || { durationMs: 2000, nextView: "pet" };
     this.actionAnimationTimer?.remove(false);
     this.currentActionAnimation = action;
     this.view = "action-animation";
@@ -312,7 +338,7 @@ export default class UIScene extends Phaser.Scene {
     }
 
     const action = this.currentActionAnimation;
-    const config = ACTION_ANIMATION_CONFIG[action] || { durationMs: 2000, nextView: "closed" };
+    const config = ACTION_ANIMATION_CONFIG[action] || { durationMs: 2000, nextView: "pet" };
     this.actionAnimationTimer?.remove(false);
     this.finishActionAnimation(action, config);
   }
@@ -387,7 +413,7 @@ export default class UIScene extends Phaser.Scene {
 
     if (cancelled) {
       this.activeMiniGameItem = null;
-      this.view = "closed";
+      this.view = "pet";
       this.render(this.state);
       return;
     }
@@ -424,7 +450,7 @@ export default class UIScene extends Phaser.Scene {
     this.render(this.state);
     this.summaryTimer = this.time.delayedCall(MINI_GAME_SUMMARY_DURATION_MS, () => {
       this.inputLockedUntil = 0;
-      this.view = "closed";
+      this.view = "pet";
       this.activeMiniGameItem = null;
       this.render(this.state);
       this.summaryTimer = null;
@@ -468,6 +494,23 @@ export default class UIScene extends Phaser.Scene {
 
   getUiAssetMarkup(assetKey) {
     return this.cache.text.get(`ui-${assetKey}`) || "";
+  }
+
+  setPetMoodText(text = "") {
+    this.petMood.textContent = text;
+    this.petMood.classList.remove("pet-mood-icon");
+    this.petMood.classList.toggle("hidden", !text);
+  }
+
+  setPetMoodIcon(iconKeys = []) {
+    const markup = iconKeys
+      .map((iconKey) => this.getUiAssetMarkup(iconKey))
+      .filter(Boolean)
+      .map((iconMarkup) => `<span class="pet-mood-icon-item">${iconMarkup}</span>`)
+      .join("");
+    this.petMood.innerHTML = markup;
+    this.petMood.classList.toggle("pet-mood-icon", !!markup);
+    this.petMood.classList.toggle("hidden", !markup);
   }
 
   getMiniGameConfig() {
@@ -567,23 +610,29 @@ export default class UIScene extends Phaser.Scene {
   }
 
   getStatusPages(state) {
-    const average = Math.round(
-      (state.hunger + state.happiness + state.energy + state.health + state.cleanliness) / 5
-    );
+    const needList = getNeedList(state);
 
     return [
       {
-        title: "Status",
+        title: "Info",
         lines: [
           ["Age", `${state.ageMinutes}m`],
           ["Stage", state.evolutionStage],
           ["Health", Math.round(state.health)],
-          ["Money", `${Math.round(state.money)}G`],
-          "separator",
+          ["Money", `${Math.round(state.money)}G`]
+        ]
+      },
+      {
+        title: "Needs",
+        lines: [
           ["Hunger", Math.round(state.hunger)],
           ["Happiness", Math.round(state.happiness)],
           ["Energy", Math.round(state.energy)],
-          ["Weight", Math.round(state.weight)]
+          ["Weight", Math.round(state.weight)],
+          "separator",
+          ...(needList.length
+            ? needList.map((need) => ["Need", need])
+            : ["Your pet is happy."])
         ]
       },
       {
@@ -593,7 +642,7 @@ export default class UIScene extends Phaser.Scene {
           ["Agi", Math.round(state.agi)],
           ["Int", Math.round(state.int)],
         ]
-      }
+      },      
     ];
   }
 
@@ -608,10 +657,15 @@ export default class UIScene extends Phaser.Scene {
     this.render(this.state);
   }
 
-  openMainMenu() {
+  openMainMenu(options = {}) {
+    const { selectLastItem = false } = options;
     Object.keys(this.menuIndexes).forEach((menuKey) => {
       this.menuIndexes[menuKey] = 0;
     });
+    if (selectLastItem) {
+      const mainItems = this.getVisibleMenuItems("main") || [];
+      this.menuIndexes.main = Math.max(0, mainItems.length - 1);
+    }
     this.menuPath = [{ key: "main", label: "" }];
     this.view = "main";
     this.render(this.state);
@@ -632,7 +686,7 @@ export default class UIScene extends Phaser.Scene {
 
     this.menuPath = [];
     this.statusPageIndex = 0;
-    this.view = "closed";
+    this.view = "pet";
     this.render(this.state);
   }
 
@@ -647,7 +701,7 @@ export default class UIScene extends Phaser.Scene {
     this.state = freshState;
     this.menuPath = [];
     this.statusPageIndex = 0;
-    this.view = "closed";
+    this.view = "pet";
     this.inputLockedUntil = 0;
     this.summaryTimer?.remove(false);
     this.summaryTimer = null;
@@ -664,12 +718,12 @@ export default class UIScene extends Phaser.Scene {
   }
 
   renderScreenMenu(state) {
-    const moodList = getMoodList(state);
-    const shouldShowMood = state.isAlive && !(moodList.length === 1 && moodList[0] === "NONE");
+    const petNeedIconKeys = getPetNeedIconKeys(state);
+    const shouldShowNeedIcon = petNeedIconKeys.length > 0;
 
     this.brandTitle.textContent = "Pocket Pet";
     this.brandStatus.textContent = state.isAlive ? "Pet View" : "New Egg";
-    const fullScreenMenu = this.view !== "closed";
+    const fullScreenMenu = this.view !== "pet";
     const eggCountdownSeconds = getEggHatchSecondsRemaining(state);
     const shouldShowEggCountdown = state.evolutionStage === "Egg" && !fullScreenMenu;
     const shouldShowSleepEnergy = state.isSleeping && !fullScreenMenu;
@@ -684,19 +738,21 @@ export default class UIScene extends Phaser.Scene {
     this.hardwareCancel.disabled = inputLocked && !allowFeedSkip;
     this.hardwareOk.disabled = inputLocked && !allowFeedSkip;
     this.petMood.textContent = `Mood: ${getMoodList(state).join(" • ")}`;
-    this.petMood.textContent = shouldShowEggCountdown
-      ? `Hatch in: ${formatCountdown(eggCountdownSeconds)}`
-      : shouldShowSleepEnergy
-      ? `Energy: ${Math.round(state.energy)}`
-      : shouldShowDeadText
-      ? "Your pet is dead.\nGet a new egg to continue."
-      : shouldShowMood
-        ? `Need: ${moodList.join(" | ")}`
-        : "";
-    this.petMood.classList.toggle(
-      "hidden",
-      fullScreenMenu || (!shouldShowMood && !shouldShowSleepEnergy && !shouldShowEggCountdown && !shouldShowDeadText)
-    );
+    if (fullScreenMenu) {
+      this.petMood.classList.add("hidden");
+      this.petMood.classList.remove("pet-mood-icon");
+    } else if (shouldShowEggCountdown) {
+      this.setPetMoodText(`Hatch in: ${formatCountdown(eggCountdownSeconds)}`);
+    } else if (shouldShowSleepEnergy) {
+      this.setPetMoodText(`Energy: ${Math.round(state.energy)}`);
+    } else if (shouldShowDeadText) {
+      this.setPetMoodText("Your pet is dead.\nGet a new egg to continue.");
+    } else if (shouldShowNeedIcon) {
+      this.setPetMoodIcon(petNeedIconKeys);
+    } else {
+      this.petMood.classList.add("hidden");
+      this.petMood.classList.remove("pet-mood-icon");
+    }
 
     if (!fullScreenMenu) {
       this.screenMenu.classList.add("hidden");
@@ -734,14 +790,17 @@ export default class UIScene extends Phaser.Scene {
       this.setMenuIcon("");
       const pages = this.getStatusPages(state);
       const page = pages[this.statusPageIndex] || pages[0];
+      const pageLines = Array.isArray(page?.lines) ? page.lines : [String(page?.lines ?? "")];
       this.statusPageIndex = Math.min(this.statusPageIndex, pages.length - 1);
       this.screenMenuTitle.textContent = page.title;
-      this.screenMenuStatus.innerHTML = `<div class="status-lines"><div class="status-separator" aria-hidden="true"></div>${page.lines
+      this.screenMenuStatus.innerHTML = `<div class="status-lines"><div class="status-separator" aria-hidden="true"></div>${pageLines
         .map(
           (line) =>
             line === "separator"
               ? `<div class="status-separator" aria-hidden="true"></div>`
-              : `<div class="status-line"><span class="status-name">${line[0]}:</span> <span class="status-value">${line[1]}</span></div>`
+              : Array.isArray(line)
+                ? `<div class="status-line"><span class="status-name">${line[0]}:</span> <span class="status-value">${line[1]}</span></div>`
+                : `<div class="status-line status-line-text">${line}</div>`
         )
         .join("")}<div class="status-separator" aria-hidden="true"></div><div class="status-line"></div></div>`;
       this.setMenuIndicator(pages.length, this.statusPageIndex);
@@ -789,7 +848,7 @@ export default class UIScene extends Phaser.Scene {
   }
 
   update(_time, delta) {
-    if (this.view === "closed" && this.state?.isAlive && this.state.evolutionStage === "Egg") {
+    if (this.view === "pet" && this.state?.isAlive && this.state.evolutionStage === "Egg") {
       this.render(this.state);
     }
 

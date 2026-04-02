@@ -277,39 +277,71 @@ const maybeDie = (state, reasonText) => {
 
 export const getMoodList = (state) => {
   if (!state.isAlive) {
-    return ["REVIVE"];
+    return ["Dead"];
   }
 
   if (state.evolutionStage === "Egg") {
-    return ["HATCH"];
+    return ["Egg"];
   }
 
   const moods = [];
 
   if (state.isSick) {
-    moods.push("MEDICINE");
+    moods.push("Sick");
   }
   if (state.poopCount > 0) {
-    moods.push("CLEAN");
+    moods.push("Dirty");
   }
   if (state.isSleeping) {
-    moods.push("SLEEP");
+    moods.push("Asleep");
   }
   if (state.energy < 25) {
-    moods.push("REST");
+    moods.push("Tired");
   }
   if (state.hunger < 30) {
-    moods.push("FOOD");
+    moods.push("Hungry");
   }
   if (state.happiness < 35) {
-    moods.push("PLAY");
+    moods.push("Bored");
   }
 
   if (!moods.length) {
-    moods.push("NONE");
+    moods.push("Happy");
   }
 
   return moods;
+};
+
+export const getNeedList = (state) => {
+  if (!state.isAlive) {
+    return ["Revive"];
+  }
+
+  if (state.evolutionStage === "Egg") {
+    return ["Hatch"];
+  }
+
+  const needs = [];
+
+  if (state.isSick) {
+    needs.push("Medicine");
+  }
+  if (state.poopCount > 0) {
+    needs.push("Clean");
+  }
+  if (state.isSleeping) {
+    needs.push("Sleep");
+  } else if (state.energy < 25) {
+    needs.push("Rest");
+  }
+  if (state.hunger < 30) {
+    needs.push("Food");
+  }
+  if (state.happiness < 35) {
+    needs.push("Play");
+  }
+
+  return needs;
 };
 
 export const getStatusText = (state) => {
