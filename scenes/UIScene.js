@@ -3,7 +3,10 @@ import {
   applyAction,
   clearState,
   createNewState,
+  getItemInventoryLabel,
   getMoodList,
+  isInfiniteItem,
+  purchaseItem,
   saveState
 } from "../gameState.js";
 import {
@@ -23,6 +26,8 @@ export default class UIScene extends Phaser.Scene {
     super("UIScene");
     this.view = "closed";
     this.menuIndexes = Object.fromEntries(Object.keys(MENUS).map((menuKey) => [menuKey, 0]));
+    this.menuPath = [];
+    this.statusPageIndex = 0;
     this.miniGame = createMiniGameState();
     this.inputLockedUntil = 0;
     this.summaryTimer = null;
@@ -59,9 +64,11 @@ export default class UIScene extends Phaser.Scene {
     this.brandStatus = document.getElementById("brand-status");
     this.petMood = document.getElementById("pet-mood");
     this.screenMenu = document.getElementById("screen-menu");
+    this.screenMenuParent = document.getElementById("screen-menu-parent");
     this.screenMenuTitle = document.getElementById("screen-menu-title");
     this.screenMenuIcon = document.getElementById("screen-menu-icon");
     this.screenMenuStatus = document.getElementById("screen-menu-status");
+    this.screenMenuIndicator = document.getElementById("screen-menu-indicator");
     this.hardwareLeft = document.getElementById("hardware-left");
     this.hardwareRight = document.getElementById("hardware-right");
     this.hardwareCancel = document.getElementById("hardware-cancel");
@@ -126,19 +133,20 @@ export default class UIScene extends Phaser.Scene {
       return;
     }
 
-    if (!this.state.isAlive && button !== "cancel" && button !== "ok") {
+    if (!this.state.isAlive && this.view !== "status" && button !== "cancel" && button !== "ok") {
       return;
     }
 
     if (this.view === "closed") {
-      if (!this.state.isAlive && button === "ok") {
-        this.restartGame();
+      if (button === "cancel") {
+        this.statusPageIndex = 0;
+        this.view = "status";
+        this.render(this.state);
         return;
       }
 
-      if (button === "cancel") {
-        this.view = "status";
-        this.render(this.state);
+      if (!this.state.isAlive) {
+        this.openDeadMenu();
         return;
       }
 
@@ -148,10 +156,6 @@ export default class UIScene extends Phaser.Scene {
       }
 
       this.openMainMenu();
-      return;
-    }
-
-    if (!this.state.isAlive) {
       return;
     }
 
@@ -171,9 +175,18 @@ export default class UIScene extends Phaser.Scene {
     }
 
     if (this.view === "status") {
+      if (button === "left" || button === "right") {
+        this.stepStatusPage(button);
+        return;
+      }
+
       if (button === "ok") {
         this.closeMenu();
       }
+      return;
+    }
+
+    if (!this.state.isAlive) {
       return;
     }
 
@@ -187,8 +200,8 @@ export default class UIScene extends Phaser.Scene {
   }
 
   handleMenuNavigation(menuKey, button) {
-    const menu = MENUS[menuKey]?.items;
-    if (!menu) {
+    const menu = this.getVisibleMenuItems(menuKey);
+    if (!menu || !menu.length) {
       return;
     }
 
@@ -207,6 +220,7 @@ export default class UIScene extends Phaser.Scene {
 
   selectMenuItem(menuKey, item) {
     if (item.submenu) {
+      this.pushMenuPath(item.submenu, item.name || item.label || item.submenu);
       this.view = item.submenu;
       this.render(this.state);
       return;
@@ -221,6 +235,22 @@ export default class UIScene extends Phaser.Scene {
   }
 
   runAction(item) {
+    if (item.key === "new-egg") {
+      this.restartGame();
+      return;
+    }
+
+    if (item.shopItemKey) {
+      const purchase = purchaseItem(this.state, item.shopItemKey);
+      saveState(this.state);
+      if (purchase.ok) {
+        this.render(this.state);
+        return;
+      }
+      this.showMessage(purchase.message || "Unable to buy item.", false);
+      return;
+    }
+
     const result = applyAction(this.state, item.key, item.effectStatus);
     this.gameScene.syncVisuals();
     saveState(this.state);
@@ -419,6 +449,29 @@ export default class UIScene extends Phaser.Scene {
     return this.activeMiniGameItem?.icon || "play";
   }
 
+  getVisibleMenuItems(menuKey) {
+    const items = MENUS[menuKey]?.items;
+    if (!items) {
+      return null;
+    }
+
+    return items.filter((item) => {
+      if (typeof item.visibleWhen === "function") {
+        return item.visibleWhen(this.state);
+      }
+
+      return item.visibleWhen !== false;
+    });
+  }
+
+  getMenuItemTitle(item) {
+    if (typeof item.name === "function") {
+      return item.name(this.state);
+    }
+
+    return item.name || item.label;
+  }
+
   showMessage(text, success = true) {
     this.view = "message";
     this.messageText = text;
@@ -426,11 +479,118 @@ export default class UIScene extends Phaser.Scene {
     this.render(this.state);
   }
 
+  setMenuIndicator(count = 0, activeIndex = 0) {
+    if (!this.screenMenuIndicator) {
+      return;
+    }
+
+    if (count <= 1) {
+      this.screenMenuIndicator.innerHTML = "";
+      this.screenMenuIndicator.classList.add("hidden");
+      return;
+    }
+
+    this.screenMenuIndicator.innerHTML = Array.from(
+      { length: count },
+      (_value, index) => `<span class="screen-menu-dot${index === activeIndex ? " active" : ""}"></span>`
+    ).join("");
+    this.screenMenuIndicator.classList.remove("hidden");
+  }
+
+  setMenuParent(text = "") {
+    if (!this.screenMenuParent) {
+      return;
+    }
+
+    this.screenMenuParent.textContent = text;
+    this.screenMenuParent.classList.toggle("hidden", !text);
+  }
+
+  pushMenuPath(key, label) {
+    const existingIndex = this.menuPath.findIndex((entry) => entry.key === key);
+    const nextEntry = { key, label };
+    if (existingIndex >= 0) {
+      this.menuPath = this.menuPath.slice(0, existingIndex);
+    }
+    this.menuPath.push(nextEntry);
+  }
+
+  getMenuParentText() {
+    if (this.menuPath.length <= 1) {
+      return "";
+    }
+
+    return this.menuPath
+      .slice(1)
+      .map((entry) => entry.label)
+      .join(" / ");
+  }
+
+  getStatusPages(state) {
+    const average = Math.round(
+      (state.hunger + state.happiness + state.energy + state.health + state.cleanliness) / 5
+    );
+
+    return [
+      {
+        title: "Status 1/2",
+        lines: [
+          ["Age", `${state.ageMinutes}m`],
+          ["Stage", state.evolutionStage],
+          ["Money", `${Math.round(state.money)}G`],
+          "separator",
+          ["Hunger", Math.round(state.hunger)],
+          ["Happiness", Math.round(state.happiness)],
+          ["Energy", Math.round(state.energy)],
+          ["Health", Math.round(state.health)],
+          ["Weight", Math.round(state.weight)]
+        ]
+      },
+      {
+        title: "Status 2/2",
+        lines: [
+          ["Str", Math.round(state.str)],
+          ["Agi", Math.round(state.agi)],
+          ["Int", Math.round(state.int)],
+          "separator",
+          [getItemInventoryLabel("meal"), isInfiniteItem("meal") ? "INF" : (state.inventory?.meal ?? 0)],
+          [getItemInventoryLabel("snack"), isInfiniteItem("snack") ? "INF" : (state.inventory?.snack ?? 0)],
+          [getItemInventoryLabel("medicine"), isInfiniteItem("medicine") ? "INF" : (state.inventory?.medicine ?? 0)],
+          "separator",
+          ["Clean", Math.round(state.cleanliness)],
+          ["Poop", state.poopCount],
+          ["Sleep", state.isSleeping ? "Yes" : "No"],
+          ["Sick", state.isSick ? "Yes" : "No"],
+          ["Overall", average]
+        ]
+      }
+    ];
+  }
+
+  stepStatusPage(button) {
+    const pages = this.getStatusPages(this.state);
+    if (pages.length <= 1) {
+      return;
+    }
+
+    const delta = button === "right" ? 1 : -1;
+    this.statusPageIndex = (this.statusPageIndex + delta + pages.length) % pages.length;
+    this.render(this.state);
+  }
+
   openMainMenu() {
     Object.keys(this.menuIndexes).forEach((menuKey) => {
       this.menuIndexes[menuKey] = 0;
     });
+    this.menuPath = [{ key: "main", label: "" }];
     this.view = "main";
+    this.render(this.state);
+  }
+
+  openDeadMenu() {
+    this.menuIndexes.dead = 0;
+    this.menuPath = [{ key: "dead", label: "New Egg" }];
+    this.view = "dead";
     this.render(this.state);
   }
 
@@ -440,6 +600,8 @@ export default class UIScene extends Phaser.Scene {
       return;
     }
 
+    this.menuPath = [];
+    this.statusPageIndex = 0;
     this.view = "closed";
     this.render(this.state);
   }
@@ -453,6 +615,8 @@ export default class UIScene extends Phaser.Scene {
     const freshState = createNewState();
     this.registry.set("petState", freshState);
     this.state = freshState;
+    this.menuPath = [];
+    this.statusPageIndex = 0;
     this.view = "closed";
     this.inputLockedUntil = 0;
     this.summaryTimer?.remove(false);
@@ -496,6 +660,8 @@ export default class UIScene extends Phaser.Scene {
 
     if (!fullScreenMenu) {
       this.screenMenu.classList.add("hidden");
+      this.setMenuParent("");
+      this.setMenuIndicator(0, 0);
       return;
     }
 
@@ -503,72 +669,79 @@ export default class UIScene extends Phaser.Scene {
 
     if (isMenuView(this.view)) {
       const menu = MENUS[this.view];
-      const item = menu.items[this.menuIndexes[this.view]];
-      this.setMenuIcon(item.icon || item.key);
-      this.screenMenuTitle.textContent = item.name || item.label;
+      const items = this.getVisibleMenuItems(this.view) || [];
+      if (!items.length) {
+        this.setMenuParent(this.getMenuParentText());
+        this.setMenuIcon("");
+        this.screenMenuTitle.textContent = "EMPTY";
+        this.screenMenuStatus.textContent = "No items available.";
+        this.setMenuIndicator(0, 0);
+        return;
+      }
+
+      this.menuIndexes[this.view] = Math.min(this.menuIndexes[this.view], items.length - 1);
+      const item = items[this.menuIndexes[this.view]];
+      this.setMenuParent(this.getMenuParentText());
+      this.setMenuIcon(item.icon !== undefined ? item.icon : item.key);
+      this.screenMenuTitle.textContent = this.getMenuItemTitle(item);
       this.screenMenuStatus.textContent = getMenuStatusText(menu, item, state);
+      this.setMenuIndicator(items.length, this.menuIndexes[this.view]);
       return;
     }
 
     if (this.view === "status") {
+      this.setMenuParent("Status");
       this.setMenuIcon("status");
-      const average = Math.round(
-        (state.hunger + state.happiness + state.energy + state.health + state.cleanliness) / 5
-      );
-      this.screenMenuTitle.textContent = "Status";
-      const lines = [
-        ["Age", `${state.ageMinutes}m`],
-        ["Stage", state.evolutionStage],
-        // ["Mood", getStatusText(state)],
-        "separator",
-        ["Hunger", Math.round(state.hunger)],
-        ["Happiness", Math.round(state.happiness)],
-        ["Energy", Math.round(state.energy)],
-        ["Health", Math.round(state.health)],
-        ["Weight", Math.round(state.weight)],
-        // ["Cleanliness", Math.round(state.cleanliness)],
-        // ["Poop", state.poopCount],
-        // ["Sick", state.isSick ? "Yes" : "No"],
-        // ["Sleep", state.isSleeping ? "Yes" : "No"],
-        // ["Overall", average]
-      ];
-      this.screenMenuStatus.innerHTML = `<div class="status-lines">${lines
+      const pages = this.getStatusPages(state);
+      const page = pages[this.statusPageIndex] || pages[0];
+      this.statusPageIndex = Math.min(this.statusPageIndex, pages.length - 1);
+      this.screenMenuTitle.textContent = page.title;
+      this.screenMenuStatus.innerHTML = `<div class="status-lines">${page.lines
         .map(
           (line) =>
             line === "separator"
               ? `<div class="status-separator" aria-hidden="true"></div>`
               : `<div class="status-line"><span class="status-name">${line[0]}:</span> <span class="status-value">${line[1]}</span></div>`
         )
-        .join("")}</div>`;
+        .join("")}<div class="status-separator" aria-hidden="true"></div><div class="status-line">L/R PAGE  O CLOSE</div></div>`;
+      this.setMenuIndicator(pages.length, this.statusPageIndex);
       return;
     }
 
     if (this.view === "message") {
+      this.setMenuParent("");
       this.setMenuIcon("message");
       this.screenMenuTitle.textContent = this.messageSuccess ? "Done" : "Notice";
       this.screenMenuStatus.textContent = this.messageText;
+      this.setMenuIndicator(0, 0);
       return;
     }
 
     if (this.view === "minigame") {
+      this.setMenuParent(this.getMenuParentText());
       this.setMenuIcon(this.getMiniGameIcon());
       this.screenMenuTitle.textContent = this.getMiniGameTitle();
       this.screenMenuStatus.textContent = this.getMiniGameStatusText();
+      this.setMenuIndicator(0, 0);
       return;
     }
 
     if (this.view === "summary") {
+      this.setMenuParent(this.getMenuParentText());
       this.setMenuIcon("summary");
       this.screenMenuTitle.textContent = this.getMiniGameConfig().summaryTitle || "Result";
       this.screenMenuStatus.textContent = this.getMiniGameSummaryText();
+      this.setMenuIndicator(0, 0);
       return;
     }
 
     if (this.view === "feeding-animation") {
+      this.setMenuParent(this.getMenuParentText());
       this.setFeedAnimationIcon(this.feedAnimationAction);
       this.screenMenuTitle.textContent = this.feedAnimationAction === "snack" ? "Snack Time" : "Rice Time";
       this.screenMenuStatus.textContent =
         this.feedAnimationAction === "snack" ? "Chomp chomp\nFun is going up." : "Munch munch\nHunger is going down.";
+      this.setMenuIndicator(0, 0);
     }
   }
 

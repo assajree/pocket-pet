@@ -2,7 +2,10 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover, user-scalable=no"
+    />
     <meta name="theme-color" content="#1f2a44" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -28,9 +31,11 @@
             <div id="game-container" aria-label="Pocket Pet game"></div>
             <div id="pet-mood" class="pet-mood">MOOD: HAPPY</div>
             <div id="screen-menu" class="screen-menu hidden" aria-live="polite">
+              <div id="screen-menu-parent" class="screen-menu-parent hidden"></div>
               <div id="screen-menu-title" class="screen-menu-title">Menu</div>
               <div id="screen-menu-icon" class="screen-menu-icon" aria-hidden="true"></div>
               <div id="screen-menu-status" class="screen-menu-status">L/R move B select</div>
+              <div id="screen-menu-indicator" class="screen-menu-indicator hidden" aria-hidden="true"></div>
             </div>
           </div>
         </div>

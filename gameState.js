@@ -1,7 +1,33 @@
 const SAVE_KEY = "pocket-pet-save-v1";
 const MAX_LOGS = 18;
+const MAX_POOP_COUNT = 10;
 const SLEEP_ENERGY_PER_SECOND = 2;
 const AWAKE_ENERGY_CHANGE_PER_MINUTE = -4;
+const MAX_COMBAT_STAT = 999;
+const MAX_MONEY = 9999;
+export const ITEM_DEFS = {
+  meal: {
+    label: "RICE",
+    inventoryLabel: "Rice",
+    consumable: false,
+    infinite: true,
+    shopPrice: 0
+  },
+  snack: {
+    label: "SNACK",
+    inventoryLabel: "Snack",
+    consumable: true,
+    infinite: false,
+    shopPrice: 6
+  },
+  medicine: {
+    label: "MED",
+    inventoryLabel: "Med",
+    consumable: true,
+    infinite: false,
+    shopPrice: 12
+  }
+};
 const STAGE_RULES = [
   { stage: "Child", minAgeMinutes: 2, requiredAverage: 35 },
   { stage: "Teen", minAgeMinutes: 5, requiredAverage: 50 },
@@ -23,12 +49,21 @@ export const createNewState = () => ({
   health: 92,
   cleanliness: 88,
   weight: 32,
+  money: 24,
+  str: 12,
+  agi: 11,
+  int: 10,
   ageMinutes: 0,
   evolutionStage: "Baby",
   isAlive: true,
   isSleeping: false,
   isSick: false,
   poopCount: 0,
+  inventory: {
+    meal: 1,
+    snack: 1,
+    medicine: 0
+  },
   actionLockUntil: 0,
   timers: {
     hungerTick: 0,
@@ -74,6 +109,10 @@ export const loadState = () => {
       timers: {
         ...baseState.timers,
         ...parsed.timers
+      },
+      inventory: {
+        ...baseState.inventory,
+        ...(parsed.inventory || {})
       },
       logs: Array.isArray(parsed.logs) && parsed.logs.length ? parsed.logs : createNewState().logs
     };
@@ -171,12 +210,66 @@ export const getStatusText = (state) => {
   return getMoodList(state)[0];
 };
 
+export const isInfiniteItem = (itemKey) => ITEM_DEFS[itemKey]?.infinite === true;
+
+export const isConsumableItem = (itemKey) => ITEM_DEFS[itemKey]?.consumable !== false;
+
+export const getItemLabel = (itemKey) => ITEM_DEFS[itemKey]?.label || itemKey.toUpperCase();
+
+export const getItemInventoryLabel = (itemKey) => ITEM_DEFS[itemKey]?.inventoryLabel || getItemLabel(itemKey);
+
 const clampStatValue = (stat, value) => {
   if (stat === "weight") {
-    return clamp(value, 0, 999);
+    return clamp(value, 0, MAX_COMBAT_STAT);
+  }
+
+  if (stat === "str" || stat === "agi" || stat === "int") {
+    return clamp(value, 0, MAX_COMBAT_STAT);
+  }
+
+  if (stat === "money") {
+    return clamp(value, 0, MAX_MONEY);
   }
 
   return clamp(value);
+};
+
+const useInventoryItem = (state, itemKey) => {
+  if (isInfiniteItem(itemKey) || !isConsumableItem(itemKey)) {
+    return true;
+  }
+
+  const count = state.inventory?.[itemKey] ?? 0;
+  if (count <= 0) {
+    return false;
+  }
+
+  state.inventory[itemKey] = count - 1;
+  return true;
+};
+
+export const getShopPrice = (itemKey) => ITEM_DEFS[itemKey]?.shopPrice ?? 0;
+
+export const purchaseItem = (state, itemKey) => {
+  if (!state.isAlive) {
+    return { ok: false, message: "Your pet is gone. Start a new egg first." };
+  }
+
+  const price = getShopPrice(itemKey);
+  if (!price) {
+    return { ok: false, message: "That item is not sold here." };
+  }
+
+  if (state.money < price) {
+    return { ok: false, message: "Not enough money." };
+  }
+
+  state.money = clampStatValue("money", state.money - price);
+  if (!isInfiniteItem(itemKey)) {
+    state.inventory[itemKey] = (state.inventory[itemKey] ?? 0) + 1;
+  }
+  addLog(state, `Shop: bought ${itemKey} for ${price}g.`);
+  return { ok: true };
 };
 
 const resolveEffectValue = (effectConfig, context = {}) => {
@@ -229,6 +322,9 @@ export const applyAction = (state, action, effectStatus = null, context = {}) =>
       addLog(state, "You served rice and filled your pet up.");
       return { ok: true };
     case "snack":
+      if (!useInventoryItem(state, "snack")) {
+        return { ok: false, message: "No snack left. Visit the shop." };
+      }
       applyEffectStatus(state, effectStatus, context);
       addLog(state, "A sweet snack made your pet happier and a little heavier.");
       return { ok: true };
@@ -258,7 +354,13 @@ export const applyAction = (state, action, effectStatus = null, context = {}) =>
       addLog(state, "You cleaned up and freshened the room.");
       return { ok: true };
     case "medicine":
+      if (!useInventoryItem(state, "medicine")) {
+        return { ok: false, message: "No medicine left. Visit the shop." };
+      }
       if (!state.isSick && state.health > 90) {
+        if (!isInfiniteItem("medicine")) {
+          state.inventory.medicine += 1;
+        }
         return { ok: false, message: "Medicine is not needed right now." };
       }
       state.isSick = false;
@@ -271,6 +373,12 @@ export const applyAction = (state, action, effectStatus = null, context = {}) =>
       state.energy = 100;
       state.health = 100;
       state.cleanliness = 100;
+      state.money = 999;
+      state.str = 25;
+      state.agi = 25;
+      state.int = 25;
+      state.inventory.snack = 9;
+      state.inventory.medicine = 9;
       state.isSick = false;
       state.poopCount = 0;
       state.isSleeping = false;
@@ -283,6 +391,12 @@ export const applyAction = (state, action, effectStatus = null, context = {}) =>
       state.energy = 20;
       state.health = 20;
       state.cleanliness = 20;
+      state.money = 5;
+      state.str = 5;
+      state.agi = 5;
+      state.int = 5;
+      state.inventory.snack = 0;
+      state.inventory.medicine = 0;
       state.isSleeping = false;
       state.actionLockUntil = 0;
       addLog(state, "Debug: core stats were lowered for testing.");
@@ -290,6 +404,11 @@ export const applyAction = (state, action, effectStatus = null, context = {}) =>
     case "debug-sick":
       state.isSick = !state.isSick;
       addLog(state, state.isSick ? "Debug: pet marked sick." : "Debug: pet cured.");
+      return { ok: true };
+    case "debug-dead":
+      state.isAlive = false;
+      state.isSleeping = false;
+      addLog(state, "Debug: pet marked dead.");
       return { ok: true };
     case "minigame":
       return { ok: true };
@@ -360,7 +479,7 @@ export const tickState = (state, deltaSeconds) => {
   }
 
   while (state.timers.poopRoll >= 35) {
-    if (Math.random() < 0.22) {
+    if (Math.random() < 0.22 && state.poopCount < MAX_POOP_COUNT) {
       state.poopCount += 1;
       state.cleanliness = clamp(state.cleanliness - 10);
       addLog(state, "Oops. Your pet made a mess.");
@@ -404,7 +523,10 @@ export const addMiniGameReward = (state, effectStatus, context = {}) => {
   const score = context.score ?? context.taps ?? 0;
   const result = applyAction(state, "play", effectStatus, { ...context, taps: score, score });
   if (result.ok) {
+    const earnedMoney = Math.max(1, Math.round(score / 2));
+    state.money = clampStatValue("money", state.money + earnedMoney);
     addLog(state, `Mini game complete. ${score} score earned extra joy.`);
+    addLog(state, `Mini game reward: +${earnedMoney}g.`);
   }
   return result;
 };

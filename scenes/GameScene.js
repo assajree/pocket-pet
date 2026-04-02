@@ -14,6 +14,13 @@ const PET_FRAME_MOVE_JUMP_CHANCE = 0.15;
 const PET_JUMP_HEIGHT_MIN = 30;
 const PET_JUMP_HEIGHT_MAX = 60;
 const PET_JUMP_HOLD_FRAMES = 1;
+const POOP_COLUMNS = 10;
+const POOP_ROWS = 2;
+const POOP_SIZE = 28;
+const POOP_SIDE_PADDING = 14;
+const POOP_TOP_OFFSET = 96;
+const POOP_ROW_GAP = 24;
+const LOW_HAPPINESS_THRESHOLD = 35;
 
 export default class GameScene extends Phaser.Scene {
   constructor() {
@@ -106,17 +113,38 @@ export default class GameScene extends Phaser.Scene {
   }
 
   createPoopSpot(index) {
-    const columns = 3;
-    const row = Math.floor(index / columns);
-    const column = index % columns;
-    const startX = this.scale.width / 2 - 34;
-    const x = startX + column * 34;
-    const y = this.basePetY + 96 + row * 24;
+    const clampedIndex = index % (POOP_COLUMNS * POOP_ROWS);
+    const row = Math.floor(clampedIndex / POOP_COLUMNS);
+    const column = clampedIndex % POOP_COLUMNS;
+    const availableWidth = Math.max(this.scale.width - POOP_SIDE_PADDING * 2 - POOP_SIZE, 0);
+    const stepX = POOP_COLUMNS > 1 ? availableWidth / (POOP_COLUMNS - 1) : 0;
+    const x = POOP_SIDE_PADDING + POOP_SIZE / 2 + column * stepX;
+    const y = this.basePetY + POOP_TOP_OFFSET + row * POOP_ROW_GAP;
     return { x, y };
   }
 
+  getPetTextureKey() {
+    if (!this.state.isAlive) {
+      return "pet-dead";
+    }
+
+    if (this.jumpTween) {
+      return "pet-attack";
+    }
+
+    if (this.state.isSick) {
+      return "pet-sick";
+    }
+
+    if (this.state.happiness < LOW_HAPPINESS_THRESHOLD) {
+      return "pet-angy";
+    }
+
+    return STAGE_TEXTURES[this.state.evolutionStage];
+  }
+
   syncVisuals() {
-    const texture = STAGE_TEXTURES[this.state.evolutionStage];
+    const texture = this.getPetTextureKey();
     if (this.pet.texture.key !== texture) {
       this.pet.setTexture(texture);
       const size = this.state.evolutionStage === "Adult" ? 170 : this.state.evolutionStage === "Teen" ? 160 : 148;
@@ -131,7 +159,7 @@ export default class GameScene extends Phaser.Scene {
     const currentCount = this.poopSprites.getLength();
     if (currentCount < this.state.poopCount) {
       for (let index = currentCount; index < this.state.poopCount; index += 1) {
-        const poop = this.add.image(0, 0, "poop").setDisplaySize(28, 28);
+        const poop = this.add.image(0, 0, "poop").setDisplaySize(POOP_SIZE, POOP_SIZE);
         this.poopSpots[index] = this.createPoopSpot(index);
         this.poopSprites.add(poop);
       }
@@ -191,6 +219,7 @@ export default class GameScene extends Phaser.Scene {
     this.jumpTween = { active: true };
     this.jumpFramesRemaining = PET_JUMP_HOLD_FRAMES;
     this.pet.setY(this.basePetY - jumpHeight);
+    this.syncVisuals();
     this.sickIcon.setPosition(this.pet.x + 72, this.pet.y - 72);
     this.sleepText.setPosition(this.pet.x + 86, this.pet.y - 28);
   }
@@ -233,6 +262,7 @@ export default class GameScene extends Phaser.Scene {
         if (this.jumpFramesRemaining <= 0) {
           this.jumpTween = null;
           this.pet.setY(this.basePetY);
+          this.syncVisuals();
           this.sickIcon.setPosition(this.pet.x + 72, this.pet.y - 72);
           this.sleepText.setPosition(this.pet.x + 86, this.pet.y - 28);
         }

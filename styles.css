@@ -13,6 +13,7 @@
   --ink-soft: #656161;
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --viewport-height: 100vh;
 }
 
 * {
@@ -27,14 +28,17 @@ body {
   color: var(--ink-main);
   font-family: "Courier New", "Lucida Console", monospace;
   image-rendering: pixelated;
+  touch-action: manipulation;
 }
 
 body {
   min-height: 100vh;
+  min-height: var(--viewport-height);
 }
 
 #app-shell {
   min-height: 100vh;
+  min-height: var(--viewport-height);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -43,6 +47,8 @@ body {
 
 #device-shell {
   width: min(100%, 360px);
+  display: flex;
+  flex-direction: column;
   padding: 20px 20px 26px;
   border-radius: 26px;
   background: linear-gradient(180deg, var(--shell-face), #efede9);
@@ -73,10 +79,13 @@ body {
 #game-wrapper {
   display: flex;
   flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 .screen-window {
   position: relative;
+  width: 100%;
   aspect-ratio: 1 / 1;
   border-radius: 18px;
   background: linear-gradient(180deg, var(--screen-bezel), var(--screen-frame));
@@ -97,6 +106,7 @@ body {
   overflow: hidden;
   background: #b7c7b5;
   box-shadow: inset 0 0 0 1px rgba(78, 74, 74, 0.16);
+  touch-action: manipulation;
 }
 
 .pet-mood {
@@ -119,7 +129,7 @@ body {
 .screen-menu {
   position: absolute;
   inset: 14px;
-  padding: 22px 16px;
+  padding: 18px 16px 36px;
   border: 1px solid rgba(68, 81, 75, 0.16);
   border-radius: 12px;
   background: rgba(183, 199, 181, 0.98);
@@ -132,6 +142,21 @@ body {
   text-align: center;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2);
   pointer-events: none;
+}
+
+.screen-menu-parent {
+  position: absolute;
+  top: 10px;
+  left: 12px;
+  right: 12px;
+  color: rgba(68, 81, 75, 0.75);
+  font-size: 0.56rem;
+  line-height: 1.2;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .screen-menu-title {
@@ -179,6 +204,29 @@ body {
   letter-spacing: 0.04em;
   text-transform: uppercase;
   white-space: pre-line;
+}
+
+.screen-menu-indicator {
+  position: absolute;
+  left: 50%;
+  bottom: 12px;
+  transform: translateX(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.screen-menu-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: rgba(68, 81, 75, 0.28);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25);
+}
+
+.screen-menu-dot.active {
+  background: #44514b;
 }
 
 .screen-menu.status-view {
@@ -248,6 +296,7 @@ body {
     inset 0 1px 0 rgba(255, 255, 255, 0.8),
     0 5px 0 var(--button-shadow);
   transition: transform 100ms ease, box-shadow 100ms ease, filter 100ms ease;
+  touch-action: manipulation;
 }
 
 .hardware-okutton:hover,
@@ -272,14 +321,71 @@ body {
   display: none;
 }
 
+@supports (height: 100svh) {
+  :root {
+    --viewport-height: 100svh;
+  }
+}
+
+@supports (height: 100dvh) {
+  :root {
+    --viewport-height: 100dvh;
+  }
+}
+
+@media (max-height: 760px) {
+  #app-shell {
+    align-items: flex-start;
+  }
+
+  #device-shell {
+    max-height: calc(var(--viewport-height) - var(--safe-top) - var(--safe-bottom) - 16px);
+    padding: 16px 16px 18px;
+  }
+
+  .brand-row {
+    margin-bottom: 10px;
+  }
+
+  #game-wrapper {
+    justify-content: center;
+  }
+
+  .screen-window {
+    width: min(100%, calc(var(--viewport-height) - var(--safe-top) - var(--safe-bottom) - 220px));
+    margin-inline: auto;
+    padding: 12px;
+  }
+
+  .pet-mood {
+    left: 18px;
+    top: 18px;
+    font-size: 0.56rem;
+  }
+
+  .hardware-row {
+    gap: 12px;
+    margin-top: 10px;
+  }
+
+  .hardware-okutton {
+    width: 44px;
+    height: 44px;
+    min-height: 44px;
+    font-size: 1.3rem;
+  }
+}
+
 @media (max-width: 480px) {
   #app-shell {
     padding: calc(12px + var(--safe-top)) 12px calc(12px + var(--safe-bottom));
+    align-items: flex-start;
   }
 
   #device-shell {
     width: 100%;
     padding: 16px 16px 22px;
+    max-height: calc(var(--viewport-height) - var(--safe-top) - var(--safe-bottom) - 24px);
   }
 
   .brand-row {
@@ -289,11 +395,12 @@ body {
 
   .hardware-row {
     gap: 14px;
+    margin-top: 10px;
   }
 
   .screen-menu {
     inset: 14px;
-    padding: 18px 12px;
+    padding: 16px 12px 32px;
   }
 
   .pet-mood {
@@ -306,8 +413,25 @@ body {
     font-size: 1rem;
   }
 
+  .screen-menu-parent {
+    top: 9px;
+    left: 10px;
+    right: 10px;
+    font-size: 0.5rem;
+  }
+
   .screen-menu-status {
     font-size: 0.64rem;
+  }
+
+  .screen-menu-indicator {
+    bottom: 10px;
+    gap: 5px;
+  }
+
+  .screen-menu-dot {
+    width: 6px;
+    height: 6px;
   }
 
   .hardware-okutton {
@@ -315,5 +439,41 @@ body {
     height: 44px;
     min-height: 44px;
     font-size: 1.35rem;
+  }
+}
+
+@media (max-width: 380px) {
+  #device-shell {
+    padding: 14px 14px 18px;
+    border-radius: 22px;
+  }
+
+  .brand-row {
+    margin-bottom: 10px;
+    font-size: 0.64rem;
+  }
+
+  .brand-pill {
+    padding: 3px 8px;
+  }
+
+  .screen-window {
+    padding: 12px;
+  }
+
+  .pet-mood {
+    left: 18px;
+    top: 18px;
+  }
+
+  .hardware-row {
+    gap: 10px;
+  }
+
+  .hardware-okutton {
+    width: 42px;
+    height: 42px;
+    min-height: 42px;
+    font-size: 1.2rem;
   }
 }

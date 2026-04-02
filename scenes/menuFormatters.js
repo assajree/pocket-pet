@@ -4,7 +4,8 @@ const STATUS_LABELS = {
   energy: "ENERGY",
   health: "HEALTH",
   weight: "WEIGHT",
-  cleanliness: "CLEAN"
+  cleanliness: "CLEAN",
+  money: "MONEY"
 };
 
 const formatStatusRange = (key, value) => {

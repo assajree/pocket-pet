@@ -11,6 +11,10 @@ export default class BootScene extends Phaser.Scene {
     this.load.image("pet-child", "pet-child.svg");
     this.load.image("pet-teen", "pet-teen.svg");
     this.load.image("pet-adult", "pet-adult.svg");
+    this.load.image("pet-angy", "pet-angy.svg");
+    this.load.image("pet-sick", "pet-sick.svg");
+    this.load.image("pet-dead", "pet-dead.svg");
+    this.load.image("pet-attack", "pet-attack.svg");
     this.load.image("poop", "poop.svg");
 
     const uiAssets = [

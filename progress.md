@@ -47,3 +47,20 @@ Original prompt: อยากได้หน้าหน้าจอประม
 - Moved `feed` menu item configs out of `UIScene.js` into `scenes/feedItems.js`, so both feed and play menu content now live outside the main UI scene file.
 - Split UI constants into `scenes/uiConfig.js`, menu definitions into `scenes/menus.js`, and status-line rendering helpers into `scenes/menuFormatters.js` so `UIScene.js` focuses more tightly on scene flow and DOM updates.
 - Broke the mini-game system into `scenes/minigames/index.js`, `playItems.js`, `tapCount.js`, `sequenceMatch.js`, and `types.js` so each mini-game type owns its own runtime logic in a dedicated module.
+- Updated `styles.css` for short mobile viewports like iPhone SE by switching to a `svh/dvh` height variable, aligning the shell to the top on small screens, and constraining the device shell height so the bottom hardware buttons no longer get pushed off-screen as easily.
+- Changed poop placement in `scenes/GameScene.js` from a narrow 3-column cluster to a fixed 10-column, 2-row grid that spreads across the screen width.
+- Added `MAX_POOP_COUNT = 10` in `gameState.js` and capped passive poop generation so the mess count no longer grows without limit.
+- Added new pet SVG sprites `pet-angy`, `pet-sick`, `pet-dead`, and `pet-attack`, loaded them in `BootScene`, and wired `GameScene` to swap textures based on low happiness, sickness, death, and jump/attack animation state.
+- Added persistent `str`, `agi`, and `int` stats in `gameState.js`, updated debug presets to include them, and expanded the status screen in `scenes/UIScene.js` into a two-page view navigated with left/right input.
+- Fixed `scenes/UIScene.js` so the status screen still accepts left/right page turns and `ok` close input even after the pet has died.
+- Added a bottom dot indicator to the screen menu UI so same-level menu items and status pages now show total count and current position.
+- Added a `DEAD` option to the debug menu and wired it to force the pet into the dead state immediately for testing.
+- Removed icons from all debug menu entries by marking those items as icon-less and updating `UIScene` to respect explicit empty icon values.
+- Fixed the dead-state input guard so the status screen can still receive left/right navigation while the pet is dead.
+- Added a dedicated dead-state menu with a `NEW EGG` action, so the normal main menu is replaced after the pet dies and restart happens via that menu instead of immediately.
+- Added a top-of-screen menu parent breadcrumb and a `menuPath` stack in `scenes/UIScene.js`, so submenu ancestry now renders as a parent trail and can scale to deeper nested menus.
+- Adjusted the menu breadcrumb so it excludes `MAIN` and anchors to the top-left corner of the menu screen instead of sitting above the title.
+- Added persistent `money` plus item inventory for rice, snack, and medicine; introduced a `SHOP` submenu with purchasable items, made feed/medicine consume inventory, and added small money rewards from mini games so the economy loop is playable.
+- Updated the `FEED` menu to show item quantities in the title/status and hide feed entries entirely when their inventory count reaches `0`, with shared filtered-menu handling in `UIScene`.
+- Made `rice` unlimited by removing stock consumption and shop purchasing for meal, updating feed/status UI to show `INF` instead of a finite quantity.
+- Generalized item behavior with shared `ITEM_DEFS` metadata in `gameState.js` so items can now declare reusable traits like `consumable`, `infinite`, and `shopPrice`; feed/shop/status UI now read those helpers instead of hardcoding rice-specific behavior.
