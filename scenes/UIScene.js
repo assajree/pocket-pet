@@ -1,8 +1,10 @@
 import {
+  accelerateEggHatch,
   addMiniGameReward,
   applyAction,
   clearState,
   createNewState,
+  getEggHatchSecondsRemaining,
   getItemInventoryLabel,
   getMoodList,
   isConsumableItem,
@@ -20,6 +22,12 @@ import {
 import { MENUS, isMenuView } from "./menus.js";
 import { getMenuStatusText, buildInventoryItemName } from "./menuFormatters.js";
 import { ACTION_ANIMATION_CONFIG, MINI_GAME_SUMMARY_DURATION_MS, SLEEP_OK_ENERGY_BOOST } from "./uiConfig.js";
+
+const formatCountdown = (secondsRemaining) => {
+  const minutes = Math.floor(secondsRemaining / 60);
+  const seconds = Math.max(0, secondsRemaining % 60);
+  return `${minutes}:${String(seconds).padStart(2, "0")}`;
+};
 
 export default class UIScene extends Phaser.Scene {
   constructor() {
@@ -138,6 +146,17 @@ export default class UIScene extends Phaser.Scene {
     // }
 
     if (this.view === "closed") {
+      if (this.state.isAlive && this.state.evolutionStage === "Egg") {
+        const hatchStep = accelerateEggHatch(this.state, 1);
+        this.gameScene.syncVisuals();
+        saveState(this.state);
+        if (hatchStep.changedStage) {
+          this.gameScene.playEvolutionAnimation(hatchStep.previousStage, hatchStep.nextStage);
+        }
+        this.render(this.state);
+        return;
+      }
+
       if (button === "cancel") {
         this.statusPageIndex = 0;
         this.view = "status";
@@ -236,7 +255,7 @@ export default class UIScene extends Phaser.Scene {
 
   runAction(item) {
     if (item.key === "new-egg") {
-      this.restartGame();
+      this.showActionAnimation("new-egg");
       return;
     }
 
@@ -251,11 +270,16 @@ export default class UIScene extends Phaser.Scene {
       return;
     }
 
+    const previousStage = this.state.evolutionStage;
     const result = applyAction(this.state, item.key, item.effectStatus);
     this.gameScene.syncVisuals();
     saveState(this.state);
 
     if (result.ok) {
+      if (previousStage !== this.state.evolutionStage) {
+        this.gameScene.playEvolutionAnimation(previousStage, this.state.evolutionStage);
+      }
+
       if (item.key === "meal" || item.key === "snack" || item.key === "clean") {
         this.showActionAnimation(item.key);
         return;
@@ -279,11 +303,7 @@ export default class UIScene extends Phaser.Scene {
     this.inputLockedUntil = this.time.now + config.durationMs;
     this.render(this.state);
     this.actionAnimationTimer = this.time.delayedCall(config.durationMs, () => {
-      this.inputLockedUntil = 0;
-      this.view = config.nextView;
-      this.render(this.state);
-      this.actionAnimationTimer = null;
-      this.currentActionAnimation = null;
+      this.finishActionAnimation(action, config);
     });
   }
 
@@ -292,11 +312,22 @@ export default class UIScene extends Phaser.Scene {
       return;
     }
 
-    const config = ACTION_ANIMATION_CONFIG[this.currentActionAnimation] || { durationMs: 2000, nextView: "closed" };
+    const action = this.currentActionAnimation;
+    const config = ACTION_ANIMATION_CONFIG[action] || { durationMs: 2000, nextView: "closed" };
     this.actionAnimationTimer?.remove(false);
+    this.finishActionAnimation(action, config);
+  }
+
+  finishActionAnimation(action, config) {
     this.actionAnimationTimer = null;
     this.currentActionAnimation = null;
     this.inputLockedUntil = 0;
+
+    if (action === "new-egg") {
+      this.restartGame();
+      return;
+    }
+
     this.view = config.nextView;
     this.render(this.state);
   }
@@ -429,7 +460,8 @@ export default class UIScene extends Phaser.Scene {
   }
 
   setActionAnimationIcon(action) {
-    const assetKey = action === "clean" ? "cleaning-room" : (action === "snack" ? "feeding-snack" : "feeding-meal");
+    const config = ACTION_ANIMATION_CONFIG[action] || {};
+    const assetKey = config.assetKey || (action === "clean" ? "cleaning-room" : (action === "snack" ? "feeding-snack" : "feeding-meal"));
     this.screenMenuIcon.innerHTML = this.getUiAssetMarkup(assetKey);
     this.screenMenuIcon.classList.toggle("hidden", !this.screenMenuIcon.innerHTML);
     this.screenMenuIcon.classList.add("action-icon");
@@ -639,6 +671,8 @@ export default class UIScene extends Phaser.Scene {
     this.brandTitle.textContent = "Pocket Pet";
     this.brandStatus.textContent = state.isAlive ? "Pet View" : "New Egg";
     const fullScreenMenu = this.view !== "closed";
+    const eggCountdownSeconds = getEggHatchSecondsRemaining(state);
+    const shouldShowEggCountdown = state.evolutionStage === "Egg" && !fullScreenMenu;
     const shouldShowSleepEnergy = state.isSleeping && !fullScreenMenu;
     this.gameScene.setMenuVisible(fullScreenMenu);
     this.screenMenu.classList.toggle("status-view", this.view === "status");
@@ -650,12 +684,17 @@ export default class UIScene extends Phaser.Scene {
     this.hardwareCancel.disabled = inputLocked && !allowFeedSkip;
     this.hardwareOk.disabled = inputLocked && !allowFeedSkip;
     this.petMood.textContent = `Mood: ${getMoodList(state).join(" • ")}`;
-    this.petMood.textContent = shouldShowSleepEnergy
+    this.petMood.textContent = shouldShowEggCountdown
+      ? `Hatch in: ${formatCountdown(eggCountdownSeconds)}`
+      : shouldShowSleepEnergy
       ? `Energy: ${Math.round(state.energy)}`
       : shouldShowMood
         ? `Mood: ${moodList.join(" | ")}`
         : "";
-    this.petMood.classList.toggle("hidden", fullScreenMenu || (!shouldShowMood && !shouldShowSleepEnergy));
+    this.petMood.classList.toggle(
+      "hidden",
+      fullScreenMenu || (!shouldShowMood && !shouldShowSleepEnergy && !shouldShowEggCountdown)
+    );
 
     if (!fullScreenMenu) {
       this.screenMenu.classList.add("hidden");
@@ -735,7 +774,8 @@ export default class UIScene extends Phaser.Scene {
     }
 
     if (this.view === "action-animation") {
-      const parentLabel = this.currentActionAnimation === "clean" ? "CLEAN" : "FEED";
+      const actionConfig = ACTION_ANIMATION_CONFIG[this.currentActionAnimation] || {};
+      const parentLabel = actionConfig.parentLabel || (this.currentActionAnimation === "clean" ? "CLEAN" : "FEED");
       this.setMenuParent(parentLabel);
       this.setActionAnimationIcon(this.currentActionAnimation);
       return;
@@ -747,6 +787,10 @@ export default class UIScene extends Phaser.Scene {
   }
 
   update(_time, delta) {
+    if (this.view === "closed" && this.state?.isAlive && this.state.evolutionStage === "Egg") {
+      this.render(this.state);
+    }
+
     if (!this.miniGame.active) {
       return;
     }

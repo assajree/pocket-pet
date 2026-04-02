@@ -9,6 +9,7 @@ const CORE_ASSETS = [
   "./scenes/BootScene.js",
   "./scenes/GameScene.js",
   "./scenes/UIScene.js",
+  "./assets/pet-egg.svg",
   "./assets/pet-baby.svg",
   "./assets/pet-child.svg",
   "./assets/pet-teen.svg",

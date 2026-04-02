@@ -1,6 +1,7 @@
 import { saveState, tickState } from "../gameState.js";
 
 const STAGE_TEXTURES = {
+  Egg: "pet-egg",
   Baby: "pet-baby",
   Child: "pet-child",
   Teen: "pet-teen",
@@ -11,6 +12,11 @@ const PET_MOVE_BLOCK_RANGE = 1;
 const PET_MOVE_STEP_FPS = 1;
 const PET_JUMP_STEP_FPS = 2;
 const PET_FRAME_MOVE_JUMP_CHANCE = 0.15;
+const EGG_IDLE_DURATION_MS = 900;
+const EGG_IDLE_SCALE_MIN = 0.94;
+const EGG_IDLE_SCALE_MAX = 1.04;
+const EVOLUTION_ANIMATION_DURATION_MS = 950;
+const EVOLUTION_TEXT_Y_OFFSET = 96;
 const PET_JUMP_HEIGHT_MIN = 30;
 const PET_JUMP_HEIGHT_MAX = 60;
 const PET_JUMP_HOLD_FRAMES = 1;
@@ -34,6 +40,9 @@ export default class GameScene extends Phaser.Scene {
     this.jumpFramesRemaining = 0;
     this.moveStepAccumulator = 0;
     this.jumpStepAccumulator = 0;
+    this.previousEvolutionStage = null;
+    this.evolutionTween = null;
+    this.evolutionTextTween = null;
   }
 
   create() {
@@ -45,6 +54,7 @@ export default class GameScene extends Phaser.Scene {
     this.pet = this.add.image(this.basePetX, this.basePetY, STAGE_TEXTURES[this.state.evolutionStage]);
     this.pet.setDisplaySize(148, 148);
     this.pet.setScale(1);
+    this.previousEvolutionStage = this.state.evolutionStage;
 
     this.sickIcon = this.add.text(this.pet.x + 72, this.pet.y - 72, "!", {
       fontFamily: "Courier New",
@@ -64,6 +74,17 @@ export default class GameScene extends Phaser.Scene {
     });
     this.sleepText.setVisible(false);
 
+    this.evolutionText = this.add.text(this.basePetX, this.basePetY - EVOLUTION_TEXT_Y_OFFSET, "", {
+      fontFamily: "Courier New",
+      fontSize: "22px",
+      color: "#44514b",
+      stroke: "#f4f7f0",
+      strokeThickness: 5,
+      align: "center"
+    });
+    this.evolutionText.setOrigin(0.5);
+    this.evolutionText.setVisible(false);
+
     this.poopSprites = this.add.group();
 
     this.scale.on("resize", this.handleResize, this);
@@ -71,6 +92,10 @@ export default class GameScene extends Phaser.Scene {
       this.scale.off("resize", this.handleResize, this);
       this.idleTween?.stop();
       this.idleTween = null;
+      this.evolutionTween?.stop();
+      this.evolutionTween = null;
+      this.evolutionTextTween?.stop();
+      this.evolutionTextTween = null;
       this.stopMovementTweens();
     });
 
@@ -86,6 +111,7 @@ export default class GameScene extends Phaser.Scene {
     this.snapPetToGrid();
     this.sickIcon.setPosition(this.pet.x + 72, this.pet.y - 72);
     this.sleepText.setPosition(this.pet.x + 86, this.pet.y - 28);
+    this.evolutionText.setPosition(this.basePetX, this.basePetY - EVOLUTION_TEXT_Y_OFFSET);
     this.layoutPoop();
   }
 
@@ -128,6 +154,10 @@ export default class GameScene extends Phaser.Scene {
       return "pet-dead";
     }
 
+    if (this.evolutionTween) {
+      return STAGE_TEXTURES[this.state.evolutionStage];
+    }
+
     if (this.jumpTween) {
       return "pet-attack";
     }
@@ -147,7 +177,13 @@ export default class GameScene extends Phaser.Scene {
     const texture = this.getPetTextureKey();
     if (this.pet.texture.key !== texture) {
       this.pet.setTexture(texture);
-      const size = this.state.evolutionStage === "Adult" ? 170 : this.state.evolutionStage === "Teen" ? 160 : 148;
+      const size = this.state.evolutionStage === "Adult"
+        ? 170
+        : this.state.evolutionStage === "Teen"
+          ? 160
+          : this.state.evolutionStage === "Egg"
+            ? 132
+            : 148;
       this.pet.setDisplaySize(size, size);
     }
 
@@ -176,7 +212,15 @@ export default class GameScene extends Phaser.Scene {
   }
 
   canAnimatePet() {
-    return this.state.isAlive && !this.state.isSleeping && !this.menuVisible;
+    return this.state.isAlive
+      && !this.evolutionTween
+      && this.state.evolutionStage !== "Egg"
+      && !this.state.isSleeping
+      && !this.menuVisible;
+  }
+
+  canPlayEggIdle() {
+    return this.state.isAlive && !this.evolutionTween && this.state.evolutionStage === "Egg" && !this.menuVisible;
   }
 
   stopMovementTweens() {
@@ -188,9 +232,92 @@ export default class GameScene extends Phaser.Scene {
   }
 
   updateIdleAnimation() {
+    if (this.evolutionTween) {
+      return;
+    }
+
+    const shouldPlayEggIdle = this.canPlayEggIdle();
+    if (shouldPlayEggIdle && this.idleTween) {
+      return;
+    }
+
     this.idleTween?.stop();
     this.idleTween = null;
     this.pet.setScale(1, 1);
+    this.pet.setY(this.basePetY);
+
+    if (!shouldPlayEggIdle) {
+      return;
+    }
+
+    this.idleTween = this.tweens.add({
+      targets: this.pet,
+      scaleX: { from: EGG_IDLE_SCALE_MIN, to: EGG_IDLE_SCALE_MAX },
+      scaleY: { from: EGG_IDLE_SCALE_MIN, to: EGG_IDLE_SCALE_MAX },
+      duration: EGG_IDLE_DURATION_MS,
+      ease: "Sine.easeInOut",
+      yoyo: true,
+      repeat: -1
+    });
+  }
+
+  playEvolutionAnimation(previousStage, nextStage) {
+    this.idleTween?.stop();
+    this.idleTween = null;
+    this.stopMovementTweens();
+    this.evolutionTween?.stop();
+    this.evolutionTextTween?.stop();
+    this.snapPetToGrid();
+    this.syncVisuals();
+    this.pet.setAlpha(1);
+    this.pet.setScale(1, 1);
+    this.pet.setTint(0x44514b);
+
+    const bannerText = previousStage === "Egg" ? "HATCH!" : "EVOLVE!";
+    this.evolutionText.setText(bannerText);
+    this.evolutionText.setAlpha(0);
+    this.evolutionText.setScale(0.7);
+    this.evolutionText.setVisible(true);
+
+    this.evolutionTextTween = this.tweens.add({
+      targets: this.evolutionText,
+      alpha: 1,
+      scaleX: 1,
+      scaleY: 1,
+      y: this.basePetY - EVOLUTION_TEXT_Y_OFFSET - 10,
+      duration: EVOLUTION_ANIMATION_DURATION_MS / 2,
+      ease: "Quad.easeOut",
+      yoyo: true
+    });
+
+    this.evolutionTween = this.tweens.add({
+      targets: this.pet,
+      scaleX: { from: 0.82, to: 1.18 },
+      scaleY: { from: 0.82, to: 1.18 },
+      alpha: { from: 0.35, to: 1 },
+      duration: EVOLUTION_ANIMATION_DURATION_MS / 3,
+      ease: "Sine.easeInOut",
+      yoyo: true,
+      repeat: 2,
+      onYoyo: () => {
+        this.pet.setTint(this.pet.tintTopLeft === 0x44514b ? 0xf4f7f0 : 0x44514b);
+      },
+      onRepeat: () => {
+        this.pet.setTint(this.pet.tintTopLeft === 0x44514b ? 0xf4f7f0 : 0x44514b);
+      },
+      onComplete: () => {
+        this.evolutionTween = null;
+        this.pet.setAlpha(this.state.isAlive ? 1 : 0.55);
+        this.syncVisuals();
+        this.evolutionText.setVisible(false);
+        this.evolutionText.setAlpha(0);
+        this.evolutionText.setScale(1);
+        this.evolutionText.setY(this.basePetY - EVOLUTION_TEXT_Y_OFFSET);
+        this.evolutionTextTween = null;
+        this.updateIdleAnimation();
+        this.events.emit("state-changed", this.state);
+      }
+    });
   }
 
   stepPetMovement() {
@@ -230,6 +357,7 @@ export default class GameScene extends Phaser.Scene {
     this.pet.setVisible(petVisible);
     this.sickIcon.setVisible(petVisible && this.state.isSick && this.state.isAlive);
     this.sleepText.setVisible(petVisible && this.state.isSleeping && this.state.isAlive);
+    this.evolutionText.setVisible(petVisible && !!this.evolutionTween);
     this.poopSprites.getChildren().forEach((sprite) => sprite.setVisible(petVisible));
     this.updateIdleAnimation();
     if (isVisible || !this.canAnimatePet()) {
@@ -247,10 +375,16 @@ export default class GameScene extends Phaser.Scene {
     this.moveStepAccumulator += delta;
 
     if (this.elapsedAccumulator >= 1) {
+      const previousStage = this.state.evolutionStage;
       tickState(this.state, this.elapsedAccumulator);
       this.elapsedAccumulator = 0;
       this.syncVisuals();
-      this.updateIdleAnimation();
+      if (previousStage !== this.state.evolutionStage) {
+        this.playEvolutionAnimation(previousStage, this.state.evolutionStage);
+      } else {
+        this.updateIdleAnimation();
+      }
+      this.previousEvolutionStage = this.state.evolutionStage;
       this.events.emit("state-changed", this.state);
     }
 

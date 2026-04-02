@@ -66,3 +66,14 @@ Original prompt: อยากได้หน้าหน้าจอประม
 - Generalized item behavior with shared `ITEM_DEFS` metadata in `gameState.js` so items can now declare reusable traits like `consumable`, `infinite`, and `shopPrice`; feed/shop/status UI now read those helpers instead of hardcoding rice-specific behavior.
 - Fixed the shop purchase runtime crash by importing item helper bindings directly into `gameState.js` before re-exporting them; `purchaseItem()` can now resolve shop price/max quantity correctly at runtime.
 - Fixed `scenes/menuFormatters.js` so shop-specific status lines (money owned/cost) are no longer overwritten by the generic inventory fallback.
+- Added a dedicated `NEW EGG` hatch animation with its own SVG asset/config, and changed the dead-menu restart flow so selecting `NEW EGG` plays that animation before resetting the save/state.
+- Added a real `Egg` pet stage: new saves now begin as `Egg`, the egg uses its own sprite/texture mapping, stays still on the pet screen, and automatically hatches into `Baby` after the first age-minute before continuing the normal evolution chain.
+- Updated the `Egg` idle tween in `scenes/GameScene.js` to use a gentle in-and-out zoom pulse instead of bobbing/tilting.
+- Added an evolution animation in `scenes/GameScene.js` that pulses/flashes the pet and shows a short `HATCH!` or `EVOLVE!` banner whenever the stage changes.
+- Added a `DEBUG > EVOLVE +1` action that advances the pet to the next stage, and keeps the same stage when already at the highest evolution tier.
+- Fixed `Egg` hatching to use precise age progress (`ageMinutes + ageTick`) so it no longer waits on coarse minute boundaries, and added a pet-screen `Hatch in: M:SS` countdown while the pet is still an egg.
+- Fixed manual debug evolution so `UIScene` now notifies `GameScene` immediately when the stage changes, and the evolution animation temporarily forces the new stage texture so the form swap is visible even during the effect.
+- Changed `Egg` behavior so it is now invulnerable with locked max core stats while waiting to hatch, and updated hatching so it now becomes `Child` with intentionally low starting stats instead of transitioning through `Baby`.
+- Changed `Egg` hardware-button behavior so each button press on the closed pet screen now fast-forwards hatching by 1 second instead of opening menus or triggering normal actions.
+- Forced pet-screen refresh while the pet is still an egg, and emit a second `state-changed` after evolution animations finish so the hatch countdown text updates live and clears immediately after hatching.
+- Added a `DEBUG > NEW EGG` action that resets the current pet state back to a fresh egg without leaving the current session, making the egg countdown/hatch flow easier to retest.

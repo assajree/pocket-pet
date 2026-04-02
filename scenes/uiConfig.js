@@ -4,5 +4,6 @@ export const SLEEP_OK_ENERGY_BOOST = 6;
 export const ACTION_ANIMATION_CONFIG = {
   meal: { durationMs: 3000, nextView: "feed" },
   snack: { durationMs: 3000, nextView: "feed" },
-  clean: { durationMs: 2000, nextView: "closed" }
+  clean: { durationMs: 2000, nextView: "closed" },
+  "new-egg": { durationMs: 2400, nextView: "closed", parentLabel: "NEW EGG", assetKey: "new-egg" }
 };

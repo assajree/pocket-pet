@@ -7,6 +7,7 @@ export default class BootScene extends Phaser.Scene {
 
   preload() {
     this.load.setPath("./assets");
+    this.load.image("pet-egg", "pet-egg.svg");
     this.load.image("pet-baby", "pet-baby.svg");
     this.load.image("pet-child", "pet-child.svg");
     this.load.image("pet-teen", "pet-teen.svg");
@@ -35,7 +36,8 @@ export default class BootScene extends Phaser.Scene {
       "debug-sick",
       "feeding-meal",
       "feeding-snack",
-      "cleaning-room"
+      "cleaning-room",
+      "new-egg"
     ];
 
     uiAssets.forEach((assetKey) => {

@@ -1,0 +1,62 @@
+<svg viewBox="0 0 84 64" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="New egg hatching animation">
+  <style>
+    .line { fill: none; stroke: #44514b; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+    .ink { fill: #44514b; }
+    .shell { fill: #f4f7f0; stroke: #44514b; stroke-width: 2.2; }
+    .shade { fill: #d4e0cf; }
+    .spark { animation: sparkle 900ms ease-out infinite; opacity: 0; }
+    .spark.two { animation-delay: 180ms; }
+    .spark.three { animation-delay: 360ms; }
+    .egg { transform-origin: 42px 38px; animation: wobble 900ms ease-in-out infinite; }
+    .crack { animation: crackFlash 900ms steps(2, end) infinite; }
+    .pet { transform-origin: 42px 35px; animation: peek 900ms ease-in-out infinite; }
+    @keyframes wobble {
+      0%, 100% { transform: rotate(0deg) translateY(0px); }
+      18% { transform: rotate(-6deg) translateY(-1px); }
+      36% { transform: rotate(5deg) translateY(-2px); }
+      54% { transform: rotate(-4deg) translateY(-1px); }
+      72% { transform: rotate(3deg) translateY(0px); }
+    }
+    @keyframes peek {
+      0%, 20%, 100% { transform: translateY(10px); opacity: 0; }
+      35% { transform: translateY(2px); opacity: 1; }
+      60% { transform: translateY(0px); opacity: 1; }
+      78% { transform: translateY(6px); opacity: 0.85; }
+    }
+    @keyframes crackFlash {
+      0%, 25%, 100% { opacity: 0; }
+      30%, 75% { opacity: 1; }
+    }
+    @keyframes sparkle {
+      0%, 40% { transform: translateY(6px) scale(0.2); opacity: 0; }
+      55% { opacity: 1; }
+      100% { transform: translateY(-8px) scale(1); opacity: 0; }
+    }
+  </style>
+  <g class="spark one">
+    <circle class="ink" cx="18" cy="14" r="2.5"/>
+    <path class="line" d="M18 8v3"/>
+  </g>
+  <g class="spark two">
+    <circle class="ink" cx="66" cy="12" r="2.5"/>
+    <path class="line" d="M61 12h3"/>
+  </g>
+  <g class="spark three">
+    <circle class="ink" cx="72" cy="28" r="2.2"/>
+    <path class="line" d="M69 24l2 2"/>
+  </g>
+  <g class="pet">
+    <path class="shell shade" d="M33 30c1-8 6-12 9-12s8 4 9 12v2H33Z"/>
+    <circle class="ink" cx="39" cy="31" r="2"/>
+    <circle class="ink" cx="45" cy="31" r="2"/>
+    <path class="line" d="M38 36c2 2 6 2 8 0"/>
+  </g>
+  <g class="egg">
+    <ellipse class="shade" cx="42" cy="46" rx="17" ry="4"/>
+    <path class="shell" d="M42 13c10.5 0 19 12.5 19 28 0 7.5-5.5 13-19 13s-19-5.5-19-13c0-15.5 8.5-28 19-28Z"/>
+    <path class="shell shade" d="M34 24c2.5-4.5 5.5-7 8-7 2.4 0 5 1.5 7.3 4.5-4.5 1.8-10 3-15.3 2.5Z"/>
+    <path class="line crack" d="M42 26l-3 5 4 2-3 5 5 2"/>
+    <path class="line crack" d="M36 31l-4 3"/>
+    <path class="line crack" d="M48 35l5 4"/>
+  </g>
+</svg>

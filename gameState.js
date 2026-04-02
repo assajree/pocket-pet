@@ -14,6 +14,9 @@ const SLEEP_ENERGY_PER_SECOND = 2;
 const AWAKE_ENERGY_CHANGE_PER_MINUTE = -4;
 const MAX_COMBAT_STAT = 999;
 const MAX_MONEY = 9999;
+const EGG_HATCH_SECONDS = 60;
+const CHILD_HATCH_CORE_STAT = 20;
+const CHILD_HATCH_COMBAT_STAT = 5;
 
 export {
   isConsumableItem,
@@ -25,10 +28,11 @@ export {
 };
 
 const STAGE_RULES = [
-  { stage: "Child", minAgeMinutes: 2, requiredAverage: 35 },
+  { stage: "Child", minAgeMinutes: 1, requiredAverage: 0 },
   { stage: "Teen", minAgeMinutes: 5, requiredAverage: 50 },
   { stage: "Adult", minAgeMinutes: 9, requiredAverage: 65 }
 ];
+const STAGE_ORDER = ["Egg", "Child", "Teen", "Adult"];
 
 const clamp = (value, min = 0, max = 100) => Math.min(max, Math.max(min, value));
 
@@ -50,7 +54,7 @@ export const createNewState = () => ({
   agi: 11,
   int: 10,
   ageMinutes: 0,
-  evolutionStage: "Baby",
+  evolutionStage: "Egg",
   isAlive: true,
   isSleeping: false,
   isSick: false,
@@ -74,7 +78,7 @@ export const createNewState = () => ({
   logs: [
     {
       id: createLogId(),
-      text: "A new pet egg has hatched. Take good care of it.",
+      text: "A new egg is waiting to hatch.",
       time: Date.now()
     }
   ]
@@ -129,20 +133,114 @@ export const clearState = () => {
 const getAverageStats = (state) =>
   (state.hunger + state.happiness + state.energy + state.health + state.cleanliness) / 5;
 
+const lockEggState = (state) => {
+  state.hunger = 100;
+  state.happiness = 100;
+  state.energy = 100;
+  state.health = 100;
+  state.cleanliness = 100;
+  state.isSick = false;
+  state.isSleeping = false;
+  state.poopCount = 0;
+  state.actionLockUntil = 0;
+};
+
+const applyChildHatchState = (state) => {
+  state.hunger = CHILD_HATCH_CORE_STAT;
+  state.happiness = CHILD_HATCH_CORE_STAT;
+  state.energy = CHILD_HATCH_CORE_STAT;
+  state.health = CHILD_HATCH_CORE_STAT;
+  state.cleanliness = CHILD_HATCH_CORE_STAT;
+  state.str = CHILD_HATCH_COMBAT_STAT;
+  state.agi = CHILD_HATCH_COMBAT_STAT;
+  state.int = CHILD_HATCH_COMBAT_STAT;
+  state.isSick = false;
+  state.isSleeping = false;
+  state.poopCount = 0;
+  state.actionLockUntil = 0;
+};
+
+export const getEggHatchSecondsRemaining = (state) => {
+  if (state.evolutionStage !== "Egg") {
+    return 0;
+  }
+
+  const elapsedSeconds = (state.ageMinutes * 60) + (state.timers?.ageTick ?? 0);
+  return Math.max(0, Math.ceil(EGG_HATCH_SECONDS - elapsedSeconds));
+};
+
+export const accelerateEggHatch = (state, seconds = 1) => {
+  if (state.evolutionStage !== "Egg" || !state.isAlive) {
+    return { ok: false, changedStage: false };
+  }
+
+  const previousStage = state.evolutionStage;
+  lockEggState(state);
+  state.timers.ageTick += Math.max(0, seconds);
+
+  while (state.timers.ageTick >= 60) {
+    state.ageMinutes += 1;
+    state.timers.ageTick -= 60;
+  }
+
+  updateEvolution(state);
+  return {
+    ok: true,
+    changedStage: previousStage !== state.evolutionStage,
+    previousStage,
+    nextStage: state.evolutionStage
+  };
+};
+
 const updateEvolution = (state) => {
   let nextStage = state.evolutionStage;
   const averageStats = getAverageStats(state);
+  const ageMinutesPrecise = state.ageMinutes + ((state.timers?.ageTick ?? 0) / 60);
 
   for (const rule of STAGE_RULES) {
-    if (state.ageMinutes >= rule.minAgeMinutes && averageStats >= rule.requiredAverage) {
+    if (ageMinutesPrecise >= rule.minAgeMinutes && averageStats >= rule.requiredAverage) {
       nextStage = rule.stage;
     }
   }
 
   if (nextStage !== state.evolutionStage) {
+    const previousStage = state.evolutionStage;
     state.evolutionStage = nextStage;
-    addLog(state, `Your pet evolved into a ${nextStage}.`);
+    if (previousStage === "Egg" && nextStage === "Child") {
+      applyChildHatchState(state);
+    }
+    addLog(
+      state,
+      previousStage === "Egg" && nextStage === "Child"
+        ? "The egg hatched into a Child."
+        : `Your pet evolved into a ${nextStage}.`
+    );
   }
+};
+
+const evolveToNextStage = (state) => {
+  if (state.evolutionStage === "Baby") {
+    state.evolutionStage = "Child";
+    addLog(state, "Debug: evolved pet to Child.");
+    return "Child";
+  }
+
+  const currentIndex = STAGE_ORDER.indexOf(state.evolutionStage);
+  if (currentIndex < 0) {
+    state.evolutionStage = STAGE_ORDER[0];
+    addLog(state, `Debug: stage corrected to ${STAGE_ORDER[0]}.`);
+    return STAGE_ORDER[0];
+  }
+
+  const nextStage = STAGE_ORDER[Math.min(currentIndex + 1, STAGE_ORDER.length - 1)];
+  state.evolutionStage = nextStage;
+  addLog(
+    state,
+    nextStage === state.evolutionStage && currentIndex === STAGE_ORDER.length - 1
+      ? `Debug: ${nextStage} is already the highest stage.`
+      : `Debug: evolved pet to ${nextStage}.`
+  );
+  return nextStage;
 };
 
 const wakeIfFullyRested = (state) => {
@@ -172,6 +270,10 @@ const maybeDie = (state, reasonText) => {
 export const getMoodList = (state) => {
   if (!state.isAlive) {
     return ["Dead"];
+  }
+
+  if (state.evolutionStage === "Egg") {
+    return ["Egg"];
   }
 
   const moods = [];
@@ -376,6 +478,12 @@ export const applyAction = (state, action, effectStatus = null, context = {}) =>
       state.actionLockUntil = 0;
       addLog(state, "Debug: all core stats were maxed out.");
       return { ok: true };
+    case "debug-new-egg": {
+      const freshEgg = createNewState();
+      Object.assign(state, freshEgg);
+      addLog(state, "Debug: reset pet to a fresh egg.");
+      return { ok: true };
+    }
     case "debug-drain":
       state.hunger = 20;
       state.happiness = 20;
@@ -395,6 +503,9 @@ export const applyAction = (state, action, effectStatus = null, context = {}) =>
     case "debug-sick":
       state.isSick = !state.isSick;
       addLog(state, state.isSick ? "Debug: pet marked sick." : "Debug: pet cured.");
+      return { ok: true };
+    case "debug-evolve":
+      evolveToNextStage(state);
       return { ok: true };
     case "debug-dead":
       state.isAlive = false;
@@ -425,6 +536,19 @@ export const tickState = (state, deltaSeconds) => {
 
   const delta = Math.max(deltaSeconds, 0);
   state.lastUpdatedAt = Date.now();
+
+  if (state.evolutionStage === "Egg") {
+    lockEggState(state);
+    state.timers.ageTick += delta;
+
+    while (state.timers.ageTick >= 60) {
+      state.ageMinutes += 1;
+      state.timers.ageTick -= 60;
+    }
+
+    updateEvolution(state);
+    return state;
+  }
 
   state.timers.hungerTick += delta;
   state.timers.happinessTick += delta;
