@@ -160,6 +160,10 @@ body {
 }
 
 .screen-menu-title {
+  position: absolute;
+  top: 32px;
+  left: 12px;
+  right: 12px;
   font-size: 1.2rem;
   line-height: 1.1;
   letter-spacing: 0.08em;
@@ -259,8 +263,10 @@ body {
 }
 
 .screen-menu.status-view {
-  align-items: flex-start;
+  align-items: center;
+  justify-content: flex-start;
   text-align: left;
+  padding-top: 64px;
 }
 
 .screen-menu.status-view .screen-menu-title {
@@ -273,7 +279,7 @@ body {
 }
 
 .screen-menu.status-view .screen-menu-status {
-  max-width: none;
+  max-width: 210px;
 }
 
 .status-lines {

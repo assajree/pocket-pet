@@ -5,26 +5,16 @@ const SLEEP_ENERGY_PER_SECOND = 2;
 const AWAKE_ENERGY_CHANGE_PER_MINUTE = -4;
 const MAX_COMBAT_STAT = 999;
 const MAX_MONEY = 9999;
-export const ITEM_DEFS = {
-  meal: {
-    label: "RICE",
-    inventoryLabel: "Rice",
-    consumable: false,
-    shopPrice: 0
-  },
-  snack: {
-    label: "SNACK",
-    inventoryLabel: "Snack",
-    consumable: true,
-    shopPrice: 6
-  },
-  medicine: {
-    label: "MED",
-    inventoryLabel: "Med",
-    consumable: true,
-    shopPrice: 12
-  }
-};
+
+export {
+  isConsumableItem,
+  getItemLabel,
+  getItemInventoryLabel,
+  getShopPrice,
+  getMaxQty,
+  isShopItem
+} from "./scenes/items.js";
+
 const STAGE_RULES = [
   { stage: "Child", minAgeMinutes: 2, requiredAverage: 35 },
   { stage: "Teen", minAgeMinutes: 5, requiredAverage: 50 },
@@ -208,13 +198,6 @@ export const getStatusText = (state) => {
 };
 
 
-
-export const isConsumableItem = (itemKey) => ITEM_DEFS[itemKey]?.consumable !== false;
-
-export const getItemLabel = (itemKey) => ITEM_DEFS[itemKey]?.label || itemKey.toUpperCase();
-
-export const getItemInventoryLabel = (itemKey) => ITEM_DEFS[itemKey]?.inventoryLabel || getItemLabel(itemKey);
-
 const clampStatValue = (stat, value) => {
   if (stat === "weight") {
     return clamp(value, 0, MAX_COMBAT_STAT);
@@ -245,13 +228,12 @@ const useInventoryItem = (state, itemKey) => {
   return true;
 };
 
-export const getShopPrice = (itemKey) => ITEM_DEFS[itemKey]?.shopPrice ?? 0;
-
-export const purchaseItem = (state, itemKey) => {
+export const purchaseItem = (state, key) => {
   if (!state.isAlive) {
     return { ok: false, message: "Your pet is gone. Start a new egg first." };
   }
 
+  const itemKey = key;
   const price = getShopPrice(itemKey);
   if (!price) {
     return { ok: false, message: "That item is not sold here." };
@@ -259,6 +241,11 @@ export const purchaseItem = (state, itemKey) => {
 
   if (state.money < price) {
     return { ok: false, message: "Not enough money." };
+  }
+
+  const maxQty = getMaxQty(itemKey);
+  if (maxQty && (state.inventory[itemKey] ?? 0) >= maxQty) {
+    return { ok: false, message: "Inventory is full." };
   }
 
   state.money = clampStatValue("money", state.money - price);

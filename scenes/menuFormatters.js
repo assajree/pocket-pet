@@ -1,10 +1,15 @@
-import { getItemLabel, getShopPrice, isConsumableItem } from "../gameState.js";
+import { getItemLabel, getShopPrice, getMaxQty, isConsumableItem } from "../gameState.js";
 
-export const buildShopStatus = (itemKey, stockKey, label) => ({ money, inventory }) => [
-  `MONEY ${Math.round(money)}G`,
-  `OWN ${!isConsumableItem(stockKey) ? "∞" : (inventory?.[stockKey] ?? 0)} ${label}`,
-  `COST ${getShopPrice(itemKey)}G`
-];
+export const buildShopStatus = (itemKey, stockKey, label) => ({ money, inventory }) => {
+  const qty = inventory?.[stockKey] ?? 0;
+  const maxQty = getMaxQty(stockKey);
+  const ownedText = maxQty ? `${qty}/${maxQty}` : (!isConsumableItem(stockKey) ? "∞" : `${qty}`);
+  return [
+    `MONEY ${Math.round(money)}G`,
+    `OWN ${ownedText} ${label}`,
+    `COST ${getShopPrice(itemKey)}G`
+  ];
+};
 
 export const buildInventoryItemName = (itemKey) => ({ inventory }) =>
   `${getItemLabel(itemKey)} x${!isConsumableItem(itemKey) ? "∞" : (inventory?.[itemKey] ?? 0)}`;
@@ -71,9 +76,13 @@ export const resolveStatusLines = (statusConfig, state) => {
 
 export const getMenuStatusText = (menu, item, state) => {
   let currentStatus = resolveStatusLines(item.currentStatus, state);
+
+  if (!currentStatus.length && typeof menu.currentStatus === "function") {
+    currentStatus = resolveStatusLines(menu.currentStatus(item), state);
+  }
   const effectStatus = resolveStatusLines(item.effectStatus, state);
 
-  if (item.inventoryItemKey && !item.currentStatus) {
+  if (item.key && !item.currentStatus) {
     const extraStatsFn = (s) => {
       if (!item.effectStatus) return [];
       return Object.keys(item.effectStatus).map((k) => {
@@ -81,7 +90,7 @@ export const getMenuStatusText = (menu, item, state) => {
         return `${STATUS_LABELS[k] || k.toUpperCase()} ${val}`;
       });
     };
-    currentStatus = resolveStatusLines(buildInventoryItemStatus(item.inventoryItemKey, extraStatsFn), state);
+    currentStatus = resolveStatusLines(buildInventoryItemStatus(item.key, extraStatsFn), state);
   }
 
   if (currentStatus.length || effectStatus.length) {

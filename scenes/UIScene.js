@@ -240,8 +240,8 @@ export default class UIScene extends Phaser.Scene {
       return;
     }
 
-    if (item.shopItemKey) {
-      const purchase = purchaseItem(this.state, item.shopItemKey);
+    if (this.view === "shop") {
+      const purchase = purchaseItem(this.state, item.key);
       saveState(this.state);
       if (purchase.ok) {
         this.render(this.state);
@@ -452,12 +452,17 @@ export default class UIScene extends Phaser.Scene {
   }
 
   getVisibleMenuItems(menuKey) {
-    const items = MENUS[menuKey]?.items;
+    const menu = MENUS[menuKey];
+    const items = menu?.items;
     if (!items) {
       return null;
     }
 
     return items.filter((item) => {
+      if (typeof menu.visibleWhen === "function") {
+        return menu.visibleWhen(item, this.state);
+      }
+
       if (typeof item.visibleWhen === "function") {
         return item.visibleWhen(this.state);
       }
@@ -470,8 +475,8 @@ export default class UIScene extends Phaser.Scene {
     if (typeof item.name === "function") {
       return item.name(this.state);
     }
-    if (item.inventoryItemKey && !item.name) {
-      return buildInventoryItemName(item.inventoryItemKey)(this.state);
+    if (item.key && !item.name) {
+      return buildInventoryItemName(item.key)(this.state);
     }
     return item.name || item.label;
   }
@@ -537,35 +542,25 @@ export default class UIScene extends Phaser.Scene {
 
     return [
       {
-        title: "Status 1/2",
+        title: "Status",
         lines: [
           ["Age", `${state.ageMinutes}m`],
           ["Stage", state.evolutionStage],
+          ["Health", Math.round(state.health)],
           ["Money", `${Math.round(state.money)}G`],
           "separator",
           ["Hunger", Math.round(state.hunger)],
           ["Happiness", Math.round(state.happiness)],
           ["Energy", Math.round(state.energy)],
-          ["Health", Math.round(state.health)],
           ["Weight", Math.round(state.weight)]
         ]
       },
       {
-        title: "Status 2/2",
+        title: "Status",
         lines: [
           ["Str", Math.round(state.str)],
           ["Agi", Math.round(state.agi)],
           ["Int", Math.round(state.int)],
-          "separator",
-          [getItemInventoryLabel("meal"), !isConsumableItem("meal") ? "∞" : (state.inventory?.meal ?? 0)],
-          [getItemInventoryLabel("snack"), !isConsumableItem("snack") ? "∞" : (state.inventory?.snack ?? 0)],
-          [getItemInventoryLabel("medicine"), !isConsumableItem("medicine") ? "∞" : (state.inventory?.medicine ?? 0)],
-          "separator",
-          ["Clean", Math.round(state.cleanliness)],
-          ["Poop", state.poopCount],
-          ["Sleep", state.isSleeping ? "Yes" : "No"],
-          ["Sick", state.isSick ? "Yes" : "No"],
-          ["Overall", average]
         ]
       }
     ];
@@ -694,20 +689,20 @@ export default class UIScene extends Phaser.Scene {
     }
 
     if (this.view === "status") {
-      this.setMenuParent("Status");
-      this.setMenuIcon("status");
+      this.setMenuParent("");
+      this.setMenuIcon("");
       const pages = this.getStatusPages(state);
       const page = pages[this.statusPageIndex] || pages[0];
       this.statusPageIndex = Math.min(this.statusPageIndex, pages.length - 1);
       this.screenMenuTitle.textContent = page.title;
-      this.screenMenuStatus.innerHTML = `<div class="status-lines">${page.lines
+      this.screenMenuStatus.innerHTML = `<div class="status-lines"><div class="status-separator" aria-hidden="true"></div>${page.lines
         .map(
           (line) =>
             line === "separator"
               ? `<div class="status-separator" aria-hidden="true"></div>`
               : `<div class="status-line"><span class="status-name">${line[0]}:</span> <span class="status-value">${line[1]}</span></div>`
         )
-        .join("")}<div class="status-separator" aria-hidden="true"></div><div class="status-line">L/R PAGE  O CLOSE</div></div>`;
+        .join("")}<div class="status-separator" aria-hidden="true"></div><div class="status-line"></div></div>`;
       this.setMenuIndicator(pages.length, this.statusPageIndex);
       return;
     }
