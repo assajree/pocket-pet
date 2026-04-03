@@ -338,9 +338,15 @@ body {
 
 .hardware-row {
   display: flex;
-  justify-content: center;
-  gap: 18px;
+  align-items: center;
+  justify-content: space-between;
   margin-top: 8px;
+}
+
+.hardware-group {
+  display: flex;
+  align-items: center;
+  gap: 18px;
 }
 
 .hardware-okutton {
@@ -430,8 +436,11 @@ body {
   }
 
   .hardware-row {
-    gap: 12px;
     margin-top: 10px;
+  }
+
+  .hardware-group {
+    gap: 12px;
   }
 
   .hardware-okutton {
@@ -460,8 +469,11 @@ body {
   }
 
   .hardware-row {
-    gap: 14px;
     margin-top: 10px;
+  }
+
+  .hardware-group {
+    gap: 14px;
   }
 
   .screen-menu {
@@ -533,6 +545,9 @@ body {
   }
 
   .hardware-row {
+  }
+
+  .hardware-group {
     gap: 10px;
   }
 
