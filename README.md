@@ -13,19 +13,15 @@ A portrait-oriented Tamagotchi-style virtual pet built with Phaser 3 and package
 
 ## Run locally
 
-Because service workers only work on secure origins or localhost, serve the folder with a small local web server instead of opening `index.html` directly.
-
-### Option 1: Python
+Run the bundled Node server so the game and LAN link session API are served from the same origin.
 
 ```bash
-python -m http.server 8080
+node server.js
 ```
 
 Then open `http://localhost:8080`.
 
-### Option 2: VS Code Live Server
-
-Open the project folder and run the Live Server extension.
+For LAN linking on another device, open `http://<host-ip>:8080` from that device while both devices are on the same Wi-Fi or hotspot.
 
 ## PWA notes
 

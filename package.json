@@ -1,0 +1,7 @@
+{
+  "name": "pocket-pet-tamagotchi",
+  "private": true,
+  "scripts": {
+    "start": "node server.js"
+  }
+}

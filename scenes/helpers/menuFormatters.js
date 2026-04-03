@@ -74,7 +74,7 @@ export const resolveStatusLines = (statusConfig, state) => {
   return resolved ? [resolved] : [];
 };
 
-export const getMenuStatusText = (menu, item, state) => {
+export const getMenuStatusText = (menu, item, state, context = {}) => {
   let currentStatus = resolveStatusLines(item.currentStatus, state);
 
   if (!currentStatus.length && typeof menu.currentStatus === "function") {
@@ -98,7 +98,8 @@ export const getMenuStatusText = (menu, item, state) => {
   }
 
   if (typeof item.status === "function") {
-    return menu.statusText ? `${item.status(state)}\n${menu.statusText}` : item.status(state);
+    const value = item.status(state, context);
+    return menu.statusText ? `${value}\n${menu.statusText}` : value;
   }
 
   if (typeof item.status === "string") {

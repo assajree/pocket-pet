@@ -16,6 +16,14 @@ const MAX_MONEY = 9999;
 const EGG_HATCH_SECONDS = 60;
 const CHILD_HATCH_CORE_STAT = 20;
 const CHILD_HATCH_COMBAT_STAT = 5;
+const EXCHANGE_SNAPSHOT_VERSION = 1;
+const EXCHANGE_STAGE_ORDER = ["Egg", "Child", "Teen", "Adult"];
+const EXCHANGE_STAGE_BONUS = {
+  Egg: 0,
+  Child: 6,
+  Teen: 12,
+  Adult: 18
+};
 
 export {
   isConsumableItem,
@@ -92,7 +100,8 @@ export const createNewState = () => ({
       text: "A new egg is waiting to hatch.",
       time: Date.now()
     }
-  ]
+  ],
+  lastEncounterResult: null
 });
 
 const baseState = createNewState();
@@ -122,7 +131,10 @@ export const loadState = () => {
         ...parsed.timers
       },
       inventory: normalizeInventory(parsed.inventory),
-      logs: Array.isArray(parsed.logs) && parsed.logs.length ? parsed.logs : createNewState().logs
+      logs: Array.isArray(parsed.logs) && parsed.logs.length ? parsed.logs : createNewState().logs,
+      lastEncounterResult: parsed.lastEncounterResult && typeof parsed.lastEncounterResult === "object"
+        ? parsed.lastEncounterResult
+        : null
     };
   } catch (error) {
     console.warn("Failed to load save data.", error);
@@ -346,6 +358,361 @@ export const getNeedList = (state) => {
 
 export const getStatusText = (state) => {
   return getMoodList(state)[0];
+};
+
+const stableStringify = (value) => {
+  if (value === null || typeof value !== "object") {
+    return JSON.stringify(value);
+  }
+
+  if (Array.isArray(value)) {
+    return `[${value.map((entry) => stableStringify(entry)).join(",")}]`;
+  }
+
+  const keys = Object.keys(value).sort();
+  return `{${keys.map((key) => `${JSON.stringify(key)}:${stableStringify(value[key])}`).join(",")}}`;
+};
+
+const hashString = (input) => {
+  let hash = 0x811c9dc5;
+
+  for (let index = 0; index < input.length; index += 1) {
+    hash ^= input.charCodeAt(index);
+    hash = Math.imul(hash, 0x01000193);
+  }
+
+  return (hash >>> 0).toString(16).padStart(8, "0");
+};
+
+const createSeededRng = (seedText) => {
+  let seed = parseInt(hashString(seedText), 16) >>> 0;
+
+  return () => {
+    seed = (seed + 0x6d2b79f5) >>> 0;
+    let t = seed;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+};
+
+const sanitizeExchangePayload = (snapshot) => ({
+  version: snapshot.version,
+  petName: snapshot.petName || "",
+  createdAt: snapshot.createdAt,
+  evolutionStage: snapshot.evolutionStage,
+  hunger: snapshot.hunger,
+  happiness: snapshot.happiness,
+  energy: snapshot.energy,
+  health: snapshot.health,
+  cleanliness: snapshot.cleanliness,
+  weight: snapshot.weight,
+  money: snapshot.money,
+  str: snapshot.str,
+  agi: snapshot.agi,
+  int: snapshot.int,
+  isAlive: snapshot.isAlive,
+  isSleeping: snapshot.isSleeping,
+  isSick: snapshot.isSick
+});
+
+const buildExchangeChecksum = (snapshot) => hashString(stableStringify(sanitizeExchangePayload(snapshot)));
+
+const getExchangeStageBonus = (stage) => EXCHANGE_STAGE_BONUS[stage] ?? 0;
+
+const getStageIndex = (stage) => {
+  const index = EXCHANGE_STAGE_ORDER.indexOf(stage);
+  return index < 0 ? 0 : index;
+};
+
+const getSnapshotLabel = (snapshot) =>
+  snapshot.petName?.trim()
+  || `${snapshot.evolutionStage} Pet ${String(snapshot.checksum).slice(0, 4).toUpperCase()}`;
+
+const getCanonicalEncounterPair = (firstSnapshot, secondSnapshot) => {
+  const ordered = [firstSnapshot, secondSnapshot].sort((left, right) =>
+    left.checksum.localeCompare(right.checksum)
+      || String(left.createdAt).localeCompare(String(right.createdAt))
+  );
+
+  return {
+    alpha: ordered[0],
+    beta: ordered[1],
+    localIsAlpha: ordered[0].checksum === firstSnapshot.checksum
+  };
+};
+
+const clampEncounterEffect = (value) => Math.round(value || 0);
+
+const normalizeEncounterEffects = (effects = {}) => Object.fromEntries(
+  Object.entries(effects)
+    .filter(([, value]) => typeof value === "number" && value)
+    .map(([key, value]) => [key, clampEncounterEffect(value)])
+);
+
+const formatEncounterEffects = (effects = {}) => {
+  const lines = Object.entries(normalizeEncounterEffects(effects)).map(([key, value]) => {
+    const label = ({
+      health: "health",
+      happiness: "happiness",
+      energy: "energy",
+      money: "money"
+    })[key] || key;
+    return `${value > 0 ? "+" : ""}${value} ${label}`;
+  });
+
+  return lines.join(", ");
+};
+
+const buildOutcomeSummary = (summaryText) => summaryText;
+
+export const createExchangeSnapshot = (state) => {
+  const snapshot = {
+    version: EXCHANGE_SNAPSHOT_VERSION,
+    petName: state.petName || "",
+    createdAt: Date.now(),
+    evolutionStage: state.evolutionStage,
+    hunger: Math.round(state.hunger),
+    happiness: Math.round(state.happiness),
+    energy: Math.round(state.energy),
+    health: Math.round(state.health),
+    cleanliness: Math.round(state.cleanliness),
+    weight: Math.round(state.weight),
+    money: Math.round(state.money),
+    str: Math.round(state.str),
+    agi: Math.round(state.agi),
+    int: Math.round(state.int),
+    isAlive: !!state.isAlive,
+    isSleeping: !!state.isSleeping,
+    isSick: !!state.isSick
+  };
+
+  return {
+    ...snapshot,
+    checksum: buildExchangeChecksum(snapshot)
+  };
+};
+
+export const encodeExchangeSnapshot = (snapshot) => stableStringify(snapshot);
+
+export const decodeExchangeSnapshot = (text) => {
+  const parsed = JSON.parse(String(text || "").trim());
+  return {
+    ...parsed,
+    petName: typeof parsed.petName === "string" ? parsed.petName : ""
+  };
+};
+
+export const validateExchangeSnapshot = (snapshot) => {
+  if (!snapshot || typeof snapshot !== "object" || Array.isArray(snapshot)) {
+    return { ok: false, message: "Snapshot data is invalid." };
+  }
+
+  if (snapshot.version !== EXCHANGE_SNAPSHOT_VERSION) {
+    return { ok: false, message: "Snapshot version is not supported." };
+  }
+
+  const requiredNumericFields = [
+    "createdAt",
+    "hunger",
+    "happiness",
+    "energy",
+    "health",
+    "cleanliness",
+    "weight",
+    "money",
+    "str",
+    "agi",
+    "int"
+  ];
+  for (const field of requiredNumericFields) {
+    if (typeof snapshot[field] !== "number" || Number.isNaN(snapshot[field])) {
+      return { ok: false, message: `Snapshot field ${field} is invalid.` };
+    }
+  }
+
+  const requiredBooleanFields = ["isAlive", "isSleeping", "isSick"];
+  for (const field of requiredBooleanFields) {
+    if (typeof snapshot[field] !== "boolean") {
+      return { ok: false, message: `Snapshot field ${field} is invalid.` };
+    }
+  }
+
+  if (!EXCHANGE_STAGE_ORDER.includes(snapshot.evolutionStage)) {
+    return { ok: false, message: "Snapshot stage is invalid." };
+  }
+
+  const expectedChecksum = buildExchangeChecksum(snapshot);
+  if (snapshot.checksum !== expectedChecksum) {
+    return { ok: false, message: "Snapshot checksum did not match." };
+  }
+
+  return {
+    ok: true,
+    snapshot: {
+      ...sanitizeExchangePayload(snapshot),
+      checksum: snapshot.checksum
+    }
+  };
+};
+
+export const createMatchSeed = (localChecksum, remoteChecksum, mode) =>
+  [String(localChecksum), String(remoteChecksum)].sort().concat(String(mode || "")).join(":");
+
+const buildCombatParticipant = (snapshot) => ({
+  label: getSnapshotLabel(snapshot),
+  power: snapshot.str * 1.2 + snapshot.agi * 0.8 + snapshot.int * 0.5 + getExchangeStageBonus(snapshot.evolutionStage),
+  guard: snapshot.health * 0.25 + snapshot.cleanliness * 0.08 + snapshot.energy * 0.1,
+  stamina: snapshot.energy * 0.2,
+  sickPenalty: snapshot.isSick ? 9 : 0,
+  sleepPenalty: snapshot.isSleeping ? 6 : 0
+});
+
+const buildCombatEffectsForSide = (winnerKey, sideKey) => {
+  if (winnerKey === "draw") {
+    return { health: -5, energy: -8, happiness: 2 };
+  }
+
+  if (winnerKey === sideKey) {
+    return { health: -3, energy: -9, happiness: 8, money: 10 };
+  }
+
+  return { health: -10, energy: -12, happiness: -5, money: 2 };
+};
+
+export const runCombatEncounter = (localSnapshot, remoteSnapshot, seed) => {
+  const canonical = getCanonicalEncounterPair(localSnapshot, remoteSnapshot);
+  const alpha = buildCombatParticipant(canonical.alpha);
+  const beta = buildCombatParticipant(canonical.beta);
+  const rng = createSeededRng(seed);
+  let alphaScore = 0;
+  let betaScore = 0;
+  const rounds = [];
+
+  for (let round = 1; round <= 3; round += 1) {
+    const alphaAttack = alpha.power + alpha.stamina + (rng() * 12) - alpha.sickPenalty - alpha.sleepPenalty;
+    const betaAttack = beta.power + beta.stamina + (rng() * 12) - beta.sickPenalty - beta.sleepPenalty;
+    const alphaTotal = alphaAttack + alpha.guard * 0.35;
+    const betaTotal = betaAttack + beta.guard * 0.35;
+
+    if (Math.abs(alphaTotal - betaTotal) < 3) {
+      rounds.push(`R${round} draw`);
+      continue;
+    }
+
+    const roundWinner = alphaTotal > betaTotal ? "alpha" : "beta";
+    if (roundWinner === "alpha") {
+      alphaScore += 1;
+    } else {
+      betaScore += 1;
+    }
+    rounds.push(`R${round} ${roundWinner === "alpha" ? alpha.label : beta.label}`);
+  }
+
+  const winnerKey = alphaScore === betaScore ? "draw" : (alphaScore > betaScore ? "alpha" : "beta");
+  const winnerLabel = winnerKey === "draw" ? "Draw" : (winnerKey === "alpha" ? alpha.label : beta.label);
+  const alphaEffects = buildCombatEffectsForSide(winnerKey, "alpha");
+  const betaEffects = buildCombatEffectsForSide(winnerKey, "beta");
+  const localEffects = canonical.localIsAlpha ? alphaEffects : betaEffects;
+  const localWinner = winnerKey === "draw" ? "draw" : ((winnerKey === "alpha") === canonical.localIsAlpha ? "local" : "remote");
+  const summaryBase = `Combat ${alpha.label} ${alphaScore}-${betaScore} ${beta.label}. Winner: ${winnerLabel}. ${rounds.join(" | ")}.`;
+
+  return {
+    mode: "combat",
+    seed,
+    localChecksum: localSnapshot.checksum,
+    remoteChecksum: remoteSnapshot.checksum,
+    summary: buildOutcomeSummary(summaryBase),
+    localEffects: normalizeEncounterEffects(localEffects),
+    winner: localWinner,
+    rounds
+  };
+};
+
+const buildDatingTier = (compatibility) => {
+  if (compatibility >= 78) {
+    return "Great";
+  }
+  if (compatibility >= 52) {
+    return "Okay";
+  }
+  return "Bad";
+};
+
+const buildDatingEffects = (tier) => {
+  switch (tier) {
+    case "Great":
+      return { happiness: 12, energy: -5, money: 6 };
+    case "Okay":
+      return { happiness: 5, energy: -4 };
+    default:
+      return { happiness: -4, energy: -3, health: -2 };
+  }
+};
+
+export const runDatingEncounter = (localSnapshot, remoteSnapshot, seed) => {
+  const canonical = getCanonicalEncounterPair(localSnapshot, remoteSnapshot);
+  const rng = createSeededRng(seed);
+  const alpha = canonical.alpha;
+  const beta = canonical.beta;
+  const sharedCore = (
+    100
+    - Math.abs(alpha.happiness - beta.happiness) * 0.28
+    - Math.abs(alpha.energy - beta.energy) * 0.12
+    - Math.abs(alpha.cleanliness - beta.cleanliness) * 0.1
+    - Math.abs(getStageIndex(alpha.evolutionStage) - getStageIndex(beta.evolutionStage)) * 8
+  );
+  const bonus = ((alpha.health + beta.health) / 2) * 0.12 + rng() * 10;
+  const penalties = (alpha.isSick ? 7 : 0) + (beta.isSick ? 7 : 0) + (alpha.isSleeping ? 4 : 0) + (beta.isSleeping ? 4 : 0);
+  const compatibility = Math.round(clamp(sharedCore + bonus - penalties, 0, 100));
+  const tier = buildDatingTier(compatibility);
+  const localEffects = buildDatingEffects(tier);
+  const summaryBase = `Dating ${getSnapshotLabel(alpha)} + ${getSnapshotLabel(beta)} scored ${compatibility} compatibility. Result: ${tier}.`;
+
+  return {
+    mode: "dating",
+    seed,
+    localChecksum: localSnapshot.checksum,
+    remoteChecksum: remoteSnapshot.checksum,
+    summary: buildOutcomeSummary(summaryBase),
+    localEffects: normalizeEncounterEffects(localEffects),
+    compatibility,
+    tier
+  };
+};
+
+export const applyEncounterOutcome = (state, outcome) => {
+  if (!outcome || typeof outcome !== "object") {
+    return { ok: false, message: "Encounter result is invalid." };
+  }
+
+  const localEffects = normalizeEncounterEffects(outcome.localEffects);
+  Object.entries(localEffects).forEach(([key, delta]) => {
+    if (typeof state[key] !== "number") {
+      return;
+    }
+    state[key] = clampStatValue(key, state[key] + delta);
+  });
+
+  state.lastEncounterResult = {
+    mode: outcome.mode,
+    seed: outcome.seed,
+    localChecksum: outcome.localChecksum,
+    remoteChecksum: outcome.remoteChecksum,
+    summary: outcome.summary,
+    localEffects,
+    winner: outcome.winner,
+    compatibility: outcome.compatibility,
+    tier: outcome.tier,
+    resolvedAt: Date.now()
+  };
+  addLog(state, outcome.mode === "combat" ? "Encounter: combat resolved." : "Encounter: date resolved.");
+  addLog(state, outcome.summary);
+  const effectText = formatEncounterEffects(localEffects);
+  if (effectText) {
+    addLog(state, `Encounter effect: ${effectText}.`);
+  }
+  return { ok: true };
 };
 
 

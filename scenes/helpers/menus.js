@@ -9,6 +9,7 @@ export const MENUS = {
     items: [
       { key: "feed", label: "FEED", caption: "Open the feeding menu.", submenu: "feed" },
       { key: "play", label: "PLAY", caption: "Open the mini game list.", submenu: "play" },
+      { key: "link", label: "LINK", caption: "Exchange pet status with another device.", submenu: "link" },
       { key: "shop", label: "SHOP", caption: "Buy item.", submenu: "shop" },
       { key: "sleep", label: "SLEEP", caption: "Turn the lights off for sleep." },
       { key: "clean", label: "CLEAN", caption: "Clean the room and the mess." },
@@ -28,6 +29,27 @@ export const MENUS = {
   play: {
     statusText: "",
     items: PLAY_MENU_ITEMS
+  },
+  link: {
+    statusText: "Choose a link mode to host or join.",
+    items: [
+      { key: "battle", label: "BATTLE", caption: "Host or join a battle link.", submenu: "link-battle" },
+      { key: "dating", label: "DATING", caption: "Host or join a dating link.", submenu: "link-dating" }
+    ]
+  },
+  "link-battle": {
+    statusText: "Battle links auto-resolve after exchange.",
+    items: [
+      { key: "link-battle-host", label: "HOST", caption: "Open a battle host session.", icon: "", status: (state, context) => context.scene?.getEncounterMenuStatus(state, { key: "link-battle-host" }) },
+      { key: "link-battle-join", label: "JOIN", caption: "Join a battle host session.", icon: "", status: (state, context) => context.scene?.getEncounterMenuStatus(state, { key: "link-battle-join" }) }
+    ]
+  },
+  "link-dating": {
+    statusText: "Dating links auto-resolve after exchange.",
+    items: [
+      { key: "link-dating-host", label: "HOST", caption: "Open a dating host session.", icon: "", status: (state, context) => context.scene?.getEncounterMenuStatus(state, { key: "link-dating-host" }) },
+      { key: "link-dating-join", label: "JOIN", caption: "Join a dating host session.", icon: "", status: (state, context) => context.scene?.getEncounterMenuStatus(state, { key: "link-dating-join" }) }
+    ]
   },
   shop: {
     statusText: "",

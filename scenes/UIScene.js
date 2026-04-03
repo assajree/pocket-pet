@@ -1,14 +1,20 @@
 import {
   accelerateEggHatch,
   addMiniGameReward,
+  applyEncounterOutcome,
   applyAction,
   clearState,
+  createExchangeSnapshot,
+  createMatchSeed,
   createNewState,
   getEggHatchSecondsRemaining,
   getNeedList,
   purchaseItem,
+  runCombatEncounter,
+  runDatingEncounter,
   saveState,
   getMoodList,
+  validateExchangeSnapshot,
 } from "../gameState.js";
 import {
   applyMiniGameInput,
@@ -21,6 +27,14 @@ import {
 import { MENUS, isMenuView } from "./helpers/menus.js";
 import { getMenuStatusText, buildInventoryItemName } from "./helpers/menuFormatters.js";
 import { ACTION_ANIMATION_CONFIG, MINI_GAME_SUMMARY_DURATION_MS, SLEEP_OK_ENERGY_BOOST } from "./helpers/uiConfig.js";
+import {
+  closeLinkSession,
+  completeLinkSession,
+  fetchLinkSessionState,
+  hostLinkSession,
+  joinLinkSession,
+  uploadLinkSnapshot
+} from "./helpers/linkSessionClient.js";
 
 const formatCountdown = (secondsRemaining) => {
   const minutes = Math.floor(secondsRemaining / 60);
@@ -71,6 +85,16 @@ export default class UIScene extends Phaser.Scene {
     this.actionAnimationTimer = null;
     this.currentActionAnimation = null;
     this.activeMiniGameItem = null;
+    this.remoteEncounterSnapshot = null;
+    this.exchangeSessionCode = "";
+    this.exchangeRole = "";
+    this.exchangeMode = "";
+    this.expectedExchangeMode = "";
+    this.exchangeConnectionState = "idle";
+    this.localSnapshotSent = false;
+    this.encounterResolved = false;
+    this.lastExchangeError = "";
+    this.exchangePollTimer = null;
   }
 
   create() {
@@ -94,6 +118,7 @@ export default class UIScene extends Phaser.Scene {
     this.gameScene.events.on("state-changed", this.handleStateChanged, this);
     this.gameScene.events.on("evolution-animation-changed", this.handleEvolutionAnimationChanged, this);
     this.events.on("shutdown", () => {
+      this.stopExchangePolling();
       this.gameScene.events.off("state-changed", this.handleStateChanged, this);
       this.gameScene.events.off("evolution-animation-changed", this.handleEvolutionAnimationChanged, this);
       window.removeEventListener("keydown", this.handleKeydown);
@@ -280,6 +305,11 @@ export default class UIScene extends Phaser.Scene {
       return;
     }
 
+    if (String(item.key || "").startsWith("link-")) {
+      this.handleEncounterMenuAction(item.key);
+      return;
+    }
+
     if (item.minigame) {
       this.startMiniGame(item);
       return;
@@ -328,6 +358,274 @@ export default class UIScene extends Phaser.Scene {
     }
 
     this.showMessage(result.message || this.getSuccessMessage(item.key), false);
+  }
+
+  getLocalEncounterSnapshot() {
+    return createExchangeSnapshot(this.state);
+  }
+
+  canUseLocalSnapshot() {
+    return !!this.state.isAlive && this.state.evolutionStage !== "Egg";
+  }
+
+  resetExchangeRuntime() {
+    this.stopExchangePolling();
+    this.remoteEncounterSnapshot = null;
+    this.exchangeSessionCode = "";
+    this.exchangeRole = "";
+    this.exchangeMode = "";
+    this.expectedExchangeMode = "";
+    this.exchangeConnectionState = "idle";
+    this.localSnapshotSent = false;
+    this.encounterResolved = false;
+    this.lastExchangeError = "";
+  }
+
+  stopExchangePolling() {
+    if (!this.exchangePollTimer) {
+      return;
+    }
+
+    window.clearInterval(this.exchangePollTimer);
+    this.exchangePollTimer = null;
+  }
+
+  startExchangePolling() {
+    this.stopExchangePolling();
+    this.exchangePollTimer = window.setInterval(() => {
+      this.pollExchangeSession();
+    }, 1000);
+  }
+
+  getEncounterMenuStatus(_state, item) {
+    const localSnapshotReady = this.canUseLocalSnapshot();
+    const waitingText = this.exchangeSessionCode
+      ? `CODE ${this.exchangeSessionCode}\nSTATE ${this.exchangeConnectionState.toUpperCase()}`
+      : "No active session.";
+
+    switch (item.key) {
+      case "link-battle-host":
+        return [
+          `LOCAL ${localSnapshotReady ? "READY" : "LOCKED"}`,
+          this.exchangeSessionCode && this.exchangeMode === "combat" ? waitingText : "Host a battle session."
+        ].join("\n");
+      case "link-battle-join":
+        return [
+          `LOCAL ${localSnapshotReady ? "READY" : "LOCKED"}`,
+          this.expectedExchangeMode === "combat" && this.exchangeSessionCode ? waitingText : "Join a battle session by code."
+        ].join("\n");
+      case "link-dating-host":
+        return [
+          `LOCAL ${localSnapshotReady ? "READY" : "LOCKED"}`,
+          this.exchangeSessionCode && this.exchangeMode === "dating" ? waitingText : "Host a dating session."
+        ].join("\n");
+      case "link-dating-join":
+        return [
+          `LOCAL ${localSnapshotReady ? "READY" : "LOCKED"}`,
+          this.expectedExchangeMode === "dating" && this.exchangeSessionCode ? waitingText : "Join a dating session by code."
+        ].join("\n");
+      default:
+        return "";
+    }
+  }
+
+  getEncounterGuardError() {
+    if (!this.canUseLocalSnapshot()) {
+      return "Your pet must be alive and hatched first.";
+    }
+
+    return "";
+  }
+
+  async startHostedEncounter(mode) {
+    const guardError = this.getEncounterGuardError();
+    if (guardError) {
+      this.showMessage(guardError, false);
+      return;
+    }
+
+    this.resetExchangeRuntime();
+    this.exchangeConnectionState = "hosting";
+    this.exchangeMode = mode;
+    this.render(this.state);
+
+    try {
+      const session = await hostLinkSession(mode);
+      this.exchangeSessionCode = session.code;
+      this.exchangeRole = "host";
+      this.exchangeMode = session.mode;
+      this.exchangeConnectionState = "waiting";
+      await this.sendLocalSnapshotIfReady();
+      this.startExchangePolling();
+      this.showMessage(`Host ${mode === "combat" ? "battle" : "dating"} code: ${session.code}`, true);
+    } catch (error) {
+      this.handleExchangeFailure(error.message || "Could not host link session.");
+    }
+  }
+
+  async startJoinedEncounter(mode) {
+    const guardError = this.getEncounterGuardError();
+    if (guardError) {
+      this.showMessage(guardError, false);
+      return;
+    }
+
+    const code = window.prompt(`Enter the ${mode === "combat" ? "battle" : "dating"} host code:`)?.trim().toUpperCase();
+    if (!code) {
+      this.showMessage("Join cancelled.", false);
+      return;
+    }
+
+    this.resetExchangeRuntime();
+    this.exchangeConnectionState = "joining";
+    this.expectedExchangeMode = mode;
+    this.render(this.state);
+
+    try {
+      const session = await joinLinkSession(code, mode);
+      if (session.mode !== mode) {
+        this.handleExchangeFailure(`Mode mismatch: host is ${session.mode}.`);
+        return;
+      }
+
+      this.exchangeSessionCode = session.code;
+      this.exchangeRole = "join";
+      this.exchangeMode = session.mode;
+      this.expectedExchangeMode = mode;
+      this.exchangeConnectionState = "connected";
+      await this.sendLocalSnapshotIfReady();
+      this.startExchangePolling();
+      this.showMessage(`Connected to ${mode === "combat" ? "battle" : "dating"} host ${session.code}.`, true);
+    } catch (error) {
+      const hostMode = error.payload?.hostMode;
+      const message = hostMode ? `Mode mismatch: host is ${hostMode}.` : (error.message || "Could not join link session.");
+      this.handleExchangeFailure(message);
+    }
+  }
+
+  async sendLocalSnapshotIfReady() {
+    if (!this.exchangeSessionCode || !this.exchangeRole || this.localSnapshotSent || !this.canUseLocalSnapshot()) {
+      return;
+    }
+
+    const snapshot = this.getLocalEncounterSnapshot();
+    await uploadLinkSnapshot(this.exchangeSessionCode, this.exchangeRole, snapshot);
+    this.localSnapshotSent = true;
+  }
+
+  async pollExchangeSession() {
+    if (!this.exchangeSessionCode || !this.exchangeRole || this.encounterResolved) {
+      return;
+    }
+
+    try {
+      const session = await fetchLinkSessionState(this.exchangeSessionCode, this.exchangeRole);
+      const expectedMode = this.expectedExchangeMode || this.exchangeMode;
+      if (expectedMode && session.mode !== expectedMode) {
+        this.handleExchangeFailure(`Mode mismatch: host is ${session.mode}.`, true);
+        return;
+      }
+
+      this.exchangeMode = session.mode;
+      this.exchangeConnectionState = session.joinConnected ? "connected" : (this.exchangeRole === "host" ? "waiting" : "joining");
+
+      if (!this.localSnapshotSent) {
+        await this.sendLocalSnapshotIfReady();
+      }
+
+      if (session.remoteSnapshot && !this.remoteEncounterSnapshot) {
+        const validated = validateExchangeSnapshot(session.remoteSnapshot);
+        if (!validated.ok) {
+          this.handleExchangeFailure(validated.message || "Remote snapshot is invalid.", true);
+          return;
+        }
+
+        const snapshot = validated.snapshot;
+        if (!snapshot.isAlive || snapshot.evolutionStage === "Egg") {
+          this.handleExchangeFailure("Remote pet must be alive and hatched.", true);
+          return;
+        }
+
+        this.remoteEncounterSnapshot = snapshot;
+        this.exchangeConnectionState = "ready";
+      }
+
+      await this.maybeResolveAutoEncounter();
+      this.render(this.state);
+    } catch (error) {
+      this.handleExchangeFailure(error.message || "Link session disconnected.");
+    }
+  }
+
+  async maybeResolveAutoEncounter() {
+    if (
+      this.encounterResolved
+      || !this.exchangeMode
+      || !this.localSnapshotSent
+      || !this.remoteEncounterSnapshot
+    ) {
+      return;
+    }
+
+    this.encounterResolved = true;
+    const localSnapshot = this.getLocalEncounterSnapshot();
+    const remoteSnapshot = this.remoteEncounterSnapshot;
+    const seed = createMatchSeed(localSnapshot.checksum, remoteSnapshot.checksum, this.exchangeMode);
+    const outcome = this.exchangeMode === "combat"
+      ? runCombatEncounter(localSnapshot, remoteSnapshot, seed)
+      : runDatingEncounter(localSnapshot, remoteSnapshot, seed);
+
+    const applied = applyEncounterOutcome(this.state, outcome);
+    if (!applied.ok) {
+      this.handleExchangeFailure(applied.message || "Encounter could not be applied.", true);
+      return;
+    }
+
+    this.gameScene.syncVisuals();
+    saveState(this.state);
+
+    try {
+      await completeLinkSession(this.exchangeSessionCode, this.exchangeRole);
+    } catch (_error) {
+      // The local result has already been applied; session completion is best-effort cleanup.
+    }
+
+    const summary = outcome.summary;
+    this.resetExchangeRuntime();
+    this.showMessage(summary, true);
+  }
+
+  async handleExchangeFailure(message, shouldCloseRemote = false) {
+    const code = this.exchangeSessionCode;
+    this.resetExchangeRuntime();
+    this.lastExchangeError = message;
+    if (shouldCloseRemote && code) {
+      try {
+        await closeLinkSession(code);
+      } catch (_error) {
+        // Ignore cleanup errors after a local failure.
+      }
+    }
+    this.showMessage(message, false);
+  }
+
+  handleEncounterMenuAction(actionKey) {
+    switch (actionKey) {
+      case "link-battle-host":
+        this.startHostedEncounter("combat");
+        return;
+      case "link-battle-join":
+        this.startJoinedEncounter("combat");
+        return;
+      case "link-dating-host":
+        this.startHostedEncounter("dating");
+        return;
+      case "link-dating-join":
+        this.startJoinedEncounter("dating");
+        return;
+      default:
+        break;
+    }
   }
 
   showActionAnimation(action) {
@@ -559,6 +857,9 @@ export default class UIScene extends Phaser.Scene {
     if (typeof item.name === "function") {
       return item.name(this.state);
     }
+    if (item.label) {
+      return item.label;
+    }
     if (item.key && !item.name) {
       return buildInventoryItemName(item.key)(this.state);
     }
@@ -652,7 +953,18 @@ export default class UIScene extends Phaser.Scene {
           ["Agi", Math.round(state.agi)],
           ["Int", Math.round(state.int)],
         ]
-      },      
+      },
+      {
+        title: "Link",
+        lines: [
+          ["Local", this.canUseLocalSnapshot() ? "Ready" : "Locked"],
+          ["Mode", this.exchangeMode || this.expectedExchangeMode || "--"],
+          ["State", this.exchangeConnectionState],
+          ["Code", this.exchangeSessionCode || "--"],
+          "separator",
+          this.lastExchangeError || this.state.lastEncounterResult?.summary || "No encounter result yet."
+        ]
+      },
     ];
   }
 
@@ -721,6 +1033,7 @@ export default class UIScene extends Phaser.Scene {
     this.actionAnimationTimer = null;
     this.currentActionAnimation = null;
     this.activeMiniGameItem = null;
+    this.resetExchangeRuntime();
     saveState(freshState);
     this.scene.stop("GameScene");
     this.scene.start("GameScene");
@@ -793,7 +1106,10 @@ export default class UIScene extends Phaser.Scene {
       this.setMenuParent(this.getMenuParentText());
       this.setMenuIcon(item.icon !== undefined ? item.icon : item.key);
       this.screenMenuTitle.textContent = this.getMenuItemTitle(item);
-      this.screenMenuStatus.textContent = getMenuStatusText(menu, item, state);
+      this.screenMenuStatus.textContent = getMenuStatusText(menu, item, state, {
+        scene: this,
+        remoteEncounterSnapshot: this.remoteEncounterSnapshot
+      });
       this.setMenuIndicator(items.length, this.menuIndexes[this.view]);
       return;
     }
