@@ -97,6 +97,7 @@ export default class UIScene extends Phaser.Scene {
     this.exchangePollTimer = null;
     this.joinCodeSequence = [];
     this.pendingJoinMode = "";
+    this.messageReturnState = null;
   }
 
   create() {
@@ -562,7 +563,10 @@ export default class UIScene extends Phaser.Scene {
     try {
       const session = await joinLinkSession(code, mode);
       if (session.mode !== mode) {
-        this.handleExchangeFailure(`Mode mismatch: host is ${session.mode}.`);
+        this.handleExchangeFailure(`Mode mismatch: host is ${session.mode}.`, false, {
+          returnToSubmenu: true,
+          mode
+        });
         return;
       }
 
@@ -577,7 +581,10 @@ export default class UIScene extends Phaser.Scene {
     } catch (error) {
       const hostMode = error.payload?.hostMode;
       const message = hostMode ? `Mode mismatch: host is ${hostMode}.` : (error.message || "Could not join link session.");
-      this.handleExchangeFailure(message);
+      this.handleExchangeFailure(message, false, {
+        returnToSubmenu: true,
+        mode
+      });
     }
   }
 
@@ -673,7 +680,20 @@ export default class UIScene extends Phaser.Scene {
     this.showMessage(summary, true);
   }
 
-  async handleExchangeFailure(message, shouldCloseRemote = false) {
+  buildJoinSubmenuReturnState(mode) {
+    const view = mode === "dating" ? "link-dating" : "link-battle";
+    const parentLabel = mode === "dating" ? "DATING" : "BATTLE";
+    return {
+      view,
+      menuPath: [
+        { key: "main", label: "" },
+        { key: "link", label: "LINK" },
+        { key: view, label: parentLabel }
+      ]
+    };
+  }
+
+  async handleExchangeFailure(message, shouldCloseRemote = false, options = {}) {
     const code = this.exchangeSessionCode;
     this.resetExchangeRuntime();
     this.lastExchangeError = message;
@@ -684,7 +704,8 @@ export default class UIScene extends Phaser.Scene {
         // Ignore cleanup errors after a local failure.
       }
     }
-    this.showMessage(message, false);
+    const returnState = options.returnToSubmenu ? this.buildJoinSubmenuReturnState(options.mode) : null;
+    this.showMessage(message, false, { returnState });
   }
 
   handleEncounterMenuAction(actionKey) {
@@ -944,10 +965,11 @@ export default class UIScene extends Phaser.Scene {
     return item.name || item.label;
   }
 
-  showMessage(text, success = true) {
+  showMessage(text, success = true, options = {}) {
     this.view = "message";
     this.messageText = text;
     this.messageSuccess = success;
+    this.messageReturnState = options.returnState || null;
     this.render(this.state);
   }
 
@@ -1088,9 +1110,18 @@ export default class UIScene extends Phaser.Scene {
       this.resetJoinCodeEntry();
     }
 
+    if (this.view === "message" && this.messageReturnState) {
+      this.view = this.messageReturnState.view;
+      this.menuPath = this.messageReturnState.menuPath.map((entry) => ({ ...entry }));
+      this.messageReturnState = null;
+      this.render(this.state);
+      return;
+    }
+
     this.menuPath = [];
     this.statusPageIndex = 0;
     this.view = "pet";
+    this.messageReturnState = null;
     this.render(this.state);
   }
 
@@ -1115,6 +1146,7 @@ export default class UIScene extends Phaser.Scene {
     this.actionAnimationTimer = null;
     this.currentActionAnimation = null;
     this.activeMiniGameItem = null;
+    this.messageReturnState = null;
     this.resetExchangeRuntime();
     saveState(freshState);
     this.scene.stop("GameScene");
