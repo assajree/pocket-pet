@@ -1,7 +1,7 @@
 import { buildShopStatus } from "./menuFormatters.js";
 import { ITEM_LIST } from "./items.js";
-import { PLAY_MENU_ITEMS } from "./minigames/index.js";
-import { getInventoryCount } from "../gameState.js";
+import { PLAY_MENU_ITEMS } from "../minigames/index.js";
+import { getInventoryCount } from "../../gameState.js";
 
 export const MENUS = {
   main: {

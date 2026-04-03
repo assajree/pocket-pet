@@ -4,7 +4,7 @@ import {
   getShopPrice,
   isConsumableItem,
   isShopItem
-} from "./scenes/items.js";
+} from "./scenes/helpers/items.js";
 
 const SAVE_KEY = "pocket-pet-save-v1";
 const MAX_LOGS = 18;

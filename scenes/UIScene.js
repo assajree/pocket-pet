@@ -18,14 +18,17 @@ import {
   getMiniGameSummaryText as buildMiniGameSummaryText,
   initializeMiniGameSession
 } from "./minigames/index.js";
-import { MENUS, isMenuView } from "./menus.js";
-import { getMenuStatusText, buildInventoryItemName } from "./menuFormatters.js";
-import { ACTION_ANIMATION_CONFIG, MINI_GAME_SUMMARY_DURATION_MS, SLEEP_OK_ENERGY_BOOST } from "./uiConfig.js";
+import { MENUS, isMenuView } from "./helpers/menus.js";
+import { getMenuStatusText, buildInventoryItemName } from "./helpers/menuFormatters.js";
+import { ACTION_ANIMATION_CONFIG, MINI_GAME_SUMMARY_DURATION_MS, SLEEP_OK_ENERGY_BOOST } from "./helpers/uiConfig.js";
 
 const formatCountdown = (secondsRemaining) => {
   const minutes = Math.floor(secondsRemaining / 60);
   const seconds = Math.max(0, secondsRemaining % 60);
-  return `${minutes}:${String(seconds).padStart(2, "0")}`;
+  if (minutes < 1) {
+    return `${seconds}`;
+  }
+  return `${minutes}:${seconds}`;
 };
 
 const getPetNeedIconKeys = (state) => {
@@ -63,6 +66,7 @@ export default class UIScene extends Phaser.Scene {
     this.statusPageIndex = 0;
     this.miniGame = createMiniGameState();
     this.inputLockedUntil = 0;
+    this.isEvolutionAnimationActive = false;
     this.summaryTimer = null;
     this.actionAnimationTimer = null;
     this.currentActionAnimation = null;
@@ -82,10 +86,16 @@ export default class UIScene extends Phaser.Scene {
       this.render(state);
       saveState(state);
     };
+    this.handleEvolutionAnimationChanged = (isActive) => {
+      this.isEvolutionAnimationActive = !!isActive;
+      this.render(this.state);
+    };
 
     this.gameScene.events.on("state-changed", this.handleStateChanged, this);
+    this.gameScene.events.on("evolution-animation-changed", this.handleEvolutionAnimationChanged, this);
     this.events.on("shutdown", () => {
       this.gameScene.events.off("state-changed", this.handleStateChanged, this);
+      this.gameScene.events.off("evolution-animation-changed", this.handleEvolutionAnimationChanged, this);
       window.removeEventListener("keydown", this.handleKeydown);
       this.summaryTimer?.remove(false);
       this.actionAnimationTimer?.remove(false);
@@ -458,7 +468,7 @@ export default class UIScene extends Phaser.Scene {
   }
 
   isInputLocked() {
-    return this.time.now < this.inputLockedUntil;
+    return this.time.now < this.inputLockedUntil || this.isEvolutionAnimationActive;
   }
 
   boostSleepingEnergy() {
@@ -693,6 +703,7 @@ export default class UIScene extends Phaser.Scene {
   restartGame() {
     if (this.gameScene) {
       this.gameScene.events.off("state-changed", this.handleStateChanged, this);
+      this.gameScene.events.off("evolution-animation-changed", this.handleEvolutionAnimationChanged, this);
     }
 
     clearState();
@@ -703,6 +714,7 @@ export default class UIScene extends Phaser.Scene {
     this.statusPageIndex = 0;
     this.view = "pet";
     this.inputLockedUntil = 0;
+    this.isEvolutionAnimationActive = false;
     this.summaryTimer?.remove(false);
     this.summaryTimer = null;
     this.actionAnimationTimer?.remove(false);
@@ -714,6 +726,7 @@ export default class UIScene extends Phaser.Scene {
     this.scene.start("GameScene");
     this.gameScene = this.scene.get("GameScene");
     this.gameScene.events.on("state-changed", this.handleStateChanged, this);
+    this.gameScene.events.on("evolution-animation-changed", this.handleEvolutionAnimationChanged, this);
     this.render(freshState);
   }
 
@@ -742,7 +755,7 @@ export default class UIScene extends Phaser.Scene {
       this.petMood.classList.add("hidden");
       this.petMood.classList.remove("pet-mood-icon");
     } else if (shouldShowEggCountdown) {
-      this.setPetMoodText(`Hatch in: ${formatCountdown(eggCountdownSeconds)}`);
+      this.setPetMoodText(`Hatch in: ${formatCountdown(eggCountdownSeconds)} \nPress O button to increase hatch speed`);
     } else if (shouldShowSleepEnergy) {
       this.setPetMoodText(`Energy: ${Math.round(state.energy)}`);
     } else if (shouldShowDeadText) {
