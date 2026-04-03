@@ -694,7 +694,9 @@ export default class UIScene extends Phaser.Scene {
       return;
     }
 
+    const selectedLinkGameItem = this.pendingLinkGameItem;
     this.resetExchangeRuntime();
+    this.pendingLinkGameItem = selectedLinkGameItem;
     this.pendingLinkGameBet = bet;
     this.exchangeConnectionState = "hosting";
     this.exchangeMode = "game";

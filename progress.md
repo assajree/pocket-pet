@@ -101,3 +101,5 @@ Original prompt: อยากได้หน้าหน้าจอประม
 - Added sequence sync support for `QUICK MATCH` so the host can send a shared sequence payload and both linked devices play the same pattern.
 - Verified JavaScript syntax with `node --check` for `web/scenes/UIScene.js`, `web/gameState.js`, `web/scenes/helpers/menus.js`, `web/scenes/helpers/linkTransport.js`, `web/scenes/minigames/index.js`, and `web/scenes/minigames/sequenceMatch.js`.
 - Android Java compilation and device-to-device link testing are still pending; the Nearby plugin changes were verified by code inspection only.
+- Fixed the `LINK > GAME > HOST` bet-selection crash in `web/scenes/UIScene.js` by preserving the selected mini-game item across `resetExchangeRuntime()` inside `startHostedGame()`, preventing the later null `.key` read after choosing a bet.
+- Re-verified syntax with `node --check web/scenes/UIScene.js` after the host-game crash fix.
