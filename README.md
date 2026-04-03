@@ -10,7 +10,7 @@ A portrait-oriented Tamagotchi-style virtual pet built with Phaser 3 and package
 - Automatic localStorage save using JSON
 - Installable PWA with offline asset caching
 - Responsive portrait layout designed for mobile screens
-- Web/PWA is single-device only; offline link is reserved for Android app builds
+- Web `LINK` works when the game is served by the bundled Node.js server; Android app builds can still use the native offline bridge
 
 ## Run locally
 
@@ -21,6 +21,8 @@ node server.js
 ```
 
 Then open `http://localhost:8080`.
+
+This server now also exposes the `/api/link/*` endpoints used by the browser `LINK` menu for battle, dating, and game rooms.
 
 The web app source files now live under `web/`, while `dist/` is generated for Capacitor/Android sync.
 
@@ -53,8 +55,10 @@ The generated APK will be under `android/app/build/outputs/apk/debug/`.
 - Browser/PWA builds register the service worker, but Android Capacitor builds do not.
 - Load the game once while online so the service worker can cache the app shell.
 - On supported mobile browsers, use "Add to Home Screen" to install it.
-- The Web/PWA build does not include the `link` feature.
-- Android app builds can provide offline link through a native bridge such as a Capacitor plugin.
+- The `LINK` menu is visible on web and PWA builds.
+- Web/PWA `LINK` actions only work when the current origin also serves the Node.js `/api/link/*` endpoints, such as `node server.js`.
+- Static hosting without that backend still shows the menu, but host/join actions will report that the web link server is unavailable.
+- Android app builds can provide offline link through a native bridge such as a Capacitor plugin instead of the HTTP API.
 - HTML and local code assets use a network-first update path, so new releases should refresh into place without manual cache clearing.
 
 ## Save and offline progress

@@ -14,5 +14,6 @@ export const isAndroidAppRuntime = () => !!getAndroidBridge();
 
 export const getPlatformCapabilities = () => ({
   isAndroidApp: isAndroidAppRuntime(),
-  supportsLink: isAndroidAppRuntime()
+  supportsLink: true,
+  prefersNativeLink: isAndroidAppRuntime()
 });

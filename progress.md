@@ -102,4 +102,7 @@ Original prompt: อยากได้หน้าหน้าจอประม
 - Verified JavaScript syntax with `node --check` for `web/scenes/UIScene.js`, `web/gameState.js`, `web/scenes/helpers/menus.js`, `web/scenes/helpers/linkTransport.js`, `web/scenes/minigames/index.js`, and `web/scenes/minigames/sequenceMatch.js`.
 - Android Java compilation and device-to-device link testing are still pending; the Nearby plugin changes were verified by code inspection only.
 - Fixed the `LINK > GAME > HOST` bet-selection crash in `web/scenes/UIScene.js` by preserving the selected mini-game item across `resetExchangeRuntime()` inside `startHostedGame()`, preventing the later null `.key` read after choosing a bet.
+- Restored web `LINK` support by bringing `/api/link/*` back into `server.js` with the old in-memory session model and extending it for `LINK > GAME` state/result exchange.
+- Reworked `web/scenes/helpers/linkTransport.js` into a dual transport that uses HTTP on web/PWA and the native bridge on Android, while keeping the existing `UIScene` call surface unchanged.
+- Updated platform capabilities and README notes so web builds always show the `LINK` menu, but static hosting without the Node.js backend now reports a clear unavailable message when a link action is attempted.
 - Re-verified syntax with `node --check web/scenes/UIScene.js` after the host-game crash fix.

@@ -277,6 +277,11 @@ export default class UIScene extends Phaser.Scene {
       return;
     }
 
+    if (this.view === "link-host-code") {
+      this.handleHostedCodeInput(button);
+      return;
+    }
+
     if (this.view === "link-game-ready") {
       this.handleLinkGameReadyInput(button);
       return;
@@ -650,10 +655,13 @@ export default class UIScene extends Phaser.Scene {
       this.exchangeConnectionState = "waiting";
       await this.sendLocalSnapshotIfReady();
       this.startExchangePolling();
-      this.showMessage(
-        `Host ${mode === "combat" ? "battle" : "dating"} code: ${session.code.split("").join(" ")}`,
-        true
-      );
+      this.view = "link-host-code";
+      this.menuPath = [
+        { key: "main", label: "" },
+        { key: "link", label: "LINK" },
+        { key: mode === "dating" ? "link-dating" : "link-battle", label: mode === "dating" ? "DATING" : "BATTLE" }
+      ];
+      this.render(this.state);
     } catch (error) {
       this.handleExchangeFailure(error.message || "Could not host link session.");
     }
@@ -847,6 +855,27 @@ export default class UIScene extends Phaser.Scene {
       countdownStarted: false,
       countdownEndsAt: 0
     });
+    this.render(this.state);
+  }
+
+  async handleHostedCodeInput(button) {
+    if (button !== "cancel") {
+      return;
+    }
+
+    const mode = this.exchangeMode;
+    const returnState = this.buildJoinSubmenuReturnState(mode);
+    if (this.exchangeSessionCode) {
+      try {
+        await closeLinkSession(this.exchangeSessionCode);
+      } catch (_error) {
+        // Best effort close.
+      }
+    }
+
+    this.resetExchangeRuntime();
+    this.view = returnState.view;
+    this.menuPath = returnState.menuPath;
     this.render(this.state);
   }
 
@@ -1128,8 +1157,9 @@ export default class UIScene extends Phaser.Scene {
   }
 
   buildJoinSubmenuReturnState(mode) {
-    const view = mode === "dating" ? "link-dating" : "link-battle";
-    const parentLabel = mode === "dating" ? "DATING" : "BATTLE";
+    const isDating = mode === "dating";
+    const view = isDating ? "link-dating" : "link-battle";
+    const parentLabel = isDating ? "DATING" : "BATTLE";
     return {
       view,
       menuPath: [
@@ -1575,6 +1605,10 @@ export default class UIScene extends Phaser.Scene {
       this.resetJoinCodeEntry();
     }
 
+    if (this.view === "link-host-code") {
+      this.resetExchangeRuntime();
+    }
+
     if (this.view === "link-game-ready" || this.view === "link-game-countdown" || this.view === "link-game-result") {
       this.resetExchangeRuntime();
     }
@@ -1743,6 +1777,23 @@ export default class UIScene extends Phaser.Scene {
         "< > O = enter code",
         "X = back / cancel",
         `${this.joinCodeSequence.length}/6 entered`
+      ].join("\n");
+      this.setMenuIndicator(0, 0);
+      return;
+    }
+
+    if (this.view === "link-host-code") {
+      const parentText = this.exchangeMode === "dating" ? "DATING / HOST" : "BATTLE / HOST";
+      this.setMenuIcon("");
+      this.setMenuParent(parentText);
+      this.screenMenuTitle.textContent = "HOST CODE";
+      this.screenMenuStatus.textContent = [
+        this.exchangeSessionCode ? this.exchangeSessionCode.split("").join(" ") : "_ _ _ _ _ _",
+        "",
+        "Share this 6-button code",
+        `STATE ${this.exchangeConnectionState.toUpperCase()}`,
+        "",
+        "X = cancel room"
       ].join("\n");
       this.setMenuIndicator(0, 0);
       return;
