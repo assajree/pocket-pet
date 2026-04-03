@@ -4,6 +4,19 @@ import { PLAY_MENU_ITEMS } from "../minigames/index.js";
 import { getInventoryCount } from "../../gameState.js";
 import { getPlatformCapabilities } from "./platform.js";
 
+const LINK_GAME_HOST_ITEMS = PLAY_MENU_ITEMS.map((item) => ({
+  ...item,
+  key: `link-game-select-${item.key}`,
+  submenu: "link-game-bet"
+}));
+
+const LINK_GAME_BET_ITEMS = [0, 10, 20, 50, 100].map((bet) => ({
+  key: `link-game-bet-${bet}`,
+  label: `${bet}G`,
+  caption: bet ? `Bet ${bet}G on this match.` : "Play with no bet.",
+  icon: ""
+}));
+
 export const MENUS = {
   main: {
     statusText: "",
@@ -41,7 +54,8 @@ export const MENUS = {
     statusText: "Choose a link mode to host or join.",
     items: [
       { key: "battle", label: "BATTLE", caption: "Host or join a battle link.", submenu: "link-battle" },
-      { key: "dating", label: "DATING", caption: "Host or join a dating link.", submenu: "link-dating" }
+      { key: "dating", label: "DATING", caption: "Host or join a dating link.", submenu: "link-dating" },
+      { key: "game", label: "GAME", caption: "Host or join a game link.", submenu: "link-game" }
     ]
   },
   "link-battle": {
@@ -57,6 +71,21 @@ export const MENUS = {
       { key: "link-dating-host", label: "HOST", caption: "Open a dating host session.", icon: "", status: (state, context) => context.scene?.getEncounterMenuStatus(state, { key: "link-dating-host" }) },
       { key: "link-dating-join", label: "JOIN", caption: "Join a dating host session.", icon: "", status: (state, context) => context.scene?.getEncounterMenuStatus(state, { key: "link-dating-join" }) }
     ]
+  },
+  "link-game": {
+    statusText: "Host picks the game and bet first.",
+    items: [
+      { key: "link-game-host", label: "HOST", caption: "Choose a game and open a room.", icon: "", submenu: "link-game-host" },
+      { key: "link-game-join", label: "JOIN", caption: "Join a game room with a code.", icon: "", status: (state, context) => context.scene?.getLinkGameMenuStatus(state, { key: "link-game-join" }) }
+    ]
+  },
+  "link-game-host": {
+    statusText: "Choose the mini game for this room.",
+    items: LINK_GAME_HOST_ITEMS
+  },
+  "link-game-bet": {
+    statusText: "Choose the bet amount.",
+    items: LINK_GAME_BET_ITEMS
   },
   shop: {
     statusText: "",

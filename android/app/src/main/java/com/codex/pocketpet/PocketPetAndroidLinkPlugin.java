@@ -61,10 +61,13 @@ public class PocketPetAndroidLinkPlugin extends Plugin {
     private static final String SERVICE_ID = "com.codex.pocketpet.link";
     private static final String ENDPOINT_PREFIX = "PP";
     private static final String PAYLOAD_TYPE_SNAPSHOT = "snapshot";
+    private static final String PAYLOAD_TYPE_GAME_STATE = "game-state";
+    private static final String PAYLOAD_TYPE_GAME_RESULT = "game-result";
     private static final String PAYLOAD_TYPE_COMPLETE = "complete";
     private static final String PAYLOAD_TYPE_CLOSE = "close";
     private static final String MODE_COMBAT = "combat";
     private static final String MODE_DATING = "dating";
+    private static final String MODE_GAME = "game";
     private static final long JOIN_TIMEOUT_MS = 20000L;
     private static final char[] CODE_SYMBOLS = new char[] { '<', '>', 'O' };
 
@@ -87,8 +90,15 @@ public class PocketPetAndroidLinkPlugin extends Plugin {
     @PluginMethod
     public void createSession(PluginCall call) {
         String mode = normalizeMode(call.getString("mode"));
+        String gameKey = sanitizeGameKey(call.getString("gameKey"));
+        int bet = Math.max(0, call.getInt("bet", 0));
         if (mode == null) {
             call.reject("Invalid mode.");
+            return;
+        }
+
+        if (MODE_GAME.equals(mode) && gameKey.isEmpty()) {
+            call.reject("Game key is required.");
             return;
         }
 
@@ -102,9 +112,11 @@ public class PocketPetAndroidLinkPlugin extends Plugin {
         session.code = generateCode();
         session.mode = mode;
         session.role = "host";
+        session.gameKey = gameKey;
+        session.bet = bet;
         activeSession = session;
 
-        String endpointName = buildEndpointName(session.code, session.mode);
+        String endpointName = buildEndpointName(session.code, session.mode, session.gameKey, session.bet);
         AdvertisingOptions options = new AdvertisingOptions.Builder().setStrategy(STRATEGY).build();
 
         connectionsClient
@@ -192,6 +204,76 @@ public class PocketPetAndroidLinkPlugin extends Plugin {
     }
 
     @PluginMethod
+    public void sendGameState(PluginCall call) {
+        LinkSession session = requireMatchingSession(call);
+        if (session == null) {
+            return;
+        }
+
+        JSObject state = call.getObject("state");
+        if (state == null) {
+            call.reject("Game state is required.");
+            return;
+        }
+
+        session.localGameState = state;
+        if (!session.connected || session.remoteEndpointId == null) {
+            call.resolve(okOnly());
+            return;
+        }
+
+        JSONObject payload = new JSONObject();
+        try {
+            payload.put("type", PAYLOAD_TYPE_GAME_STATE);
+            payload.put("code", session.code);
+            payload.put("role", session.role);
+            payload.put("gameKey", session.gameKey);
+            payload.put("bet", session.bet);
+            payload.put("state", state);
+        } catch (JSONException error) {
+            call.reject("Game state payload is invalid.");
+            return;
+        }
+
+        sendPayload(session.remoteEndpointId, payload, call, "Could not send game state.");
+    }
+
+    @PluginMethod
+    public void sendGameResult(PluginCall call) {
+        LinkSession session = requireMatchingSession(call);
+        if (session == null) {
+            return;
+        }
+
+        JSObject result = call.getObject("result");
+        if (result == null) {
+            call.reject("Game result is required.");
+            return;
+        }
+
+        session.localGameResult = result;
+        if (!session.connected || session.remoteEndpointId == null) {
+            call.resolve(okOnly());
+            return;
+        }
+
+        JSONObject payload = new JSONObject();
+        try {
+            payload.put("type", PAYLOAD_TYPE_GAME_RESULT);
+            payload.put("code", session.code);
+            payload.put("role", session.role);
+            payload.put("gameKey", session.gameKey);
+            payload.put("bet", session.bet);
+            payload.put("result", result);
+        } catch (JSONException error) {
+            call.reject("Game result payload is invalid.");
+            return;
+        }
+
+        sendPayload(session.remoteEndpointId, payload, call, "Could not send game result.");
+    }
+
+    @PluginMethod
     public void pollOrSubscribeSession(PluginCall call) {
         LinkSession session = requireMatchingSession(call);
         if (session == null) {
@@ -202,6 +284,10 @@ public class PocketPetAndroidLinkPlugin extends Plugin {
         response.put("joinConnected", session.connected);
         response.put("localSnapshotReceived", session.localSnapshot != null);
         response.put("remoteSnapshot", session.remoteSnapshot);
+        response.put("localGameStateReceived", session.localGameState != null);
+        response.put("remoteGameState", session.remoteGameState);
+        response.put("localGameResultReceived", session.localGameResult != null);
+        response.put("remoteGameResult", session.remoteGameResult);
         call.resolve(response);
     }
 
@@ -245,7 +331,13 @@ public class PocketPetAndroidLinkPlugin extends Plugin {
     public void closeSession(PluginCall call) {
         LinkSession session = activeSession;
         String code = sanitizeCode(call.getString("code"));
-        if (session != null && session.code.equals(code) && session.connected && session.remoteEndpointId != null) {
+        if (
+            session != null
+            && session.code.equals(code)
+            && session.connected
+            && session.remoteEndpointId != null
+            && "host".equals(session.role)
+        ) {
             JSONObject payload = new JSONObject();
             try {
                 payload.put("type", PAYLOAD_TYPE_CLOSE);
@@ -429,6 +521,8 @@ public class PocketPetAndroidLinkPlugin extends Plugin {
         response.put("code", session.code);
         response.put("mode", session.mode);
         response.put("role", session.role);
+        response.put("gameKey", session.gameKey);
+        response.put("bet", session.bet);
         response.put("joinConnected", joinConnected);
         return response;
     }
@@ -440,7 +534,7 @@ public class PocketPetAndroidLinkPlugin extends Plugin {
     }
 
     private String normalizeMode(String mode) {
-        if (MODE_COMBAT.equals(mode) || MODE_DATING.equals(mode)) {
+        if (MODE_COMBAT.equals(mode) || MODE_DATING.equals(mode) || MODE_GAME.equals(mode)) {
             return mode;
         }
         return null;
@@ -448,6 +542,22 @@ public class PocketPetAndroidLinkPlugin extends Plugin {
 
     private String sanitizeCode(String code) {
         return code == null ? "" : code.trim().toUpperCase(Locale.US);
+    }
+
+    private String sanitizeGameKey(String gameKey) {
+        return gameKey == null ? "" : gameKey.trim();
+    }
+
+    private int parseBet(String rawValue) {
+        if (rawValue == null || rawValue.trim().isEmpty()) {
+            return 0;
+        }
+
+        try {
+            return Math.max(0, Integer.parseInt(rawValue.trim()));
+        } catch (NumberFormatException ignored) {
+            return 0;
+        }
     }
 
     private String generateCode() {
@@ -458,7 +568,11 @@ public class PocketPetAndroidLinkPlugin extends Plugin {
         return builder.toString();
     }
 
-    private String buildEndpointName(String code, String mode) {
+    private String buildEndpointName(String code, String mode, String gameKey, int bet) {
+        if (MODE_GAME.equals(mode)) {
+            return ENDPOINT_PREFIX + "|" + code + "|" + mode + "|" + sanitizeGameKey(gameKey) + "|" + bet;
+        }
+
         return ENDPOINT_PREFIX + "|" + code + "|" + mode;
     }
 
@@ -468,13 +582,15 @@ public class PocketPetAndroidLinkPlugin extends Plugin {
         }
 
         String[] parts = endpointName.split("\\|");
-        if (parts.length != 3 || !ENDPOINT_PREFIX.equals(parts[0])) {
+        if (parts.length < 3 || !ENDPOINT_PREFIX.equals(parts[0])) {
             return null;
         }
 
         ParsedEndpoint parsed = new ParsedEndpoint();
         parsed.code = sanitizeCode(parts[1]);
         parsed.mode = normalizeMode(parts[2]);
+        parsed.gameKey = parts.length > 3 ? sanitizeGameKey(parts[3]) : "";
+        parsed.bet = parts.length > 4 ? parseBet(parts[4]) : 0;
         return parsed.mode == null ? null : parsed;
     }
 
@@ -501,10 +617,12 @@ public class PocketPetAndroidLinkPlugin extends Plugin {
             }
 
             activeSession.mode = parsed.mode;
+            activeSession.gameKey = parsed.gameKey;
+            activeSession.bet = parsed.bet;
             activeSession.remoteEndpointId = endpointId;
             cancelJoinTimeout();
             connectionsClient.stopDiscovery();
-            String localEndpointName = buildEndpointName(activeSession.code, activeSession.mode);
+            String localEndpointName = buildEndpointName(activeSession.code, activeSession.mode, activeSession.gameKey, activeSession.bet);
             connectionsClient
                 .requestConnection(localEndpointName, endpointId, connectionLifecycleCallback)
                 .addOnFailureListener((error) -> {
@@ -545,6 +663,15 @@ public class PocketPetAndroidLinkPlugin extends Plugin {
                 return;
             }
 
+            if (MODE_GAME.equals(activeSession.mode)) {
+                if (!activeSession.gameKey.isEmpty() && !parsed.gameKey.equals(activeSession.gameKey)) {
+                    connectionsClient.rejectConnection(endpointId);
+                    return;
+                }
+                activeSession.gameKey = parsed.gameKey;
+                activeSession.bet = parsed.bet;
+            }
+
             if (activeSession.remoteEndpointId != null && !activeSession.remoteEndpointId.equals(endpointId)) {
                 connectionsClient.rejectConnection(endpointId);
                 return;
@@ -565,6 +692,8 @@ public class PocketPetAndroidLinkPlugin extends Plugin {
                 activeSession.connected = true;
                 activeSession.joinConnected = true;
                 sendStoredSnapshotIfReady(activeSession);
+                sendStoredGameStateIfReady(activeSession);
+                sendStoredGameResultIfReady(activeSession);
 
                 if (pendingJoinCall != null) {
                     PluginCall joinCall = pendingJoinCall;
@@ -607,15 +736,42 @@ public class PocketPetAndroidLinkPlugin extends Plugin {
                 JSONObject message = new JSONObject(new String(payload.asBytes(), StandardCharsets.UTF_8));
                 String type = message.optString("type", "");
                 String code = sanitizeCode(message.optString("code", ""));
+                String gameKey = sanitizeGameKey(message.optString("gameKey", ""));
+                int bet = message.optInt("bet", activeSession.bet);
 
                 if (!activeSession.code.equals(code)) {
                     return;
                 }
 
+                if (!gameKey.isEmpty()) {
+                    activeSession.gameKey = gameKey;
+                }
+                activeSession.bet = Math.max(activeSession.bet, bet);
+
                 if (PAYLOAD_TYPE_SNAPSHOT.equals(type)) {
                     JSONObject remoteSnapshot = message.optJSONObject("snapshot");
                     if (remoteSnapshot != null) {
                         activeSession.remoteSnapshot = new JSObject(remoteSnapshot.toString());
+                    }
+                    activeSession.connected = true;
+                    activeSession.joinConnected = true;
+                    return;
+                }
+
+                if (PAYLOAD_TYPE_GAME_STATE.equals(type)) {
+                    JSONObject remoteGameState = message.optJSONObject("state");
+                    if (remoteGameState != null) {
+                        activeSession.remoteGameState = new JSObject(remoteGameState.toString());
+                    }
+                    activeSession.connected = true;
+                    activeSession.joinConnected = true;
+                    return;
+                }
+
+                if (PAYLOAD_TYPE_GAME_RESULT.equals(type)) {
+                    JSONObject remoteGameResult = message.optJSONObject("result");
+                    if (remoteGameResult != null) {
+                        activeSession.remoteGameResult = new JSObject(remoteGameResult.toString());
                     }
                     activeSession.connected = true;
                     activeSession.joinConnected = true;
@@ -662,6 +818,46 @@ public class PocketPetAndroidLinkPlugin extends Plugin {
             .addOnFailureListener((error) -> session.localSnapshotSent = false);
     }
 
+    private void sendStoredGameStateIfReady(LinkSession session) {
+        if (session == null || !session.connected || session.remoteEndpointId == null || session.localGameState == null) {
+            return;
+        }
+
+        JSONObject payload = new JSONObject();
+        try {
+            payload.put("type", PAYLOAD_TYPE_GAME_STATE);
+            payload.put("code", session.code);
+            payload.put("role", session.role);
+            payload.put("gameKey", session.gameKey);
+            payload.put("bet", session.bet);
+            payload.put("state", session.localGameState);
+        } catch (JSONException ignored) {
+            return;
+        }
+
+        connectionsClient.sendPayload(session.remoteEndpointId, Payload.fromBytes(payload.toString().getBytes(StandardCharsets.UTF_8)));
+    }
+
+    private void sendStoredGameResultIfReady(LinkSession session) {
+        if (session == null || !session.connected || session.remoteEndpointId == null || session.localGameResult == null) {
+            return;
+        }
+
+        JSONObject payload = new JSONObject();
+        try {
+            payload.put("type", PAYLOAD_TYPE_GAME_RESULT);
+            payload.put("code", session.code);
+            payload.put("role", session.role);
+            payload.put("gameKey", session.gameKey);
+            payload.put("bet", session.bet);
+            payload.put("result", session.localGameResult);
+        } catch (JSONException ignored) {
+            return;
+        }
+
+        connectionsClient.sendPayload(session.remoteEndpointId, Payload.fromBytes(payload.toString().getBytes(StandardCharsets.UTF_8)));
+    }
+
     private enum PendingAction {
         CREATE_SESSION,
         DISCOVER_OR_JOIN
@@ -670,12 +866,16 @@ public class PocketPetAndroidLinkPlugin extends Plugin {
     private static final class ParsedEndpoint {
         String code;
         String mode;
+        String gameKey = "";
+        int bet;
     }
 
     private static final class LinkSession {
         String code;
         String mode;
         String role;
+        String gameKey = "";
+        int bet;
         String remoteEndpointId;
         boolean connected;
         boolean joinConnected;
@@ -684,5 +884,9 @@ public class PocketPetAndroidLinkPlugin extends Plugin {
         boolean localSnapshotSent;
         JSObject localSnapshot;
         JSObject remoteSnapshot;
+        JSObject localGameState;
+        JSObject remoteGameState;
+        JSObject localGameResult;
+        JSObject remoteGameResult;
     }
 }

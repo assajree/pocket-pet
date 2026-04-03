@@ -36,10 +36,19 @@ const createSequence = (miniGameConfig, randomPick) => {
 };
 
 export const sequenceMatchType = {
-  createSession(item, randomPick) {
+  createSyncState(item, randomPick) {
+    return {
+      sequence: createSequence(item?.minigame || {}, randomPick)
+    };
+  },
+  createSession(item, randomPick, syncState = null) {
+    const sequence = Array.isArray(syncState?.sequence) && syncState.sequence.length
+      ? syncState.sequence
+      : createSequence(item?.minigame || {}, randomPick);
+
     return {
       ...buildBaseSession(item),
-      sequence: createSequence(item?.minigame || {}, randomPick)
+      sequence
     };
   },
   applyInput(miniGame, button) {

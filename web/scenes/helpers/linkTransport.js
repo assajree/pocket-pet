@@ -35,13 +35,19 @@ const callAndroidBridge = async (method, payload = {}) => {
   return data;
 };
 
-export const hostLinkSession = (mode) => callAndroidBridge("createSession", { mode });
+export const hostLinkSession = (mode, options = {}) => callAndroidBridge("createSession", { mode, ...options });
 
 export const joinLinkSession = (code, expectedMode) =>
   callAndroidBridge("discoverOrJoin", { code, expectedMode });
 
 export const uploadLinkSnapshot = (code, role, snapshot) =>
   callAndroidBridge("sendSnapshot", { code, role, snapshot });
+
+export const sendLinkGameState = (code, role, state) =>
+  callAndroidBridge("sendGameState", { code, role, state });
+
+export const sendLinkGameResult = (code, role, result) =>
+  callAndroidBridge("sendGameResult", { code, role, result });
 
 export const fetchLinkSessionState = (code, role) =>
   callAndroidBridge("pollOrSubscribeSession", { code, role });

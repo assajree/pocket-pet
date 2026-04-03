@@ -1075,3 +1075,15 @@ export const addMiniGameReward = (state, effectStatus, context = {}) => {
   }
   return result;
 };
+
+export const applyLinkGameBetOutcome = (state, betAmount, outcome) => {
+  const bet = Math.max(0, Math.round(betAmount || 0));
+  if (!bet || outcome === "draw") {
+    return { ok: true, delta: 0 };
+  }
+
+  const delta = outcome === "win" ? bet : -bet;
+  state.money = clampStatValue("money", state.money + delta);
+  addLog(state, `Link game bet: ${delta > 0 ? "+" : ""}${delta}g.`);
+  return { ok: true, delta };
+};

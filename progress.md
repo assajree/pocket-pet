@@ -89,3 +89,10 @@ Original prompt: อยากได้หน้าหน้าจอประม
 - Added `capacitor.config.json` with app id `com.codex.pocketpet` and Android workflow commands for sync/open/debug build.
 - Added a post-sync Gradle patch step so Capacitor-generated Android files target Java 17 instead of Java 21 on this machine.
 - Moved the web app source into a dedicated `web/` subfolder and updated the local server plus Capacitor asset pipeline to read from that new source root.
+- Added a new `LINK > GAME` path alongside the existing `BATTLE` and `DATING` menus, including host mini game selection and a fixed bet menu (`0/10/20/50/100`).
+- Extended `scenes/UIScene.js` with a parallel link-game runtime for room join, bet validation, ready state, 3-second countdown, linked mini game results, and local `WIN/LOST/DRAW` summaries without removing the old encounter flow.
+- Kept normal mini game rewards active for linked matches and added `applyLinkGameBetOutcome()` in `gameState.js` so the winner gains the bet, the loser loses it, and draws cause no extra transfer.
+- Extended the Android bridge and Nearby plugin to support `mode=game`, room metadata (`gameKey`, `bet`), game-state polling, and game-result exchange while preserving the existing `combat` and `dating` session behavior.
+- Added sequence sync support for `QUICK MATCH` so the host can send a shared sequence payload and both linked devices play the same pattern.
+- Verified JavaScript syntax with `node --check` for `web/scenes/UIScene.js`, `web/gameState.js`, `web/scenes/helpers/menus.js`, `web/scenes/helpers/linkTransport.js`, `web/scenes/minigames/index.js`, and `web/scenes/minigames/sequenceMatch.js`.
+- Android Java compilation and device-to-device link testing are still pending; the Nearby plugin changes were verified by code inspection only.

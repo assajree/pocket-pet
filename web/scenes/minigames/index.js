@@ -19,7 +19,17 @@ const getMiniGameScoreText = (miniGame, item) => {
 
 export { PLAY_MENU_ITEMS, createMiniGameState };
 
-export const initializeMiniGameSession = (item, randomPick) => getMiniGameTypeHandler(item).createSession(item, randomPick);
+export const createMiniGameSyncState = (item, randomPick) => {
+  const handler = getMiniGameTypeHandler(item);
+  if (typeof handler.createSyncState !== "function") {
+    return null;
+  }
+
+  return handler.createSyncState(item, randomPick);
+};
+
+export const initializeMiniGameSession = (item, randomPick, syncState = null) =>
+  getMiniGameTypeHandler(item).createSession(item, randomPick, syncState);
 
 export const applyMiniGameInput = (miniGame, item, button) => {
   if (!miniGame.active) {

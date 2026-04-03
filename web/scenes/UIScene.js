@@ -1,6 +1,7 @@
 import {
   accelerateEggHatch,
   addMiniGameReward,
+  applyLinkGameBetOutcome,
   applyEncounterOutcome,
   applyAction,
   clearState,
@@ -18,6 +19,7 @@ import {
 } from "../gameState.js";
 import {
   applyMiniGameInput,
+  createMiniGameSyncState,
   createMiniGameState,
   finalizeMiniGameResult,
   getMiniGameStatusText as buildMiniGameStatusText,
@@ -26,7 +28,13 @@ import {
 } from "./minigames/index.js";
 import { MENUS, isMenuView } from "./helpers/menus.js";
 import { getMenuStatusText, buildInventoryItemName } from "./helpers/menuFormatters.js";
-import { ACTION_ANIMATION_CONFIG, MINI_GAME_SUMMARY_DURATION_MS, SLEEP_OK_ENERGY_BOOST } from "./helpers/uiConfig.js";
+import {
+  ACTION_ANIMATION_CONFIG,
+  LINK_GAME_COUNTDOWN_MS,
+  LINK_GAME_RESULT_DURATION_MS,
+  MINI_GAME_SUMMARY_DURATION_MS,
+  SLEEP_OK_ENERGY_BOOST
+} from "./helpers/uiConfig.js";
 import { getPlatformCapabilities } from "./helpers/platform.js";
 import {
   closeLinkSession,
@@ -34,8 +42,12 @@ import {
   fetchLinkSessionState,
   hostLinkSession,
   joinLinkSession,
+  sendLinkGameResult,
+  sendLinkGameState,
   uploadLinkSnapshot
 } from "./helpers/linkTransport.js";
+
+const LINK_GAME_BET_OPTIONS = [0, 10, 20, 50, 100];
 
 const formatCountdown = (secondsRemaining) => {
   const minutes = Math.floor(secondsRemaining / 60);
@@ -98,6 +110,17 @@ export default class UIScene extends Phaser.Scene {
     this.exchangePollTimer = null;
     this.joinCodeSequence = [];
     this.pendingJoinMode = "";
+    this.pendingLinkGameItem = null;
+    this.pendingLinkGameBet = 0;
+    this.localLinkGameReady = false;
+    this.linkGameStateSent = false;
+    this.linkGameResultSent = false;
+    this.remoteLinkGameState = null;
+    this.remoteLinkGameResult = null;
+    this.linkGameCountdownEndsAt = 0;
+    this.linkGameResultTimer = null;
+    this.linkGameSyncState = null;
+    this.linkGameOutcome = "";
     this.messageReturnState = null;
     this.platformCapabilities = getPlatformCapabilities();
   }
@@ -129,6 +152,7 @@ export default class UIScene extends Phaser.Scene {
       window.removeEventListener("keydown", this.handleKeydown);
       this.summaryTimer?.remove(false);
       this.actionAnimationTimer?.remove(false);
+      this.linkGameResultTimer?.remove(false);
     });
   }
 
@@ -253,6 +277,15 @@ export default class UIScene extends Phaser.Scene {
       return;
     }
 
+    if (this.view === "link-game-ready") {
+      this.handleLinkGameReadyInput(button);
+      return;
+    }
+
+    if (this.view === "link-game-result") {
+      return;
+    }
+
     if (button === "cancel") {
       this.closeMenu();
       return;
@@ -308,6 +341,10 @@ export default class UIScene extends Phaser.Scene {
   }
 
   selectMenuItem(menuKey, item) {
+    if (String(item.key || "").startsWith("link-game-select-")) {
+      this.pendingLinkGameItem = this.getLinkGameItemByKey(String(item.key).replace("link-game-select-", ""));
+    }
+
     if (item.submenu) {
       this.pushMenuPath(item.submenu, item.name || item.label || item.submenu);
       this.view = item.submenu;
@@ -390,14 +427,26 @@ export default class UIScene extends Phaser.Scene {
   resetExchangeRuntime() {
     this.stopExchangePolling();
     this.remoteEncounterSnapshot = null;
+    this.remoteLinkGameState = null;
+    this.remoteLinkGameResult = null;
     this.exchangeSessionCode = "";
     this.exchangeRole = "";
     this.exchangeMode = "";
     this.expectedExchangeMode = "";
     this.exchangeConnectionState = "idle";
     this.localSnapshotSent = false;
+    this.linkGameStateSent = false;
+    this.linkGameResultSent = false;
     this.encounterResolved = false;
     this.lastExchangeError = "";
+    this.pendingLinkGameItem = null;
+    this.pendingLinkGameBet = 0;
+    this.localLinkGameReady = false;
+    this.linkGameCountdownEndsAt = 0;
+    this.linkGameSyncState = null;
+    this.linkGameOutcome = "";
+    this.linkGameResultTimer?.remove(false);
+    this.linkGameResultTimer = null;
   }
 
   stopExchangePolling() {
@@ -456,6 +505,126 @@ export default class UIScene extends Phaser.Scene {
     return "";
   }
 
+  getLinkGameItemByKey(itemKey) {
+    return MENUS.play.items.find((item) => item.key === itemKey) || null;
+  }
+
+  getPendingLinkGameTitle() {
+    return this.pendingLinkGameItem?.name || this.pendingLinkGameItem?.label || "GAME";
+  }
+
+  getLinkGameBetFromItemKey(itemKey) {
+    const rawValue = String(itemKey || "").replace("link-game-bet-", "");
+    const bet = Number.parseInt(rawValue, 10);
+    return Number.isFinite(bet) ? bet : 0;
+  }
+
+  canAffordBet(bet = 0) {
+    return Math.round(this.state.money) >= Math.max(0, Math.round(bet));
+  }
+
+  getLinkGameGuardError(bet = 0) {
+    const encounterGuardError = this.getEncounterGuardError();
+    if (encounterGuardError) {
+      return encounterGuardError;
+    }
+
+    if (!this.canAffordBet(bet)) {
+      return `Not enough money for ${bet}G bet.`;
+    }
+
+    return "";
+  }
+
+  getLinkGameMenuStatus(_state, item) {
+    const waitingText = this.exchangeSessionCode
+      ? `CODE ${this.exchangeSessionCode.split("").join(" ")}\nSTATE ${this.exchangeConnectionState.toUpperCase()}`
+      : "No active room.";
+
+    if (item.key === "link-game-join") {
+      return this.exchangeMode === "game" && this.exchangeSessionCode
+        ? waitingText
+        : "Join a game room by code.";
+    }
+
+    return "";
+  }
+
+  buildLinkGameReturnState(view = "link-game") {
+    return {
+      view,
+      menuPath: [
+        { key: "main", label: "" },
+        { key: "link", label: "LINK" },
+        { key: "link-game", label: "GAME" },
+        ...(view === "link-game-host" ? [{ key: "link-game-host", label: "HOST" }] : []),
+        ...(view === "link-game-bet" ? [{ key: "link-game-host", label: "HOST" }, { key: "link-game-bet", label: "BET" }] : [])
+      ]
+    };
+  }
+
+  buildLinkGameStatePayload(overrides = {}) {
+    return {
+      gameKey: this.pendingLinkGameItem?.key || this.remoteLinkGameState?.gameKey || "",
+      gameName: this.getPendingLinkGameTitle(),
+      bet: this.pendingLinkGameBet,
+      ready: this.localLinkGameReady,
+      countdownStarted: false,
+      countdownEndsAt: 0,
+      syncState: this.linkGameSyncState,
+      ...overrides
+    };
+  }
+
+  buildLinkGameResultPayload() {
+    return {
+      score: this.miniGame.result?.score ?? this.miniGame.score,
+      success: this.miniGame.result?.success ?? this.miniGame.success,
+      progress: this.miniGame.result?.progress ?? this.miniGame.progress,
+      targetCount: this.miniGame.result?.targetCount ?? this.miniGame.sequence.length
+    };
+  }
+
+  getRemoteLinkGameScore() {
+    return Number(this.remoteLinkGameResult?.score ?? 0);
+  }
+
+  resolveLinkGameOutcome(localScore, remoteScore) {
+    if (localScore > remoteScore) {
+      return "win";
+    }
+    if (localScore < remoteScore) {
+      return "lost";
+    }
+    return "draw";
+  }
+
+  formatLinkGameOutcome(outcome) {
+    if (outcome === "win") return "WIN";
+    if (outcome === "lost") return "LOST";
+    return "DRAW";
+  }
+
+  async sendLinkGameStateIfReady(payloadOverrides = {}) {
+    if (!this.exchangeSessionCode || !this.exchangeRole || this.exchangeMode !== "game") {
+      return;
+    }
+
+    const payload = this.buildLinkGameStatePayload(payloadOverrides);
+    await sendLinkGameState(this.exchangeSessionCode, this.exchangeRole, payload);
+    this.linkGameStateSent = true;
+  }
+
+  async sendLinkGameResultIfReady() {
+    if (!this.exchangeSessionCode || !this.exchangeRole || this.exchangeMode !== "game" || this.linkGameResultSent) {
+      return;
+    }
+
+    const payload = this.buildLinkGameResultPayload();
+    await sendLinkGameResult(this.exchangeSessionCode, this.exchangeRole, payload);
+    this.linkGameResultSent = true;
+  }
+
   async startHostedEncounter(mode) {
     if (!this.supportsLink()) {
       this.showMessage("Link is only available in the Android app.", false);
@@ -508,6 +677,76 @@ export default class UIScene extends Phaser.Scene {
     this.render(this.state);
   }
 
+  async startHostedGame(bet) {
+    if (!this.supportsLink()) {
+      this.showMessage("Link is only available in the Android app.", false);
+      return;
+    }
+
+    if (!this.pendingLinkGameItem) {
+      this.showMessage("Choose a game first.", false, { returnState: this.buildLinkGameReturnState("link-game-host") });
+      return;
+    }
+
+    const guardError = this.getLinkGameGuardError(bet);
+    if (guardError) {
+      this.showMessage(guardError, false, { returnState: this.buildLinkGameReturnState("link-game-bet") });
+      return;
+    }
+
+    this.resetExchangeRuntime();
+    this.pendingLinkGameBet = bet;
+    this.exchangeConnectionState = "hosting";
+    this.exchangeMode = "game";
+    this.render(this.state);
+
+    try {
+      const syncState = createMiniGameSyncState(this.pendingLinkGameItem, (pool) => Phaser.Utils.Array.GetRandom(pool));
+      this.linkGameSyncState = syncState;
+      const session = await hostLinkSession("game", { gameKey: this.pendingLinkGameItem.key, bet });
+      this.exchangeSessionCode = session.code;
+      this.exchangeRole = "host";
+      this.exchangeMode = session.mode;
+      this.exchangeConnectionState = "waiting";
+      await this.sendLinkGameStateIfReady({
+        ready: false,
+        countdownStarted: false,
+        countdownEndsAt: 0,
+        syncState
+      });
+      this.startExchangePolling();
+      this.view = "link-game-ready";
+      this.menuPath = [
+        { key: "main", label: "" },
+        { key: "link", label: "LINK" },
+        { key: "link-game", label: "GAME" }
+      ];
+      this.render(this.state);
+    } catch (error) {
+      this.handleExchangeFailure(error.message || "Could not host game room.", false, {
+        returnState: this.buildLinkGameReturnState("link-game-bet")
+      });
+    }
+  }
+
+  startJoinedGame() {
+    if (!this.supportsLink()) {
+      this.showMessage("Link is only available in the Android app.", false);
+      return;
+    }
+
+    const guardError = this.getEncounterGuardError();
+    if (guardError) {
+      this.showMessage(guardError, false);
+      return;
+    }
+
+    this.pendingJoinMode = "game";
+    this.joinCodeSequence = [];
+    this.view = "link-code-entry";
+    this.render(this.state);
+  }
+
   appendJoinCodeInput(button) {
     if (this.joinCodeSequence.length >= 6) {
       return;
@@ -544,6 +783,10 @@ export default class UIScene extends Phaser.Scene {
       const mode = this.pendingJoinMode;
       const code = this.getJoinCodeValue();
       this.resetJoinCodeEntry();
+      if (mode === "game") {
+        this.performJoinedGame(code);
+        return;
+      }
       this.performJoinedEncounter(mode, code);
       return;
     }
@@ -559,9 +802,49 @@ export default class UIScene extends Phaser.Scene {
     }
 
     const mode = this.pendingJoinMode;
-    const fallbackView = mode === "combat" ? "link-battle" : "link-dating";
+    const fallbackView = mode === "combat" ? "link-battle" : mode === "dating" ? "link-dating" : "link-game";
     this.resetJoinCodeEntry();
     this.view = fallbackView;
+    this.render(this.state);
+  }
+
+  async handleLinkGameReadyInput(button) {
+    if (button === "cancel") {
+      if (this.exchangeSessionCode) {
+        try {
+          await closeLinkSession(this.exchangeSessionCode);
+        } catch (_error) {
+          // Best effort close.
+        }
+      }
+      this.resetExchangeRuntime();
+      this.view = "link-game";
+      this.menuPath = [
+        { key: "main", label: "" },
+        { key: "link", label: "LINK" },
+        { key: "link-game", label: "GAME" }
+      ];
+      this.render(this.state);
+      return;
+    }
+
+    if (button !== "ok") {
+      return;
+    }
+
+    if (!this.canAffordBet(this.pendingLinkGameBet)) {
+      this.showMessage(`Not enough money for ${this.pendingLinkGameBet}G bet.`, false, {
+        returnState: this.buildLinkGameReturnState("link-game")
+      });
+      return;
+    }
+
+    this.localLinkGameReady = true;
+    await this.sendLinkGameStateIfReady({
+      ready: true,
+      countdownStarted: false,
+      countdownEndsAt: 0
+    });
     this.render(this.state);
   }
 
@@ -604,6 +887,62 @@ export default class UIScene extends Phaser.Scene {
     }
   }
 
+  async performJoinedGame(code) {
+    if (!code) {
+      this.showMessage("Join cancelled.", false);
+      return;
+    }
+
+    this.resetExchangeRuntime();
+    this.exchangeConnectionState = "joining";
+    this.expectedExchangeMode = "game";
+    this.render(this.state);
+
+    try {
+      const session = await joinLinkSession(code, "game");
+      if (session.mode !== "game") {
+        this.handleExchangeFailure(`Mode mismatch: host is ${session.mode}.`, false, {
+          returnState: this.buildLinkGameReturnState("link-game")
+        });
+        return;
+      }
+
+      if (!this.canAffordBet(session.bet || 0)) {
+        try {
+          await closeLinkSession(session.code);
+        } catch (_error) {
+          // Best effort close.
+        }
+        this.handleExchangeFailure(`Not enough money for ${session.bet}G bet.`, false, {
+          returnState: this.buildLinkGameReturnState("link-game")
+        });
+        return;
+      }
+
+      this.exchangeSessionCode = session.code;
+      this.exchangeRole = "join";
+      this.exchangeMode = session.mode;
+      this.expectedExchangeMode = "game";
+      this.exchangeConnectionState = "connected";
+      this.pendingLinkGameBet = session.bet || 0;
+      this.pendingLinkGameItem = this.getLinkGameItemByKey(session.gameKey);
+      this.startExchangePolling();
+      this.view = "link-game-ready";
+      this.menuPath = [
+        { key: "main", label: "" },
+        { key: "link", label: "LINK" },
+        { key: "link-game", label: "GAME" }
+      ];
+      this.render(this.state);
+    } catch (error) {
+      const hostMode = error.payload?.hostMode;
+      const message = hostMode ? `Mode mismatch: host is ${hostMode}.` : (error.message || "Could not join game room.");
+      this.handleExchangeFailure(message, false, {
+        returnState: this.buildLinkGameReturnState("link-game")
+      });
+    }
+  }
+
   async sendLocalSnapshotIfReady() {
     if (!this.exchangeSessionCode || !this.exchangeRole || this.localSnapshotSent || !this.canUseLocalSnapshot()) {
       return;
@@ -629,6 +968,18 @@ export default class UIScene extends Phaser.Scene {
 
       this.exchangeMode = session.mode;
       this.exchangeConnectionState = session.joinConnected ? "connected" : (this.exchangeRole === "host" ? "waiting" : "joining");
+
+      if (session.mode === "game") {
+        this.pendingLinkGameBet = session.bet || this.pendingLinkGameBet;
+        if (!this.pendingLinkGameItem && session.gameKey) {
+          this.pendingLinkGameItem = this.getLinkGameItemByKey(session.gameKey);
+        }
+        this.remoteLinkGameState = session.remoteGameState || this.remoteLinkGameState;
+        this.remoteLinkGameResult = session.remoteGameResult || this.remoteLinkGameResult;
+        await this.maybeResolveLinkGameSession();
+        this.render(this.state);
+        return;
+      }
 
       if (!this.localSnapshotSent) {
         await this.sendLocalSnapshotIfReady();
@@ -696,6 +1047,84 @@ export default class UIScene extends Phaser.Scene {
     this.showMessage(summary, true);
   }
 
+  async maybeResolveLinkGameSession() {
+    if (this.exchangeMode !== "game") {
+      return;
+    }
+
+    if (!this.pendingLinkGameItem) {
+      return;
+    }
+
+    if (!this.linkGameStateSent) {
+      await this.sendLinkGameStateIfReady({ ready: this.localLinkGameReady, countdownStarted: false, countdownEndsAt: 0 });
+      if (!this.remoteLinkGameState) {
+        return;
+      }
+    }
+
+    const remoteState = this.remoteLinkGameState || {};
+    if (remoteState.syncState && !this.linkGameSyncState) {
+      this.linkGameSyncState = remoteState.syncState;
+    }
+
+    if (remoteState.countdownStarted && remoteState.countdownEndsAt) {
+      this.linkGameCountdownEndsAt = remoteState.countdownEndsAt;
+      if (this.view !== "minigame" && this.view !== "link-game-result") {
+        this.view = "link-game-countdown";
+      }
+    }
+
+    if (this.view === "link-game-ready" && this.exchangeRole === "host") {
+      const localReady = this.localLinkGameReady;
+      const remoteReady = !!remoteState.ready;
+      if (localReady && remoteReady && !remoteState.countdownStarted) {
+        const countdownEndsAt = Date.now() + LINK_GAME_COUNTDOWN_MS;
+        this.linkGameCountdownEndsAt = countdownEndsAt;
+        await this.sendLinkGameStateIfReady({
+          ready: true,
+          countdownStarted: true,
+          countdownEndsAt
+        });
+        this.view = "link-game-countdown";
+      }
+    }
+
+    if (!this.remoteLinkGameResult || this.view !== "link-game-result") {
+      return;
+    }
+
+    const localScore = this.miniGame.result?.score ?? 0;
+    const remoteScore = this.getRemoteLinkGameScore();
+    const outcome = this.resolveLinkGameOutcome(localScore, remoteScore);
+    if (!this.linkGameOutcome) {
+      this.linkGameOutcome = outcome;
+      applyLinkGameBetOutcome(this.state, this.pendingLinkGameBet, outcome);
+      this.gameScene.syncVisuals();
+      saveState(this.state);
+    }
+
+    if (!this.linkGameResultTimer) {
+      this.linkGameResultTimer = this.time.delayedCall(LINK_GAME_RESULT_DURATION_MS, async () => {
+        const code = this.exchangeSessionCode;
+        const role = this.exchangeRole;
+        this.resetExchangeRuntime();
+        this.activeMiniGameItem = null;
+        this.miniGame = createMiniGameState();
+        this.view = "pet";
+        this.menuPath = [];
+        this.render(this.state);
+        if (code && role) {
+          try {
+            await completeLinkSession(code, role);
+          } catch (_error) {
+            // Best effort cleanup.
+          }
+        }
+      });
+    }
+  }
+
   buildJoinSubmenuReturnState(mode) {
     const view = mode === "dating" ? "link-dating" : "link-battle";
     const parentLabel = mode === "dating" ? "DATING" : "BATTLE";
@@ -720,11 +1149,21 @@ export default class UIScene extends Phaser.Scene {
         // Ignore cleanup errors after a local failure.
       }
     }
-    const returnState = options.returnToSubmenu ? this.buildJoinSubmenuReturnState(options.mode) : null;
+    const returnState = options.returnState || (options.returnToSubmenu ? this.buildJoinSubmenuReturnState(options.mode) : null);
     this.showMessage(message, false, { returnState });
   }
 
   handleEncounterMenuAction(actionKey) {
+    if (actionKey === "link-game-join") {
+      this.startJoinedGame();
+      return;
+    }
+
+    if (String(actionKey || "").startsWith("link-game-bet-")) {
+      this.startHostedGame(this.getLinkGameBetFromItemKey(actionKey));
+      return;
+    }
+
     switch (actionKey) {
       case "link-battle-host":
         this.startHostedEncounter("combat");
@@ -799,12 +1238,20 @@ export default class UIScene extends Phaser.Scene {
 
   startMiniGame(item) {
     this.activeMiniGameItem = item;
-    this.miniGame = initializeMiniGameSession(item, (pool) => Phaser.Utils.Array.GetRandom(pool));
+    this.miniGame = initializeMiniGameSession(
+      item,
+      (pool) => Phaser.Utils.Array.GetRandom(pool),
+      this.exchangeMode === "game" ? this.linkGameSyncState : null
+    );
     this.view = "minigame";
     this.render(this.state);
   }
 
   handleMiniGameInput(button) {
+    if (this.exchangeMode === "game" && button === "cancel") {
+      return;
+    }
+
     const outcome = applyMiniGameInput(this.miniGame, this.activeMiniGameItem, button);
     this.miniGame = outcome.miniGame;
 
@@ -855,6 +1302,10 @@ export default class UIScene extends Phaser.Scene {
 
     this.gameScene.syncVisuals();
     saveState(this.state);
+    if (this.exchangeMode === "game") {
+      this.showLinkedGameSummary();
+      return;
+    }
     this.showMiniGameSummary();
   }
 
@@ -878,6 +1329,13 @@ export default class UIScene extends Phaser.Scene {
       this.render(this.state);
       this.summaryTimer = null;
     });
+  }
+
+  async showLinkedGameSummary() {
+    this.view = "link-game-result";
+    this.linkGameOutcome = "";
+    await this.sendLinkGameResultIfReady();
+    this.render(this.state);
   }
 
   isInputLocked() {
@@ -1115,6 +1573,10 @@ export default class UIScene extends Phaser.Scene {
       this.resetJoinCodeEntry();
     }
 
+    if (this.view === "link-game-ready" || this.view === "link-game-countdown" || this.view === "link-game-result") {
+      this.resetExchangeRuntime();
+    }
+
     if (this.view === "message" && this.messageReturnState) {
       this.view = this.messageReturnState.view;
       this.menuPath = this.messageReturnState.menuPath.map((entry) => ({ ...entry }));
@@ -1265,8 +1727,13 @@ export default class UIScene extends Phaser.Scene {
     }
 
     if (this.view === "link-code-entry") {
-      this.setMenuParent(this.pendingJoinMode === "dating" ? "DATING / JOIN" : "BATTLE / JOIN");
+      const parentText = this.pendingJoinMode === "dating"
+        ? "DATING / JOIN"
+        : this.pendingJoinMode === "game"
+          ? "GAME / JOIN"
+          : "BATTLE / JOIN";
       this.setMenuIcon("");
+      this.setMenuParent(parentText);
       this.screenMenuTitle.textContent = "ENTER CODE";
       this.screenMenuStatus.textContent = [
         this.getJoinCodeDisplay(),
@@ -1274,6 +1741,56 @@ export default class UIScene extends Phaser.Scene {
         "< > O = enter code",
         "X = back / cancel",
         `${this.joinCodeSequence.length}/6 entered`
+      ].join("\n");
+      this.setMenuIndicator(0, 0);
+      return;
+    }
+
+    if (this.view === "link-game-ready") {
+      const remoteReady = !!this.remoteLinkGameState?.ready;
+      this.setMenuParent("GAME");
+      this.setMenuIcon("play");
+      this.screenMenuTitle.textContent = this.getPendingLinkGameTitle();
+      this.screenMenuStatus.textContent = [
+        `BET ${this.pendingLinkGameBet}G`,
+        "",
+        `YOU ${this.localLinkGameReady ? "READY" : "WAIT"}`,
+        `RIVAL ${remoteReady ? "READY" : "WAIT"}`,
+        "",
+        this.exchangeSessionCode ? `CODE ${this.exchangeSessionCode.split("").join(" ")}` : "",
+        "Press O to ready",
+        "Press X to cancel"
+      ].filter(Boolean).join("\n");
+      this.setMenuIndicator(0, 0);
+      return;
+    }
+
+    if (this.view === "link-game-countdown") {
+      const secondsRemaining = Math.max(0, Math.ceil((this.linkGameCountdownEndsAt - Date.now()) / 1000));
+      this.setMenuParent("GAME");
+      this.setMenuIcon("play");
+      this.screenMenuTitle.textContent = this.getPendingLinkGameTitle();
+      this.screenMenuStatus.textContent = [
+        `BET ${this.pendingLinkGameBet}G`,
+        "",
+        secondsRemaining > 0 ? `START ${secondsRemaining}` : "START!"
+      ].join("\n");
+      this.setMenuIndicator(0, 0);
+      return;
+    }
+
+    if (this.view === "link-game-result") {
+      const localScore = this.miniGame.result?.score ?? this.miniGame.score;
+      const remoteScore = this.getRemoteLinkGameScore();
+      this.setMenuParent("GAME");
+      this.setMenuIcon("summary");
+      this.screenMenuTitle.textContent = this.remoteLinkGameResult
+        ? this.formatLinkGameOutcome(this.linkGameOutcome || this.resolveLinkGameOutcome(localScore, remoteScore))
+        : "WAIT";
+      this.screenMenuStatus.textContent = [
+        `YOU ${localScore}`,
+        `RIVAL ${this.remoteLinkGameResult ? remoteScore : "..."}`,
+        `BET ${this.pendingLinkGameBet}G`
       ].join("\n");
       this.setMenuIndicator(0, 0);
       return;
@@ -1313,6 +1830,12 @@ export default class UIScene extends Phaser.Scene {
   update(_time, delta) {
     if (this.view === "pet" && this.state?.isAlive && this.state.evolutionStage === "Egg") {
       this.render(this.state);
+    }
+
+    if (this.view === "link-game-countdown" && this.linkGameCountdownEndsAt && Date.now() >= this.linkGameCountdownEndsAt) {
+      this.linkGameCountdownEndsAt = 0;
+      this.startMiniGame(this.pendingLinkGameItem);
+      return;
     }
 
     if (!this.miniGame.active) {

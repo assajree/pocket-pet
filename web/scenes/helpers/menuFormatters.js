@@ -32,7 +32,9 @@ const STATUS_LABELS = {
   health: "HEALTH",
   weight: "WEIGHT",
   cleanliness: "CLEAN",
-  money: "MONEY"
+  money: "MONEY",
+  score: "SCORE",
+  bet: "BET"
 };
 
 const formatStatusRange = (key, value) => {
@@ -82,7 +84,7 @@ export const getMenuStatusText = (menu, item, state, context = {}) => {
   }
   const effectStatus = resolveStatusLines(item.effectStatus, state);
 
-  if (!currentStatus.length && item.key && !item.currentStatus) {
+  if (!currentStatus.length && item.key && !item.currentStatus && !String(item.key).startsWith("link-")) {
     const extraStatsFn = (s) => {
       if (!item.effectStatus) return [];
       return Object.keys(item.effectStatus).map((k) => {
