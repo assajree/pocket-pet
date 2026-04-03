@@ -1,6 +1,15 @@
+import "./build-meta.js";
 import BootScene from "./scenes/BootScene.js";
 import GameScene from "./scenes/GameScene.js";
 import UIScene from "./scenes/UIScene.js";
+import { isAndroidAppRuntime } from "./scenes/helpers/platform.js";
+
+const buildMeta = self.__POCKET_PET_BUILD__ || {
+  id: "unknown",
+  version: "unknown",
+  generatedAt: null
+};
+let hasReloadedForServiceWorkerUpdate = false;
 
 const bootGame = () => {
   const container = document.getElementById("game-container");
@@ -29,15 +38,53 @@ const bootGame = () => {
 };
 
 const registerServiceWorker = async () => {
-  if (!("serviceWorker" in navigator)) {
+  if (!("serviceWorker" in navigator) || isAndroidAppRuntime()) {
     return;
   }
 
   try {
-    await navigator.serviceWorker.register("./service-worker.js");
+    navigator.serviceWorker.addEventListener("controllerchange", () => {
+      if (hasReloadedForServiceWorkerUpdate) {
+        return;
+      }
+
+      hasReloadedForServiceWorkerUpdate = true;
+      window.location.reload();
+    });
+
+    const registration = await navigator.serviceWorker.register("./service-worker.js");
+    activateWaitingServiceWorker(registration);
+    watchForServiceWorkerUpdate(registration);
+    await registration.update();
   } catch (error) {
     console.warn("Service worker registration failed.", error);
   }
+};
+
+const activateWaitingServiceWorker = (registration) => {
+  if (!registration.waiting) {
+    return;
+  }
+
+  registration.waiting.postMessage({
+    type: "SKIP_WAITING",
+    buildId: buildMeta.id
+  });
+};
+
+const watchForServiceWorkerUpdate = (registration) => {
+  registration.addEventListener("updatefound", () => {
+    const worker = registration.installing;
+    if (!worker) {
+      return;
+    }
+
+    worker.addEventListener("statechange", () => {
+      if (worker.state === "installed" && navigator.serviceWorker.controller) {
+        activateWaitingServiceWorker(registration);
+      }
+    });
+  });
 };
 
 const waitForPhaser = () => {

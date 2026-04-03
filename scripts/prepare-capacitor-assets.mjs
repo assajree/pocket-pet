@@ -1,4 +1,4 @@
-import { copyFileSync, existsSync, lstatSync, mkdirSync, readdirSync } from "node:fs";
+import { copyFileSync, existsSync, lstatSync, mkdirSync, readdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -7,6 +7,7 @@ const __dirname = path.dirname(__filename);
 const rootDir = path.resolve(__dirname, "..");
 const webDir = path.join(rootDir, "web");
 const distDir = path.join(rootDir, "dist");
+const buildId = createBuildId();
 
 const assetPaths = [
   "assets",
@@ -21,6 +22,7 @@ const assetPaths = [
 ];
 
 mkdirSync(distDir, { recursive: true });
+writeBuildMeta(path.join(distDir, "build-meta.js"), buildId);
 
 for (const relativePath of assetPaths) {
   const sourcePath = path.join(webDir, relativePath);
@@ -32,7 +34,7 @@ for (const relativePath of assetPaths) {
   copyEntry(sourcePath, path.join(distDir, relativePath));
 }
 
-console.log(`Prepared Android web assets from ${webDir} into ${distDir}`);
+console.log(`Prepared Android web assets from ${webDir} into ${distDir} with build ${buildId}`);
 
 function copyEntry(sourcePath, targetPath) {
   const stats = lstatSync(sourcePath);
@@ -59,4 +61,23 @@ function copyEntry(sourcePath, targetPath) {
 
     throw error;
   }
+}
+
+function createBuildId() {
+  const now = new Date();
+  return now.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z");
+}
+
+function writeBuildMeta(targetPath, nextBuildId) {
+  const contents = [
+    "self.__POCKET_PET_BUILD__ = Object.freeze({",
+    `  id: ${JSON.stringify(nextBuildId)},`,
+    `  version: ${JSON.stringify(nextBuildId)},`,
+    `  generatedAt: ${JSON.stringify(new Date().toISOString())}`,
+    "});",
+    ""
+  ].join("\n");
+
+  mkdirSync(path.dirname(targetPath), { recursive: true });
+  writeFileSync(targetPath, contents);
 }

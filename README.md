@@ -50,10 +50,12 @@ The generated APK will be under `android/app/build/outputs/apk/debug/`.
 
 ## PWA notes
 
-- Load the game once while online so the service worker can cache the assets.
+- Browser/PWA builds register the service worker, but Android Capacitor builds do not.
+- Load the game once while online so the service worker can cache the app shell.
 - On supported mobile browsers, use "Add to Home Screen" to install it.
 - The Web/PWA build does not include the `link` feature.
 - Android app builds can provide offline link through a native bridge such as a Capacitor plugin.
+- HTML and local code assets use a network-first update path, so new releases should refresh into place without manual cache clearing.
 
 ## Save and offline progress
 

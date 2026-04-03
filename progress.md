@@ -58,6 +58,11 @@ Original prompt: อยากได้หน้าหน้าจอประม
 - Added a `DEAD` option to the debug menu and wired it to force the pet into the dead state immediately for testing.
 - Removed icons from all debug menu entries by marking those items as icon-less and updating `UIScene` to respect explicit empty icon values.
 - Fixed the dead-state input guard so the status screen can still receive left/right navigation while the pet is dead.
+- Updated `web/main.js` so the app skips service worker registration in the Android Capacitor runtime, while browser/PWA still registers and now forces waiting workers to activate immediately before reloading once on `controllerchange`.
+- Reworked `web/service-worker.js` from a single cache-first bucket into versioned app-shell/runtime caches with build-aware names, `network-first` for HTML and local JS/CSS, `stale-while-revalidate` for static assets, and explicit old-cache cleanup during `activate`.
+- Added shared build metadata plumbing with `web/build-meta.js`, dynamic `/build-meta.js` serving in `server.js`, and generated `dist/build-meta.js` output in `scripts/prepare-capacitor-assets.mjs` so browser and Android builds each expose a release-specific cache version.
+- Verified `server.js`, `scripts/prepare-capacitor-assets.mjs`, `web/main.js`, and `web/service-worker.js` syntax, ran `npm run build:web-assets`, and confirmed `/build-meta.js`, `/service-worker.js`, and `/` now serve with `Cache-Control: no-store` where expected.
+- Attempted the `develop-web-game` Playwright validation loop against a local server, but the shared client still fails in this environment because the `playwright` package is not installed for the skill script to import.
 - Added a dedicated dead-state menu with a `NEW EGG` action, so the normal main menu is replaced after the pet dies and restart happens via that menu instead of immediately.
 - Added a top-of-screen menu parent breadcrumb and a `menuPath` stack in `scenes/UIScene.js`, so submenu ancestry now renders as a parent trail and can scale to deeper nested menus.
 - Adjusted the menu breadcrumb so it excludes `MAIN` and anchors to the top-left corner of the menu screen instead of sitting above the title.
