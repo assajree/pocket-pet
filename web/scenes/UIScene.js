@@ -27,6 +27,7 @@ import {
 import { MENUS, isMenuView } from "./helpers/menus.js";
 import { getMenuStatusText, buildInventoryItemName } from "./helpers/menuFormatters.js";
 import { ACTION_ANIMATION_CONFIG, MINI_GAME_SUMMARY_DURATION_MS, SLEEP_OK_ENERGY_BOOST } from "./helpers/uiConfig.js";
+import { getPlatformCapabilities } from "./helpers/platform.js";
 import {
   closeLinkSession,
   completeLinkSession,
@@ -34,7 +35,7 @@ import {
   hostLinkSession,
   joinLinkSession,
   uploadLinkSnapshot
-} from "./helpers/linkSessionClient.js";
+} from "./helpers/linkTransport.js";
 
 const formatCountdown = (secondsRemaining) => {
   const minutes = Math.floor(secondsRemaining / 60);
@@ -98,6 +99,7 @@ export default class UIScene extends Phaser.Scene {
     this.joinCodeSequence = [];
     this.pendingJoinMode = "";
     this.messageReturnState = null;
+    this.platformCapabilities = getPlatformCapabilities();
   }
 
   create() {
@@ -381,6 +383,10 @@ export default class UIScene extends Phaser.Scene {
     return !!this.state.isAlive && this.state.evolutionStage !== "Egg";
   }
 
+  supportsLink() {
+    return !!this.platformCapabilities?.supportsLink;
+  }
+
   resetExchangeRuntime() {
     this.stopExchangePolling();
     this.remoteEncounterSnapshot = null;
@@ -451,6 +457,11 @@ export default class UIScene extends Phaser.Scene {
   }
 
   async startHostedEncounter(mode) {
+    if (!this.supportsLink()) {
+      this.showMessage("Link is only available in the Android app.", false);
+      return;
+    }
+
     const guardError = this.getEncounterGuardError();
     if (guardError) {
       this.showMessage(guardError, false);
@@ -480,6 +491,11 @@ export default class UIScene extends Phaser.Scene {
   }
 
   async startJoinedEncounter(mode) {
+    if (!this.supportsLink()) {
+      this.showMessage("Link is only available in the Android app.", false);
+      return;
+    }
+
     const guardError = this.getEncounterGuardError();
     if (guardError) {
       this.showMessage(guardError, false);
@@ -1053,18 +1069,7 @@ export default class UIScene extends Phaser.Scene {
           ["Agi", Math.round(state.agi)],
           ["Int", Math.round(state.int)],
         ]
-      },
-      {
-        title: "Link",
-        lines: [
-          ["Local", this.canUseLocalSnapshot() ? "Ready" : "Locked"],
-          ["Mode", this.exchangeMode || this.expectedExchangeMode || "--"],
-          ["State", this.exchangeConnectionState],
-          ["Code", this.exchangeSessionCode || "--"],
-          "separator",
-          this.lastExchangeError || this.state.lastEncounterResult?.summary || "No encounter result yet."
-        ]
-      },
+      }
     ];
   }
 
@@ -1164,7 +1169,7 @@ export default class UIScene extends Phaser.Scene {
     this.brandTitle.textContent = "Pocket Pet";
     this.brandStatus.textContent = state.isAlive ? "Pet View" : "New Egg";
     const fullScreenMenu = this.view !== "pet";
-    const eggCountdownSeconds = getEggHatchSecondsRemaining(state);
+    const eggCountdownSeconds = getEggHatchSecondsRemaining(state, this.gameScene?.elapsedAccumulator ?? 0);
     const shouldShowEggCountdown = state.evolutionStage === "Egg" && !fullScreenMenu;
     const shouldShowSleepEnergy = state.isSleeping && !fullScreenMenu;
     const shouldShowDeadText = !state.isAlive && !fullScreenMenu;

@@ -180,12 +180,12 @@ const applyChildHatchState = (state) => {
   state.actionLockUntil = 0;
 };
 
-export const getEggHatchSecondsRemaining = (state) => {
+export const getEggHatchSecondsRemaining = (state, pendingSeconds = 0) => {
   if (state.evolutionStage !== "Egg") {
     return 0;
   }
 
-  const elapsedSeconds = (state.ageMinutes * 60) + (state.timers?.ageTick ?? 0);
+  const elapsedSeconds = (state.ageMinutes * 60) + (state.timers?.ageTick ?? 0) + Math.max(0, pendingSeconds);
   return Math.max(0, Math.ceil(EGG_HATCH_SECONDS - elapsedSeconds));
 };
 

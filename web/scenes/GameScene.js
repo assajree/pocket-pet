@@ -43,7 +43,6 @@ export default class GameScene extends Phaser.Scene {
     this.previousEvolutionStage = null;
     this.evolutionTween = null;
     this.evolutionTextTween = null;
-    this.evolutionAnimationActive = false;
   }
 
   create() {
@@ -97,7 +96,6 @@ export default class GameScene extends Phaser.Scene {
       this.evolutionTween = null;
       this.evolutionTextTween?.stop();
       this.evolutionTextTween = null;
-      this.setEvolutionAnimationActive(false);
       this.stopMovementTweens();
     });
 
@@ -225,19 +223,6 @@ export default class GameScene extends Phaser.Scene {
     return this.state.isAlive && !this.evolutionTween && this.state.evolutionStage === "Egg" && !this.menuVisible;
   }
 
-  isEvolutionAnimating() {
-    return this.evolutionAnimationActive;
-  }
-
-  setEvolutionAnimationActive(isActive) {
-    if (this.evolutionAnimationActive === isActive) {
-      return;
-    }
-
-    this.evolutionAnimationActive = isActive;
-    this.events.emit("evolution-animation-changed", isActive);
-  }
-
   stopMovementTweens() {
     this.movementTween?.stop();
     this.movementTween = null;
@@ -282,7 +267,6 @@ export default class GameScene extends Phaser.Scene {
     this.stopMovementTweens();
     this.evolutionTween?.stop();
     this.evolutionTextTween?.stop();
-    this.setEvolutionAnimationActive(false);
     this.snapPetToGrid();
     this.syncVisuals();
     this.pet.setAlpha(1);
@@ -331,11 +315,9 @@ export default class GameScene extends Phaser.Scene {
         this.evolutionText.setY(this.basePetY - EVOLUTION_TEXT_Y_OFFSET);
         this.evolutionTextTween = null;
         this.updateIdleAnimation();
-        this.setEvolutionAnimationActive(false);
         this.events.emit("state-changed", this.state);
       }
     });
-    this.setEvolutionAnimationActive(true);
   }
 
   stepPetMovement() {
@@ -392,10 +374,11 @@ export default class GameScene extends Phaser.Scene {
     this.saveAccumulator += deltaSeconds;
     this.moveStepAccumulator += delta;
 
-    if (this.elapsedAccumulator >= 1) {
+    const wholeElapsedSeconds = Math.floor(this.elapsedAccumulator);
+    if (wholeElapsedSeconds >= 1) {
       const previousStage = this.state.evolutionStage;
-      tickState(this.state, this.elapsedAccumulator);
-      this.elapsedAccumulator = 0;
+      tickState(this.state, wholeElapsedSeconds);
+      this.elapsedAccumulator -= wholeElapsedSeconds;
       this.syncVisuals();
       if (previousStage !== this.state.evolutionStage) {
         this.playEvolutionAnimation(previousStage, this.state.evolutionStage);

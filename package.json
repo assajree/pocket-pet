@@ -2,6 +2,16 @@
   "name": "pocket-pet-tamagotchi",
   "private": true,
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "build:web-assets": "node scripts/prepare-capacitor-assets.mjs",
+    "android:patch-java": "node scripts/patch-capacitor-java.mjs",
+    "android:sync": "npm run build:web-assets && npx cap sync android && npm run android:patch-java",
+    "android:open": "npx cap open android",
+    "android:build:debug": "npm run android:sync && cd android && gradlew.bat assembleDebug"
+  },
+  "devDependencies": {
+    "@capacitor/android": "^7.6.1",
+    "@capacitor/cli": "^7.6.1",
+    "@capacitor/core": "^7.6.1"
   }
 }

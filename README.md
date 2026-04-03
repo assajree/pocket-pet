@@ -10,10 +10,11 @@ A portrait-oriented Tamagotchi-style virtual pet built with Phaser 3 and package
 - Automatic localStorage save using JSON
 - Installable PWA with offline asset caching
 - Responsive portrait layout designed for mobile screens
+- Web/PWA is single-device only; offline link is reserved for Android app builds
 
 ## Run locally
 
-Run the bundled Node server so the game and LAN link session API are served from the same origin.
+Run the bundled Node server to serve the game locally during development.
 
 ```bash
 node server.js
@@ -21,12 +22,38 @@ node server.js
 
 Then open `http://localhost:8080`.
 
-For LAN linking on another device, open `http://<host-ip>:8080` from that device while both devices are on the same Wi-Fi or hotspot.
+The web app source files now live under `web/`, while `dist/` is generated for Capacitor/Android sync.
+
+## Android debug build
+
+Build the static web assets and sync them into Capacitor:
+
+```bash
+npm run android:sync
+```
+
+This sync step also patches Capacitor's generated Gradle files to target Java 17 for this machine.
+
+Open the Android project in Android Studio:
+
+```bash
+npm run android:open
+```
+
+Or build a debug APK from the command line:
+
+```bash
+npm run android:build:debug
+```
+
+The generated APK will be under `android/app/build/outputs/apk/debug/`.
 
 ## PWA notes
 
 - Load the game once while online so the service worker can cache the assets.
 - On supported mobile browsers, use "Add to Home Screen" to install it.
+- The Web/PWA build does not include the `link` feature.
+- Android app builds can provide offline link through a native bridge such as a Capacitor plugin.
 
 ## Save and offline progress
 

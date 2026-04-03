@@ -14,6 +14,7 @@ Original prompt: อยากได้หน้าหน้าจอประม
 - Added a sleep shortcut so pressing `ok` on the closed pet screen while sleeping boosts `Energy` faster via a dedicated constant in `scenes/UIScene.js`.
 - Updated sleep logic so the pet wakes up automatically as soon as `Energy` reaches `100`, including when boosted with the `ok` shortcut.
 - Changed passive energy recovery so sleeping now restores `2` energy per second via a dedicated constant in `gameState.js`.
+- Fixed the egg hatch countdown timing so the game loop no longer drops fractional elapsed time each second, and the pet screen now includes the current frame's pending time when showing the hatch countdown.
 - Refactored menu handling in `scenes/UIScene.js` to use a shared multi-submenu config and added a new `debug` submenu with max-stats, low-stats, and toggle-sick actions backed by `gameState.js`.
 - Updated the `feed > rice` menu entry to show the current hunger value directly on the menu screen.
 - Updated the `feed > snack` menu entry to show current happiness and weight values on the menu screen.
@@ -77,3 +78,14 @@ Original prompt: อยากได้หน้าหน้าจอประม
 - Changed `Egg` hardware-button behavior so each button press on the closed pet screen now fast-forwards hatching by 1 second instead of opening menus or triggering normal actions.
 - Forced pet-screen refresh while the pet is still an egg, and emit a second `state-changed` after evolution animations finish so the hatch countdown text updates live and clears immediately after hatching.
 - Added a `DEBUG > NEW EGG` action that resets the current pet state back to a fresh egg without leaving the current session, making the egg countdown/hatch flow easier to retest.
+- Removed the `LINK` feature from Web/PWA menus and status pages, keeping browser builds single-device only.
+- Replaced the old HTTP link client with an Android bridge transport abstraction so future Android app builds can supply native offline linking without exposing `/api/link/*` on the web.
+- Simplified `server.js` back to static file serving only, since web builds no longer host LAN link sessions.
+- Updated README notes to clarify that link is Android-only and the PWA build is offline single-device only.
+- Verified syntax with `node --check` for `server.js`, `main.js`, `scenes/UIScene.js`, `scenes/helpers/menus.js`, `scenes/helpers/platform.js`, `scenes/helpers/linkTransport.js`, and the compatibility re-export in `scenes/helpers/linkSessionClient.js`.
+- Verified the visible main-menu items in a non-Android runtime now exclude `link`, returning `["feed","play","shop","sleep","clean","medicine","debug"]`.
+- Verified the local dev server on port `8091` still serves `/` and `README.md`, while `POST /api/link/host` now returns `404` as expected.
+- Added Capacitor package scripts plus a static asset copy pipeline into `dist/` so the project can be wrapped as an Android app without relying on `server.js`.
+- Added `capacitor.config.json` with app id `com.codex.pocketpet` and Android workflow commands for sync/open/debug build.
+- Added a post-sync Gradle patch step so Capacitor-generated Android files target Java 17 instead of Java 21 on this machine.
+- Moved the web app source into a dedicated `web/` subfolder and updated the local server plus Capacitor asset pipeline to read from that new source root.

@@ -1,0 +1,6 @@
+{
+  "appId": "com.codex.pocketpet",
+  "appName": "Pocket Pet",
+  "webDir": "dist",
+  "bundledWebRuntime": false
+}

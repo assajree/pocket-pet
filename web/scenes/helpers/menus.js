@@ -2,6 +2,7 @@ import { buildShopStatus } from "./menuFormatters.js";
 import { ITEM_LIST } from "./items.js";
 import { PLAY_MENU_ITEMS } from "../minigames/index.js";
 import { getInventoryCount } from "../../gameState.js";
+import { getPlatformCapabilities } from "./platform.js";
 
 export const MENUS = {
   main: {
@@ -9,7 +10,13 @@ export const MENUS = {
     items: [
       { key: "feed", label: "FEED", caption: "Open the feeding menu.", submenu: "feed" },
       { key: "play", label: "PLAY", caption: "Open the mini game list.", submenu: "play" },
-      { key: "link", label: "LINK", caption: "Exchange pet status with another device.", submenu: "link" },
+      {
+        key: "link",
+        label: "LINK",
+        caption: "Exchange pet status with another device.",
+        submenu: "link",
+        visibleWhen: () => getPlatformCapabilities().supportsLink
+      },
       { key: "shop", label: "SHOP", caption: "Buy item.", submenu: "shop" },
       { key: "sleep", label: "SLEEP", caption: "Turn the lights off for sleep." },
       { key: "clean", label: "CLEAN", caption: "Clean the room and the mess." },
