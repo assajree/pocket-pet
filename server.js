@@ -8,6 +8,7 @@ const PORT = Number(process.env.PORT || 8080);
 const HOST = process.env.HOST || "0.0.0.0";
 const ROOT = __dirname;
 const SESSION_TTL_MS = 5 * 60 * 1000;
+const CODE_SYMBOLS = ["<", ">", "O"];
 const sessions = new Map();
 
 const MIME_TYPES = {
@@ -45,7 +46,10 @@ const readJsonBody = (request) => new Promise((resolve, reject) => {
   request.on("error", reject);
 });
 
-const generateCode = () => String(crypto.randomInt(0, 1000000)).padStart(6, "0");
+const generateCode = () => Array.from(
+  { length: 6 },
+  () => CODE_SYMBOLS[crypto.randomInt(0, CODE_SYMBOLS.length)]
+).join("");
 
 const cleanupExpiredSessions = () => {
   const now = Date.now();

@@ -95,6 +95,8 @@ export default class UIScene extends Phaser.Scene {
     this.encounterResolved = false;
     this.lastExchangeError = "";
     this.exchangePollTimer = null;
+    this.joinCodeSequence = [];
+    this.pendingJoinMode = "";
   }
 
   create() {
@@ -243,6 +245,11 @@ export default class UIScene extends Phaser.Scene {
       return;
     }
 
+    if (this.view === "link-code-entry") {
+      this.handleJoinCodeInput(button);
+      return;
+    }
+
     if (button === "cancel") {
       this.closeMenu();
       return;
@@ -364,6 +371,11 @@ export default class UIScene extends Phaser.Scene {
     return createExchangeSnapshot(this.state);
   }
 
+  resetJoinCodeEntry() {
+    this.joinCodeSequence = [];
+    this.pendingJoinMode = "";
+  }
+
   canUseLocalSnapshot() {
     return !!this.state.isAlive && this.state.evolutionStage !== "Egg";
   }
@@ -400,29 +412,29 @@ export default class UIScene extends Phaser.Scene {
   getEncounterMenuStatus(_state, item) {
     const localSnapshotReady = this.canUseLocalSnapshot();
     const waitingText = this.exchangeSessionCode
-      ? `CODE ${this.exchangeSessionCode}\nSTATE ${this.exchangeConnectionState.toUpperCase()}`
+      ? `CODE ${this.exchangeSessionCode.split("").join(" ")}\nSTATE ${this.exchangeConnectionState.toUpperCase()}`
       : "No active session.";
 
     switch (item.key) {
       case "link-battle-host":
         return [
           `LOCAL ${localSnapshotReady ? "READY" : "LOCKED"}`,
-          this.exchangeSessionCode && this.exchangeMode === "combat" ? waitingText : "Host a battle session."
+          this.exchangeSessionCode && this.exchangeMode === "combat" ? `SHARE ${waitingText}` : "Host a battle button code."
         ].join("\n");
       case "link-battle-join":
         return [
           `LOCAL ${localSnapshotReady ? "READY" : "LOCKED"}`,
-          this.expectedExchangeMode === "combat" && this.exchangeSessionCode ? waitingText : "Join a battle session by code."
+          this.expectedExchangeMode === "combat" && this.exchangeSessionCode ? waitingText : "Press the 6-button host code."
         ].join("\n");
       case "link-dating-host":
         return [
           `LOCAL ${localSnapshotReady ? "READY" : "LOCKED"}`,
-          this.exchangeSessionCode && this.exchangeMode === "dating" ? waitingText : "Host a dating session."
+          this.exchangeSessionCode && this.exchangeMode === "dating" ? `SHARE ${waitingText}` : "Host a dating button code."
         ].join("\n");
       case "link-dating-join":
         return [
           `LOCAL ${localSnapshotReady ? "READY" : "LOCKED"}`,
-          this.expectedExchangeMode === "dating" && this.exchangeSessionCode ? waitingText : "Join a dating session by code."
+          this.expectedExchangeMode === "dating" && this.exchangeSessionCode ? waitingText : "Press the 6-button host code."
         ].join("\n");
       default:
         return "";
@@ -457,7 +469,10 @@ export default class UIScene extends Phaser.Scene {
       this.exchangeConnectionState = "waiting";
       await this.sendLocalSnapshotIfReady();
       this.startExchangePolling();
-      this.showMessage(`Host ${mode === "combat" ? "battle" : "dating"} code: ${session.code}`, true);
+      this.showMessage(
+        `Host ${mode === "combat" ? "battle" : "dating"} code: ${session.code.split("").join(" ")}`,
+        true
+      );
     } catch (error) {
       this.handleExchangeFailure(error.message || "Could not host link session.");
     }
@@ -470,7 +485,70 @@ export default class UIScene extends Phaser.Scene {
       return;
     }
 
-    const code = window.prompt(`Enter the ${mode === "combat" ? "battle" : "dating"} host code:`)?.trim().toUpperCase();
+    this.pendingJoinMode = mode;
+    this.joinCodeSequence = [];
+    this.view = "link-code-entry";
+    this.render(this.state);
+  }
+
+  appendJoinCodeInput(button) {
+    if (this.joinCodeSequence.length >= 6) {
+      return;
+    }
+
+    const symbol = button === "left" ? "<" : button === "right" ? ">" : button === "ok" ? "O" : "";
+    if (!symbol) {
+      return;
+    }
+
+    this.joinCodeSequence.push(symbol);
+  }
+
+  removeLastJoinCodeInput() {
+    this.joinCodeSequence.pop();
+  }
+
+  getJoinCodeValue() {
+    return this.joinCodeSequence.join("");
+  }
+
+  getJoinCodeDisplay() {
+    return Array.from({ length: 6 }, (_value, index) => this.joinCodeSequence[index] || "_").join(" ");
+  }
+
+  handleJoinCodeInput(button) {
+    if (button === "left" || button === "right" || button === "ok") {
+      this.appendJoinCodeInput(button);
+      if (this.joinCodeSequence.length < 6) {
+        this.render(this.state);
+        return;
+      }
+
+      const mode = this.pendingJoinMode;
+      const code = this.getJoinCodeValue();
+      this.resetJoinCodeEntry();
+      this.performJoinedEncounter(mode, code);
+      return;
+    }
+
+    if (button !== "cancel") {
+      return;
+    }
+
+    if (this.joinCodeSequence.length > 0) {
+      this.removeLastJoinCodeInput();
+      this.render(this.state);
+      return;
+    }
+
+    const mode = this.pendingJoinMode;
+    const fallbackView = mode === "combat" ? "link-battle" : "link-dating";
+    this.resetJoinCodeEntry();
+    this.view = fallbackView;
+    this.render(this.state);
+  }
+
+  async performJoinedEncounter(mode, code) {
     if (!code) {
       this.showMessage("Join cancelled.", false);
       return;
@@ -1006,6 +1084,10 @@ export default class UIScene extends Phaser.Scene {
       return;
     }
 
+    if (this.view === "link-code-entry") {
+      this.resetJoinCodeEntry();
+    }
+
     this.menuPath = [];
     this.statusPageIndex = 0;
     this.view = "pet";
@@ -1141,6 +1223,21 @@ export default class UIScene extends Phaser.Scene {
       this.setMenuIcon("message");
       this.screenMenuTitle.textContent = this.messageSuccess ? "Done" : "Notice";
       this.screenMenuStatus.textContent = this.messageText;
+      this.setMenuIndicator(0, 0);
+      return;
+    }
+
+    if (this.view === "link-code-entry") {
+      this.setMenuParent(this.pendingJoinMode === "dating" ? "DATING / JOIN" : "BATTLE / JOIN");
+      this.setMenuIcon("");
+      this.screenMenuTitle.textContent = "ENTER CODE";
+      this.screenMenuStatus.textContent = [
+        this.getJoinCodeDisplay(),
+        "",
+        "< > O = enter code",
+        "X = back / cancel",
+        `${this.joinCodeSequence.length}/6 entered`
+      ].join("\n");
       this.setMenuIndicator(0, 0);
       return;
     }
