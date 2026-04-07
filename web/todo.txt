@@ -3,4 +3,3 @@
 - game effective to weight
 - deny to eat
 - move web file into sub folder
-- add button sound

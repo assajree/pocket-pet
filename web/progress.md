@@ -106,3 +106,6 @@ Original prompt: อยากได้หน้าหน้าจอประม
 - Reworked `web/scenes/helpers/linkTransport.js` into a dual transport that uses HTTP on web/PWA and the native bridge on Android, while keeping the existing `UIScene` call surface unchanged.
 - Updated platform capabilities and README notes so web builds always show the `LINK` menu, but static hosting without the Node.js backend now reports a clear unavailable message when a link action is attempted.
 - Re-verified syntax with `node --check web/scenes/UIScene.js` after the host-game crash fix.
+- Added a synth-first button audio helper in `web/scenes/helpers/buttonAudio.js` that uses Web Audio to generate short retro piezo-style beeps with slight per-button pitch changes.
+- Wired `web/scenes/UIScene.js` so every mapped hardware input path plays the same button sound for both on-screen buttons and keyboard aliases, while keeping game state logic unchanged.
+- Kept the audio surface intentionally small with `playButtonPress(button)` so sampled sounds can replace or extend the synth backend later without changing menu/input code.

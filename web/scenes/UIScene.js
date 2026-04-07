@@ -46,6 +46,7 @@ import {
   sendLinkGameState,
   uploadLinkSnapshot
 } from "./helpers/linkTransport.js";
+import { createButtonAudio } from "./helpers/buttonAudio.js";
 
 const LINK_GAME_BET_OPTIONS = [0, 10, 20, 50, 100];
 
@@ -123,6 +124,7 @@ export default class UIScene extends Phaser.Scene {
     this.linkGameOutcome = "";
     this.messageReturnState = null;
     this.platformCapabilities = getPlatformCapabilities();
+    this.buttonAudio = createButtonAudio();
   }
 
   create() {
@@ -177,6 +179,7 @@ export default class UIScene extends Phaser.Scene {
       return;
     }
 
+    this.buttonAudio.unlock();
     this.hardwareLeft.addEventListener("click", () => this.handleDirectionalInput("left"));
     this.hardwareRight.addEventListener("click", () => this.handleDirectionalInput("right"));
     this.hardwareCancel.addEventListener("click", () => this.handleDirectionalInput("cancel"));
@@ -221,6 +224,8 @@ export default class UIScene extends Phaser.Scene {
   };
 
   handleDirectionalInput(button) {
+    this.buttonAudio.playButtonPress(button);
+
     if (this.view === "action-animation" && (button === "ok" || button === "cancel")) {
       this.skipActionAnimation();
       return;
