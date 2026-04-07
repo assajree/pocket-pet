@@ -7,7 +7,7 @@ import {
 } from "./scenes/helpers/items.js";
 import { DEFAULT_PET_ID } from "./scenes/helpers/petAssets.js";
 
-const SAVE_KEY = "pocket-pet-save-v1";
+const SAVE_KEY = "pocket-pet-save-v2";
 export const AUTO_SAVE_INTERVAL_SECONDS = 30;
 const MAX_LOGS = 18;
 const MAX_POOP_COUNT = 10;
@@ -19,12 +19,12 @@ const EGG_HATCH_SECONDS = 60;
 const CHILD_HATCH_CORE_STAT = 20;
 const CHILD_HATCH_COMBAT_STAT = 5;
 const EXCHANGE_SNAPSHOT_VERSION = 1;
-const EXCHANGE_STAGE_ORDER = ["Egg", "Child", "Teen", "Adult"];
+const EXCHANGE_STAGE_ORDER = ["egg", "child", "teen", "adult"];
 const EXCHANGE_STAGE_BONUS = {
-  Egg: 0,
-  Child: 6,
-  Teen: 12,
-  Adult: 18
+  egg: 0,
+  child: 6,
+  teen: 12,
+  adult: 18
 };
 
 export {
@@ -36,10 +36,10 @@ export {
 };
 
 const STAGE_RULES = [
-  { stage: "Egg", nextStage: "Child" },
-  { stage: "Child", minAgeMinutes: 1, requiredAverage: 0, nextStage: "Teen" },
-  { stage: "Teen", minAgeMinutes: 5, requiredAverage: 50, nextStage: "Adult" },
-  { stage: "Adult", minAgeMinutes: 9, requiredAverage: 65, nextStage: "Adult" }
+  { stage: "egg", nextStage: "child" },
+  { stage: "child", minAgeMinutes: 1, requiredAverage: 0, nextStage: "teen" },
+  { stage: "teen", minAgeMinutes: 5, requiredAverage: 50, nextStage: "adult" },
+  { stage: "adult", minAgeMinutes: 9, requiredAverage: 65, nextStage: "adult" }
 ];
 
 const clamp = (value, min = 0, max = 100) => Math.min(max, Math.max(min, value));
@@ -76,7 +76,7 @@ export const createNewState = () => ({
   agi: 11,
   int: 10,
   ageMinutes: 0,
-  evolutionStage: "Egg",
+  evolutionStage: "egg",
   isAlive: true,
   isSleeping: false,
   isSick: false,
@@ -187,7 +187,7 @@ const getStageRule = (stage) => STAGE_RULES.find((rule) => rule.stage === stage)
 const getDebugNextStage = (stage) => getStageRule(stage)?.nextStage ?? stage;
 
 export const getEggHatchSecondsRemaining = (state, pendingSeconds = 0) => {
-  if (state.evolutionStage !== "Egg") {
+  if (state.evolutionStage !== "egg") {
     return 0;
   }
 
@@ -196,7 +196,7 @@ export const getEggHatchSecondsRemaining = (state, pendingSeconds = 0) => {
 };
 
 export const accelerateEggHatch = (state, seconds = 1) => {
-  if (state.evolutionStage !== "Egg" || !state.isAlive) {
+  if (state.evolutionStage !== "egg" || !state.isAlive) {
     return { ok: false, changedStage: false };
   }
 
@@ -236,13 +236,13 @@ const updateEvolution = (state) => {
   if (nextStage !== state.evolutionStage) {
     const previousStage = state.evolutionStage;
     state.evolutionStage = nextStage;
-    if (previousStage === "Egg" && nextStage === "Child") {
+    if (previousStage === "egg" && nextStage === "child") {
       applyChildHatchState(state);
     }
     addLog(
       state,
-      previousStage === "Egg" && nextStage === "Child"
-        ? "The egg hatched into a Child."
+      previousStage === "egg" && nextStage === "child"
+        ? "The egg hatched into a child."
         : `Your pet evolved into a ${nextStage}.`
     );
   }
@@ -268,7 +268,7 @@ const evolveToNextStage = (state) => {
   }
 
   state.evolutionStage = nextStage;
-  if (currentStage === "Egg" && nextStage === "Child") {
+  if (currentStage === "egg" && nextStage === "child") {
     applyChildHatchState(state);
   }
   addLog(
@@ -314,7 +314,7 @@ export const getMoodList = (state) => {
     return ["Dead"];
   }
 
-  if (state.evolutionStage === "Egg") {
+  if (state.evolutionStage === "egg") {
     return ["Egg"];
   }
 
@@ -351,7 +351,7 @@ export const getNeedList = (state) => {
     return ["Revive"];
   }
 
-  if (state.evolutionStage === "Egg") {
+  if (state.evolutionStage === "egg") {
     return ["Hatch"];
   }
 
@@ -924,7 +924,7 @@ export const applyAction = (state, action, effectStatus = null, context = {}) =>
     case "debug-reset-save": {
       clearState();
       const freshEgg = createNewState();
-      freshEgg.evolutionStage = "Child";
+      freshEgg.evolutionStage = "child";
       Object.assign(state, freshEgg);
       addLog(state, "Debug: cleared save data and reset to a fresh egg.");
       return { ok: true };
@@ -982,7 +982,7 @@ export const tickState = (state, deltaSeconds) => {
   const delta = Math.max(deltaSeconds, 0);
   state.lastUpdatedAt = Date.now();
 
-  if (state.evolutionStage === "Egg") {
+  if (state.evolutionStage === "egg") {
     lockEggState(state);
     state.timers.ageTick += delta;
 

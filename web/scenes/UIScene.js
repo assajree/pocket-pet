@@ -61,7 +61,7 @@ const formatCountdown = (secondsRemaining) => {
 };
 
 const getPetNeedIconKeys = (state) => {
-  if (!state.isAlive || state.evolutionStage === "Egg") {
+  if (!state.isAlive || state.evolutionStage === "egg") {
     return [];
   }
 
@@ -241,7 +241,7 @@ export default class UIScene extends Phaser.Scene {
     // }
 
     if (this.view === "pet") {
-      if (this.state.isAlive && this.state.evolutionStage === "Egg") {
+      if (this.state.isAlive && this.state.evolutionStage === "egg") {
         const previousPetId = this.state.petId;
         const previousStage = this.state.evolutionStage;
         const hatchStep = accelerateEggHatch(this.state, 1);
@@ -433,7 +433,7 @@ export default class UIScene extends Phaser.Scene {
   }
 
   canUseLocalSnapshot() {
-    return !!this.state.isAlive && this.state.evolutionStage !== "Egg";
+    return !!this.state.isAlive && this.state.evolutionStage !== "egg";
   }
 
   supportsLink() {
@@ -1035,7 +1035,7 @@ export default class UIScene extends Phaser.Scene {
         }
 
         const snapshot = validated.snapshot;
-        if (!snapshot.isAlive || snapshot.evolutionStage === "Egg") {
+        if (!snapshot.isAlive || snapshot.evolutionStage === "egg") {
           this.handleExchangeFailure("Remote pet must be alive and hatched.", true);
           return;
         }
@@ -1704,7 +1704,7 @@ export default class UIScene extends Phaser.Scene {
     this.brandStatus.textContent = state.isAlive ? "Pet View" : "New Egg";
     const fullScreenMenu = this.view !== "pet";
     const eggCountdownSeconds = getEggHatchSecondsRemaining(state, this.gameScene?.elapsedAccumulator ?? 0);
-    const shouldShowEggCountdown = state.evolutionStage === "Egg" && !fullScreenMenu;
+    const shouldShowEggCountdown = state.evolutionStage === "egg" && !fullScreenMenu;
     const shouldShowSleepEnergy = state.isSleeping && !fullScreenMenu;
     const shouldShowDeadText = !state.isAlive && !fullScreenMenu;
     this.gameScene.setMenuVisible(fullScreenMenu);
@@ -1917,7 +1917,7 @@ export default class UIScene extends Phaser.Scene {
   }
 
   update(_time, delta) {
-    if (this.view === "pet" && this.state?.isAlive && this.state.evolutionStage === "Egg") {
+    if (this.view === "pet" && this.state?.isAlive && this.state.evolutionStage === "egg") {
       this.render(this.state);
     }
 

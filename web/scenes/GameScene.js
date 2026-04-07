@@ -131,11 +131,6 @@ export default class GameScene extends Phaser.Scene {
       return preferredTexture;
     }
 
-    const legacyTexture = `pet-${String(this.activePetStage || "").toLowerCase()}`;
-    if (this.textures.exists(legacyTexture)) {
-      return legacyTexture;
-    }
-
     return "__MISSING";
   }
 
@@ -244,7 +239,7 @@ export default class GameScene extends Phaser.Scene {
   canAnimatePet() {
     return this.state.isAlive
       && !this.isEvolutionTransitionActive
-      && this.activePetStage !== "Egg"
+      && this.activePetStage !== "egg"
       && !this.state.isSleeping
       && !this.menuVisible;
   }
@@ -252,7 +247,7 @@ export default class GameScene extends Phaser.Scene {
   canPlayEggIdle() {
     return this.state.isAlive
       && !this.isEvolutionTransitionActive
-      && this.activePetStage === "Egg"
+      && this.activePetStage === "egg"
       && !this.menuVisible;
   }
 

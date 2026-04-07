@@ -133,7 +133,7 @@ export const createButtonAudio = () => {
       return;
     }
 
-    const sequence = previousStage === "Egg" ? HATCH_STAGE_PATTERN : EVOLUTION_STAGE_PATTERN;
+    const sequence = previousStage === "egg" ? HATCH_STAGE_PATTERN : EVOLUTION_STAGE_PATTERN;
     let nextStartTime = context.currentTime;
     sequence.forEach((tone) => {
       playTone(context, tone, nextStartTime, EVOLUTION_MASTER_GAIN);

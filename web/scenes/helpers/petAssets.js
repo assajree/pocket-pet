@@ -1,45 +1,21 @@
 export const DEFAULT_PET_ID = "classic";
 
-const SHARED_VARIANTS = {
-  attack: "pet-attack.svg",
-  sick: "pet-sick.svg",
-  angry: "pet-angy.svg",
-  dead: "pet-dead.svg"
-};
+const FALLBACK_STAGE = "child";
+const VARIANT_ORDER = ["idle", "attack", "sick", "angry", "dead"];
+
+const createClassicStage = (displaySize, variants = VARIANT_ORDER) => ({
+  displaySize,
+  variants
+});
 
 const PET_CATALOG = {
   [DEFAULT_PET_ID]: {
     stages: {
-      Egg: {
-        displaySize: 132,
-        variants: {
-          idle: "pet-egg.svg"
-        }
-      },
-      Baby: {
-        displaySize: 148,
-        variants: {
-          idle: "pet-baby.svg"
-        }
-      },
-      Child: {
-        displaySize: 148,
-        variants: {
-          idle: "pet-child.svg"
-        }
-      },
-      Teen: {
-        displaySize: 160,
-        variants: {
-          idle: "pet-teen.svg"
-        }
-      },
-      Adult: {
-        displaySize: 170,
-        variants: {
-          idle: "pet-adult.svg"
-        }
-      }
+      egg: createClassicStage(132),
+      baby: createClassicStage(148),
+      child: createClassicStage(148),
+      teen: createClassicStage(160),
+      adult: createClassicStage(170)
     }
   }
 };
@@ -48,38 +24,74 @@ const pendingBundleLoads = new Map();
 
 const getPetConfig = (petId) => PET_CATALOG[petId] || PET_CATALOG[DEFAULT_PET_ID];
 
+const normalizeStageName = (stage) => String(stage || "").trim().toLowerCase();
+
 const getStageCatalog = (petId, stage) => {
   const petConfig = getPetConfig(petId);
-  return petConfig.stages[stage] || petConfig.stages.Child || PET_CATALOG[DEFAULT_PET_ID].stages.Child;
+  return petConfig.stages[stage]
+    || petConfig.stages[FALLBACK_STAGE]
+    || PET_CATALOG[DEFAULT_PET_ID].stages[FALLBACK_STAGE];
 };
 
-const getVariantFilename = (petId, stage, variant) => {
-  const stageCatalog = getStageCatalog(petId, stage);
-  return stageCatalog.variants[variant] || SHARED_VARIANTS[variant] || stageCatalog.variants.idle;
+const hasVariant = (petId, stage, variant) => {
+  const petConfig = getPetConfig(petId);
+  return !!petConfig.stages?.[stage]?.variants?.includes(variant);
 };
 
-const getSharedTextureKey = (variant) => `pet:shared:${variant}`;
+const buildAssetUrl = (petId, stage, variant) => `./assets/pet/${petId}/${stage}/${variant}.svg`;
 
-const getStageTextureKey = (petId, stage) => `pet:${petId}:${stage}:idle`;
+const buildTextureKey = (petId, stage, variant) => `pet:${petId}:${stage}:${variant}`;
+
+const getTextureCandidateDescriptors = (petId, stage, variant) => {
+  const resolvedPetId = PET_CATALOG[petId] ? petId : DEFAULT_PET_ID;
+  const resolvedStage = normalizeStageName(stage);
+  const resolvedVariant = VARIANT_ORDER.includes(variant) ? variant : "idle";
+  const candidates = [
+    { petId: resolvedPetId, stage: resolvedStage, variant: resolvedVariant },
+    { petId: resolvedPetId, stage: resolvedStage, variant: "idle" },
+    { petId: DEFAULT_PET_ID, stage: resolvedStage, variant: resolvedVariant },
+    { petId: DEFAULT_PET_ID, stage: resolvedStage, variant: "idle" },
+    { petId: DEFAULT_PET_ID, stage: FALLBACK_STAGE, variant: resolvedVariant },
+    { petId: DEFAULT_PET_ID, stage: FALLBACK_STAGE, variant: "idle" }
+  ];
+  const seen = new Set();
+
+  return candidates
+    .filter((candidate) => {
+      const key = `${candidate.petId}:${candidate.stage}:${candidate.variant}`;
+      if (seen.has(key)) {
+        return false;
+      }
+      seen.add(key);
+      return hasVariant(candidate.petId, candidate.stage, candidate.variant);
+    })
+    .map((candidate) => ({
+      ...candidate,
+      key: buildTextureKey(candidate.petId, candidate.stage, candidate.variant),
+      url: buildAssetUrl(candidate.petId, candidate.stage, candidate.variant)
+    }));
+};
 
 const getTextureDescriptor = (petId, stage, variant) => {
-  const filename = getVariantFilename(petId, stage, variant);
-  const isShared = SHARED_VARIANTS[variant] === filename;
-
-  return {
-    key: isShared ? getSharedTextureKey(variant) : getStageTextureKey(petId, stage),
-    url: `./assets/${filename}`
+  const descriptors = getTextureCandidateDescriptors(petId, stage, variant);
+  return descriptors[0] || {
+    petId: DEFAULT_PET_ID,
+    stage: FALLBACK_STAGE,
+    variant: "idle",
+    key: buildTextureKey(DEFAULT_PET_ID, FALLBACK_STAGE, "idle"),
+    url: buildAssetUrl(DEFAULT_PET_ID, FALLBACK_STAGE, "idle")
   };
 };
 
 const normalizeAssetStage = (petId, stage) => {
   const resolvedPetId = resolvePetId(petId);
+  const normalizedStage = normalizeStageName(stage);
   const petConfig = getPetConfig(resolvedPetId);
-  if (petConfig.stages[stage]) {
-    return stage;
+  if (petConfig.stages[normalizedStage]) {
+    return normalizedStage;
   }
 
-  return "Child";
+  return FALLBACK_STAGE;
 };
 
 const loadAssets = (scene, assets) => new Promise((resolve, reject) => {
@@ -123,8 +135,7 @@ export const getPetTextureKey = ({ petId, stage, variant = "idle" }) =>
 export const getPetStageAssetBundle = (petId, stage) => {
   const resolvedPetId = resolvePetId(petId);
   const resolvedStage = normalizeAssetStage(resolvedPetId, stage);
-  const variants = ["idle", "attack", "sick", "angry", "dead"];
-  const textures = variants.map((variant) => getTextureDescriptor(resolvedPetId, resolvedStage, variant));
+  const textures = VARIANT_ORDER.map((variant) => getTextureDescriptor(resolvedPetId, resolvedStage, variant));
 
   return {
     petId: resolvedPetId,
@@ -137,7 +148,9 @@ export const getPetStageAssetBundle = (petId, stage) => {
 export const ensurePetStageAssetsLoaded = (scene, petId, stage) => {
   const bundle = getPetStageAssetBundle(petId, stage);
   const bundleKey = `${bundle.petId}:${bundle.stage}`;
-  const missingAssets = bundle.textures.filter((asset) => !scene.textures.exists(asset.key));
+  const missingAssets = bundle.textures
+    .filter((asset) => !scene.textures.exists(asset.key))
+    .filter((asset, index, assets) => assets.findIndex((entry) => entry.key === asset.key) === index);
 
   if (!missingAssets.length) {
     return Promise.resolve(bundle);
