@@ -59,54 +59,24 @@ export const formatStatusObject = (statusObject) =>
       return `${value > 0 ? "+" : ""}${value} ${STATUS_LABELS[key] || key.toUpperCase()}`;
     });
 
-export const resolveStatusLines = (statusConfig, state) => {
-  if (!statusConfig) {
-    return [];
-  }
 
-  const resolved = typeof statusConfig === "function" ? statusConfig(state) : statusConfig;
-  if (Array.isArray(resolved)) {
-    return resolved.filter(Boolean);
-  }
+export const getMenuCaption = (menu, item, state, context = {}) => {
+  // console.log('getMenuCaption()', {'item': item});
+  const menuCaption = item.caption;
+  const effectStatus = formatStatusObject(item.effectStatus??{});
 
-  if (resolved && typeof resolved === "object") {
-    return formatStatusObject(resolved);
-  }
-
-  return resolved ? [resolved] : [];
-};
-
-export const getMenuStatusText = (menu, item, state, context = {}) => {
-  let currentStatus = resolveStatusLines(item.currentStatus, state);
-
-  if (!currentStatus.length && typeof menu.currentStatus === "function") {
-    currentStatus = resolveStatusLines(menu.currentStatus(item), state);
-  }
-  const effectStatus = resolveStatusLines(item.effectStatus, state);
-
-  if (!currentStatus.length && item.key && !item.currentStatus && !String(item.key).startsWith("link-")) {
-    const extraStatsFn = (s) => {
-      if (!item.effectStatus) return [];
-      return Object.keys(item.effectStatus).map((k) => {
-        const val = Math.round(s[k]);
-        return `${STATUS_LABELS[k] || k.toUpperCase()} ${val}`;
-      });
-    };
-    currentStatus = resolveStatusLines(buildInventoryItemStatus(item.key, extraStatsFn), state);
-  }
-
-  if (currentStatus.length || effectStatus.length) {
-    return [...currentStatus, ...effectStatus, menu.statusText].filter(Boolean).join("\n");
+  if (effectStatus.length) {
+    return [...effectStatus, menuCaption].filter(Boolean).join("\n");
   }
 
   if (typeof item.status === "function") {
     const value = item.status(state, context);
-    return menu.statusText ? `${value}\n${menu.statusText}` : value;
+    return menuCaption ? `${value}\n${menuCaption}` : value;
   }
 
   if (typeof item.status === "string") {
-    return menu.statusText ? `${item.status}\n${menu.statusText}` : item.status;
+    return menuCaption ? `${item.status}\n${menuCaption}` : item.status;
   }
 
-  return menu.statusText;
+  return menuCaption;
 };

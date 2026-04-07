@@ -35,11 +35,11 @@ export {
 };
 
 const STAGE_RULES = [
-  { stage: "Child", minAgeMinutes: 1, requiredAverage: 0 },
-  { stage: "Teen", minAgeMinutes: 5, requiredAverage: 50 },
-  { stage: "Adult", minAgeMinutes: 9, requiredAverage: 65 }
+  { stage: "Egg", nextStage: "Child" },
+  { stage: "Child", minAgeMinutes: 1, requiredAverage: 0, nextStage: "Teen" },
+  { stage: "Teen", minAgeMinutes: 5, requiredAverage: 50, nextStage: "Adult" },
+  { stage: "Adult", minAgeMinutes: 9, requiredAverage: 65, nextStage: "Adult" }
 ];
-const STAGE_ORDER = ["Egg", "Child", "Teen", "Adult"];
 
 const clamp = (value, min = 0, max = 100) => Math.min(max, Math.max(min, value));
 
@@ -179,6 +179,10 @@ const applyChildHatchState = (state) => {
   state.actionLockUntil = 0;
 };
 
+const getStageRule = (stage) => STAGE_RULES.find((rule) => rule.stage === stage) ?? null;
+
+const getDebugNextStage = (stage) => getStageRule(stage)?.nextStage ?? stage;
+
 export const getEggHatchSecondsRemaining = (state, pendingSeconds = 0) => {
   if (state.evolutionStage !== "Egg") {
     return 0;
@@ -217,6 +221,10 @@ const updateEvolution = (state) => {
   const ageMinutesPrecise = state.ageMinutes + ((state.timers?.ageTick ?? 0) / 60);
 
   for (const rule of STAGE_RULES) {
+    if (typeof rule.minAgeMinutes !== "number") {
+      continue;
+    }
+
     if (ageMinutesPrecise >= rule.minAgeMinutes && averageStats >= rule.requiredAverage) {
       nextStage = rule.stage;
     }
@@ -238,27 +246,39 @@ const updateEvolution = (state) => {
 };
 
 const evolveToNextStage = (state) => {
-  if (state.evolutionStage === "Baby") {
-    state.evolutionStage = "Child";
-    addLog(state, "Debug: evolved pet to Child.");
-    return "Child";
+  applyDebugFill(state);
+  const currentStage = state.evolutionStage;
+  const currentRule = getStageRule(currentStage);  
+  if (!currentRule) {
+    const correctedStage = STAGE_RULES[0].stage;
+    state.evolutionStage = correctedStage;
+    addLog(state, `Debug: stage corrected to ${correctedStage}.`);
+    return;
   }
 
-  const currentIndex = STAGE_ORDER.indexOf(state.evolutionStage);
-  if (currentIndex < 0) {
-    state.evolutionStage = STAGE_ORDER[0];
-    addLog(state, `Debug: stage corrected to ${STAGE_ORDER[0]}.`);
-    return STAGE_ORDER[0];
+  const nextStage = getDebugNextStage(currentStage);
+  const nextRule = getStageRule(nextStage);    
+
+  
+  if(nextRule){
+    state.ageMinutes = nextRule.minAgeMinutes;
   }
 
-  const nextStage = STAGE_ORDER[Math.min(currentIndex + 1, STAGE_ORDER.length - 1)];
   state.evolutionStage = nextStage;
+  if (currentStage === "Egg" && nextStage === "Child") {
+    applyChildHatchState(state);
+  }
   addLog(
     state,
-    nextStage === state.evolutionStage && currentIndex === STAGE_ORDER.length - 1
+    nextStage === currentStage
       ? `Debug: ${nextStage} is already the highest stage.`
       : `Debug: evolved pet to ${nextStage}.`
   );
+
+  console.log('evolveToNextStage', {'nextRule': nextRule, 'state.ageMinutes': state.ageMinutes});
+  // saveState(state, 'evolveToNextStage()');
+  // updateEvolution(state);
+  tickState(state, 1);
   return nextStage;
 };
 
@@ -812,6 +832,26 @@ const applyEffectStatus = (state, effectStatus, context = {}) => {
   });
 };
 
+export const applyDebugFill = (state) => {
+  state.hunger = 100;
+  state.happiness = 100;
+  state.energy = 100;
+  state.health = 100;
+  state.cleanliness = 100;
+  state.money = 999;
+  state.str = 25;
+  state.agi = 25;
+  state.int = 25;
+  setInventoryCount(state, "snack", 9);
+  setInventoryCount(state, "medicine", 9);
+  state.isSick = false;
+  state.poopCount = 0;
+  state.isSleeping = false;
+  state.actionLockUntil = 0;
+  addLog(state, "Debug: all core stats were maxed out.");
+  return { ok: true };
+};
+
 export const applyAction = (state, action, effectStatus = null, context = {}) => {
   if (!state.isAlive) {
     return { ok: false, message: "Your pet is gone. Start a new game." };
@@ -871,23 +911,7 @@ export const applyAction = (state, action, effectStatus = null, context = {}) =>
       addLog(state, "Medicine helped your pet recover.");
       return { ok: true };
     case "debug-fill":
-      state.hunger = 100;
-      state.happiness = 100;
-      state.energy = 100;
-      state.health = 100;
-      state.cleanliness = 100;
-      state.money = 999;
-      state.str = 25;
-      state.agi = 25;
-      state.int = 25;
-      setInventoryCount(state, "snack", 9);
-      setInventoryCount(state, "medicine", 9);
-      state.isSick = false;
-      state.poopCount = 0;
-      state.isSleeping = false;
-      state.actionLockUntil = 0;
-      addLog(state, "Debug: all core stats were maxed out.");
-      return { ok: true };
+      return applyDebugFill(state);
     case "debug-new-egg": {
       const freshEgg = createNewState();
       Object.assign(state, freshEgg);
@@ -897,6 +921,7 @@ export const applyAction = (state, action, effectStatus = null, context = {}) =>
     case "debug-reset-save": {
       clearState();
       const freshEgg = createNewState();
+      freshEgg.evolutionStage = "Child";
       Object.assign(state, freshEgg);
       addLog(state, "Debug: cleared save data and reset to a fresh egg.");
       return { ok: true };

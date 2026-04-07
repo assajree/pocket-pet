@@ -19,7 +19,7 @@ const LINK_GAME_BET_ITEMS = [0, 10, 20, 50, 100].map((bet) => ({
 
 export const MENUS = {
   main: {
-    statusText: "",
+    caption: "",
     items: [
       { key: "feed", label: "FEED", caption: "Open the feeding menu.", submenu: "feed" },
       { key: "play", label: "PLAY", caption: "Open the mini game list.", submenu: "play" },
@@ -38,7 +38,7 @@ export const MENUS = {
     ]
   },
   feed: {
-    statusText: "",
+    caption: "",
     items: ITEM_LIST,
     visibleWhen: (item, state) => {
       if (item.key === "medicine") return false;
@@ -47,11 +47,11 @@ export const MENUS = {
     }
   },
   play: {
-    statusText: "",
+    caption: "",
     items: PLAY_MENU_ITEMS
   },
   link: {
-    statusText: "Choose a link mode to host or join.",
+    caption: "Choose a link mode to host or join.",
     items: [
       { key: "battle", label: "BATTLE", caption: "Host or join a battle link.", submenu: "link-battle" },
       { key: "dating", label: "DATING", caption: "Host or join a dating link.", submenu: "link-dating" },
@@ -59,54 +59,54 @@ export const MENUS = {
     ]
   },
   "link-battle": {
-    statusText: "Battle links auto-resolve after exchange.",
+    caption: "Battle links auto-resolve after exchange.",
     items: [
       { key: "link-battle-host", label: "HOST", caption: "Open a battle host session.", icon: "", status: (state, context) => context.scene?.getEncounterMenuStatus(state, { key: "link-battle-host" }) },
       { key: "link-battle-join", label: "JOIN", caption: "Join a battle host session.", icon: "", status: (state, context) => context.scene?.getEncounterMenuStatus(state, { key: "link-battle-join" }) }
     ]
   },
   "link-dating": {
-    statusText: "Dating links auto-resolve after exchange.",
+    caption: "Dating links auto-resolve after exchange.",
     items: [
       { key: "link-dating-host", label: "HOST", caption: "Open a dating host session.", icon: "", status: (state, context) => context.scene?.getEncounterMenuStatus(state, { key: "link-dating-host" }) },
       { key: "link-dating-join", label: "JOIN", caption: "Join a dating host session.", icon: "", status: (state, context) => context.scene?.getEncounterMenuStatus(state, { key: "link-dating-join" }) }
     ]
   },
   "link-game": {
-    statusText: "Host picks the game and bet first.",
+    caption: "Host picks the game and bet first.",
     items: [
       { key: "link-game-host", label: "HOST", caption: "Choose a game and open a room.", icon: "", submenu: "link-game-host" },
       { key: "link-game-join", label: "JOIN", caption: "Join a game room with a code.", icon: "", status: (state, context) => context.scene?.getLinkGameMenuStatus(state, { key: "link-game-join" }) }
     ]
   },
   "link-game-host": {
-    statusText: "Choose the mini game for this room.",
+    caption: "Choose the mini game for this room.",
     items: LINK_GAME_HOST_ITEMS
   },
   "link-game-bet": {
-    statusText: "Choose the bet amount.",
+    caption: "Choose the bet amount.",
     items: LINK_GAME_BET_ITEMS
   },
   shop: {
-    statusText: "",
+    caption: "",
     items: ITEM_LIST,
     visibleWhen: (item) => item.shopPrice > 0,
     currentStatus: (item) => buildShopStatus(item.key, item.key, item.label)
   },
   debug: {
-    statusText: "Debug menu",
+    caption: "Debug menu",
     items: [
-      { key: "debug-new-egg", label: "NEW EGG", caption: "Reset the pet back to a fresh egg.", icon: "" },
-      { key: "debug-reset-save", label: "RESET SAVE", caption: "Clear all save data and start again from an egg.", icon: "new-egg" },
       { key: "debug-fill", label: "MAX ALL", caption: "Fill all core stats.", icon: "" },
       { key: "debug-drain", label: "LOW ALL", caption: "Lower core stats for testing.", icon: "" },
-      { key: "debug-evolve", label: "EVOLVE +1", caption: "Advance to the next pet stage.", icon: "" },
       { key: "debug-sick", label: "TOGGLE SICK", caption: "Toggle sickness on or off.", icon: "" },
-      { key: "debug-dead", label: "DEAD", caption: "Mark the pet as dead immediately.", icon: "" }
+      { key: "debug-dead", label: "DEAD", caption: "Mark the pet as dead immediately.", icon: "" },
+      { key: "debug-new-egg", label: "NEW EGG", caption: "Reset the pet back to a fresh egg.", icon: "" },
+      { key: "debug-reset-save", label: "RESET SAVE", caption: "Clear all save data and start again from an egg.", icon: "new-egg" },
+      { key: "debug-evolve", label: "EVOLVE +1", caption: "Advance to the next pet stage.", icon: "" },
     ]
   },
   dead: {
-    statusText: "Pet is gone",
+    caption: "Pet is gone",
     items: [
       { key: "new-egg", label: "NEW EGG", caption: "Hatch a fresh egg and start over.", icon: "" }
     ]

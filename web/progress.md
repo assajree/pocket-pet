@@ -1,0 +1,108 @@
+Original prompt: อยากได้หน้าหน้าจอประมาณนี้ ในรูปคือหน้าจอเมนูจะแสดงขึ้นมาเมื่อกดปุ่มข้างล่าง ที่มีสี่ปุ่ม กดปุ่มไหนก็ได้ หน้าจอแสดงผลเมนูมีขนาด 48x48 pixel มีเมนูดังนี้ status แสดงหน้าจอ status ของสัตว์เลี้ยง feed เมนูให้อาหาร มีให้เลือกว่าจะให้ข้าวเพื่อเพิ่มความอิ่ม หรือให้ขนมเพื่อเพิ่มความสนุกและน้ำหนัก medicine ใช้รักษาเมื่อป่วย play เมนูแสดงรายชื่อ mini game clean ทำความสะอาด sleep ปิดไฟนอนหลับ โดยจะแสดงครั้งละ 1 เมนูเท่านั้น เลื่อนไปเมนูถัดไปด้วยการกดปุ่มลูกศรลง เลื่อนไปเมนูก่อนหน้าด้วยการกดปุ่มลูกศรขึ้น เลือกเมนูด้วยการกดลูกศรขวา ออกจากเมนูด้วยการกดลูกศรซ้าย
+
+- Replaced the old multi-panel HUD markup with a single 48x48 menu canvas overlay and four directional hardware buttons.
+- Added a canvas-driven menu state machine in `scenes/UIScene.js` for main menu, feed submenu, status screen, play list, message screen, and a right-button tap mini game.
+- Extended pet state with `weight` plus new `meal` and `snack` feeding actions in `gameState.js`.
+- Verified JavaScript syntax with `node --check` on `gameState.js`, `main.js`, and all scene files.
+- Tried to run the Playwright validation loop after serving the app locally; browser automation is still blocked by module resolution for the cached `playwright` package, so visual verification is still pending.
+- Updated the mini game flow in `scenes/UIScene.js` so finishing a run shows a result screen for 3 seconds via a dedicated duration constant and ignores both keyboard and on-screen button input during that summary pause.
+- Updated the pet view mood label so the default `Happy` state is hidden, while non-happy moods still show as before.
+- Changed the pet view controls so pressing `cancel` from the closed pet screen opens the status screen directly.
+- Removed `status` from the main menu, keeping status access only through the pet-view `cancel` shortcut.
+- Added inline SVG menu icons for the main menu, feed submenu, status screen, mini game, notices, and result summary, plus the supporting icon slot in the overlay markup/styles.
+- Updated the pet HUD so sleeping state shows the current `Energy` value on the pet screen.
+- Added a sleep shortcut so pressing `ok` on the closed pet screen while sleeping boosts `Energy` faster via a dedicated constant in `scenes/UIScene.js`.
+- Updated sleep logic so the pet wakes up automatically as soon as `Energy` reaches `100`, including when boosted with the `ok` shortcut.
+- Changed passive energy recovery so sleeping now restores `2` energy per second via a dedicated constant in `gameState.js`.
+- Fixed the egg hatch countdown timing so the game loop no longer drops fractional elapsed time each second, and the pet screen now includes the current frame's pending time when showing the hatch countdown.
+- Refactored menu handling in `scenes/UIScene.js` to use a shared multi-submenu config and added a new `debug` submenu with max-stats, low-stats, and toggle-sick actions backed by `gameState.js`.
+- Updated the `feed > rice` menu entry to show the current hunger value directly on the menu screen.
+- Updated the `feed > snack` menu entry to show current happiness and weight values on the menu screen.
+- Adjusted the `feed > snack` details so happiness and weight render on separate lines for readability.
+- Updated `feed > rice` and `feed > snack` to show both current values and the positive effect amounts in the menu details.
+- Refactored `feed` menu items to support future additions via per-item `name`, `icon`, and `status` config instead of hardcoded render branches.
+- Removed the extra `Food menu` footer text from the feed submenu details.
+- Added permanent README notes describing save behavior and how offline progress is calculated, including that it can cause death.
+- Changed pet wandering in `scenes/GameScene.js` to snap between LCD-style movement blocks, with block size and range exposed as constants for tuning.
+- Slowed pet movement further by exposing movement delay and movement duration as separate constants in `scenes/GameScene.js`.
+- Removed the idle squash/stretch animation and increased the frequency of LCD-style movement steps instead.
+- Reworked pet movement again so it now steps on every frame update at the configured game FPS, with jump odds and jump timing exposed as constants.
+- Replaced tween-based jumping with a frame-held LCD-style hop so low-FPS movement no longer looks like slow motion.
+- Split pet movement cadence and jump cadence into separate FPS-style constants in `scenes/GameScene.js` using delta-based accumulators.
+- Removed the old global `PET_SCREEN_FPS` override from `main.js`; pet cadence is now tuned only through the movement/jump constants in `scenes/GameScene.js`.
+- Updated the `play` submenu so mini game entries can show current stats and expected stat changes in the same style as `feed`.
+- Cleaned up submenu status rendering so menus with per-item status but no footer text do not show extra blank lines.
+- Changed successful feed actions to keep the feed submenu open instead of closing back to the pet screen.
+- Added a short feeding animation overlay for `feed > rice` and `feed > snack`, with temporary input lock and auto-return to the feed submenu after the munch/chomp sequence.
+- Allowed `ok` and `cancel` to skip the feeding animation immediately and return to the `feed` submenu without waiting for the timer.
+- Kept on-screen `ok` and `cancel` buttons enabled during the feeding animation so skip works from both hardware UI buttons and keyboard input.
+- Moved menu icons and feeding animation artwork out of `scenes/UIScene.js` into SVG assets under `assets/ui`, and updated `BootScene`/`UIScene` to load and render them from Phaser text cache.
+- Refactored `feed` menu items so each item now stores current stat lines and effect stat lines separately, with shared rendering support in `UIScene.js`.
+- Changed `feed` item effect data to live directly on each item as stat objects like `{ hunger: 24 }`, with shared object-to-text formatting in `UIScene.js`.
+- Added `effectStatus` to the `play` submenu item too, and updated `applyAction()`/mini-game reward flow so both `feed` and `play` now apply stat changes from menu item config instead of hardcoded values.
+- Refactored the `play` submenu mini-game flow to read title, icon, duration, prompts, score labels, and summary text from each item config instead of hardcoding `tap-sprint` UI strings.
+- Added a second sample mini game, `CHEER BURST`, to demonstrate how new `play` items can be added with only config changes when they use the shared tap-count runtime.
+- Added a non-tap-count sample mini game, `QUICK MATCH`, where the player must follow a random 5-button sequence before time runs out, and expanded the mini-game runtime to branch on `minigame.type`.
+- Moved play-menu mini-game configs and shared mini-game runtime helpers out of `UIScene.js` into `scenes/minigames.js` so future mini-game additions can stay isolated from the main UI scene.
+- Refactored `scenes/minigames.js` again so each `miniGameType` owns its own session creation, input handling, and status-text method through dedicated handlers instead of one shared branching function.
+- Moved `feed` menu item configs out of `UIScene.js` into `scenes/feedItems.js`, so both feed and play menu content now live outside the main UI scene file.
+- Split UI constants into `scenes/uiConfig.js`, menu definitions into `scenes/menus.js`, and status-line rendering helpers into `scenes/menuFormatters.js` so `UIScene.js` focuses more tightly on scene flow and DOM updates.
+- Broke the mini-game system into `scenes/minigames/index.js`, `playItems.js`, `tapCount.js`, `sequenceMatch.js`, and `types.js` so each mini-game type owns its own runtime logic in a dedicated module.
+- Updated `styles.css` for short mobile viewports like iPhone SE by switching to a `svh/dvh` height variable, aligning the shell to the top on small screens, and constraining the device shell height so the bottom hardware buttons no longer get pushed off-screen as easily.
+- Changed poop placement in `scenes/GameScene.js` from a narrow 3-column cluster to a fixed 10-column, 2-row grid that spreads across the screen width.
+- Added `MAX_POOP_COUNT = 10` in `gameState.js` and capped passive poop generation so the mess count no longer grows without limit.
+- Added new pet SVG sprites `pet-angy`, `pet-sick`, `pet-dead`, and `pet-attack`, loaded them in `BootScene`, and wired `GameScene` to swap textures based on low happiness, sickness, death, and jump/attack animation state.
+- Added persistent `str`, `agi`, and `int` stats in `gameState.js`, updated debug presets to include them, and expanded the status screen in `scenes/UIScene.js` into a two-page view navigated with left/right input.
+- Fixed `scenes/UIScene.js` so the status screen still accepts left/right page turns and `ok` close input even after the pet has died.
+- Added a bottom dot indicator to the screen menu UI so same-level menu items and status pages now show total count and current position.
+- Added a `DEAD` option to the debug menu and wired it to force the pet into the dead state immediately for testing.
+- Removed icons from all debug menu entries by marking those items as icon-less and updating `UIScene` to respect explicit empty icon values.
+- Fixed the dead-state input guard so the status screen can still receive left/right navigation while the pet is dead.
+- Updated `web/main.js` so the app skips service worker registration in the Android Capacitor runtime, while browser/PWA still registers and now forces waiting workers to activate immediately before reloading once on `controllerchange`.
+- Reworked `web/service-worker.js` from a single cache-first bucket into versioned app-shell/runtime caches with build-aware names, `network-first` for HTML and local JS/CSS, `stale-while-revalidate` for static assets, and explicit old-cache cleanup during `activate`.
+- Added shared build metadata plumbing with `web/build-meta.js`, dynamic `/build-meta.js` serving in `server.js`, and generated `dist/build-meta.js` output in `scripts/prepare-capacitor-assets.mjs` so browser and Android builds each expose a release-specific cache version.
+- Verified `server.js`, `scripts/prepare-capacitor-assets.mjs`, `web/main.js`, and `web/service-worker.js` syntax, ran `npm run build:web-assets`, and confirmed `/build-meta.js`, `/service-worker.js`, and `/` now serve with `Cache-Control: no-store` where expected.
+- Attempted the `develop-web-game` Playwright validation loop against a local server, but the shared client still fails in this environment because the `playwright` package is not installed for the skill script to import.
+- Added a dedicated dead-state menu with a `NEW EGG` action, so the normal main menu is replaced after the pet dies and restart happens via that menu instead of immediately.
+- Added a top-of-screen menu parent breadcrumb and a `menuPath` stack in `scenes/UIScene.js`, so submenu ancestry now renders as a parent trail and can scale to deeper nested menus.
+- Adjusted the menu breadcrumb so it excludes `MAIN` and anchors to the top-left corner of the menu screen instead of sitting above the title.
+- Added persistent `money` plus item inventory for rice, snack, and medicine; introduced a `SHOP` submenu with purchasable items, made feed/medicine consume inventory, and added small money rewards from mini games so the economy loop is playable.
+- Updated the `FEED` menu to show item quantities in the title/status and hide feed entries entirely when their inventory count reaches `0`, with shared filtered-menu handling in `UIScene`.
+- Made `rice` unlimited by removing stock consumption and shop purchasing for meal, updating feed/status UI to show `INF` instead of a finite quantity.
+- Generalized item behavior with shared `ITEM_DEFS` metadata in `gameState.js` so items can now declare reusable traits like `consumable`, `infinite`, and `shopPrice`; feed/shop/status UI now read those helpers instead of hardcoding rice-specific behavior.
+- Fixed the shop purchase runtime crash by importing item helper bindings directly into `gameState.js` before re-exporting them; `purchaseItem()` can now resolve shop price/max quantity correctly at runtime.
+- Fixed `scenes/menuFormatters.js` so shop-specific status lines (money owned/cost) are no longer overwritten by the generic inventory fallback.
+- Added a dedicated `NEW EGG` hatch animation with its own SVG asset/config, and changed the dead-menu restart flow so selecting `NEW EGG` plays that animation before resetting the save/state.
+- Added a real `Egg` pet stage: new saves now begin as `Egg`, the egg uses its own sprite/texture mapping, stays still on the pet screen, and automatically hatches into `Baby` after the first age-minute before continuing the normal evolution chain.
+- Updated the `Egg` idle tween in `scenes/GameScene.js` to use a gentle in-and-out zoom pulse instead of bobbing/tilting.
+- Added an evolution animation in `scenes/GameScene.js` that pulses/flashes the pet and shows a short `HATCH!` or `EVOLVE!` banner whenever the stage changes.
+- Added a `DEBUG > EVOLVE +1` action that advances the pet to the next stage, and keeps the same stage when already at the highest evolution tier.
+- Fixed `Egg` hatching to use precise age progress (`ageMinutes + ageTick`) so it no longer waits on coarse minute boundaries, and added a pet-screen `Hatch in: M:SS` countdown while the pet is still an egg.
+- Fixed manual debug evolution so `UIScene` now notifies `GameScene` immediately when the stage changes, and the evolution animation temporarily forces the new stage texture so the form swap is visible even during the effect.
+- Changed `Egg` behavior so it is now invulnerable with locked max core stats while waiting to hatch, and updated hatching so it now becomes `Child` with intentionally low starting stats instead of transitioning through `Baby`.
+- Changed `Egg` hardware-button behavior so each button press on the closed pet screen now fast-forwards hatching by 1 second instead of opening menus or triggering normal actions.
+- Forced pet-screen refresh while the pet is still an egg, and emit a second `state-changed` after evolution animations finish so the hatch countdown text updates live and clears immediately after hatching.
+- Added a `DEBUG > NEW EGG` action that resets the current pet state back to a fresh egg without leaving the current session, making the egg countdown/hatch flow easier to retest.
+- Removed the `LINK` feature from Web/PWA menus and status pages, keeping browser builds single-device only.
+- Replaced the old HTTP link client with an Android bridge transport abstraction so future Android app builds can supply native offline linking without exposing `/api/link/*` on the web.
+- Simplified `server.js` back to static file serving only, since web builds no longer host LAN link sessions.
+- Updated README notes to clarify that link is Android-only and the PWA build is offline single-device only.
+- Verified syntax with `node --check` for `server.js`, `main.js`, `scenes/UIScene.js`, `scenes/helpers/menus.js`, `scenes/helpers/platform.js`, `scenes/helpers/linkTransport.js`, and the compatibility re-export in `scenes/helpers/linkSessionClient.js`.
+- Verified the visible main-menu items in a non-Android runtime now exclude `link`, returning `["feed","play","shop","sleep","clean","medicine","debug"]`.
+- Verified the local dev server on port `8091` still serves `/` and `README.md`, while `POST /api/link/host` now returns `404` as expected.
+- Added Capacitor package scripts plus a static asset copy pipeline into `dist/` so the project can be wrapped as an Android app without relying on `server.js`.
+- Added `capacitor.config.json` with app id `com.codex.pocketpet` and Android workflow commands for sync/open/debug build.
+- Added a post-sync Gradle patch step so Capacitor-generated Android files target Java 17 instead of Java 21 on this machine.
+- Moved the web app source into a dedicated `web/` subfolder and updated the local server plus Capacitor asset pipeline to read from that new source root.
+- Added a new `LINK > GAME` path alongside the existing `BATTLE` and `DATING` menus, including host mini game selection and a fixed bet menu (`0/10/20/50/100`).
+- Extended `scenes/UIScene.js` with a parallel link-game runtime for room join, bet validation, ready state, 3-second countdown, linked mini game results, and local `WIN/LOST/DRAW` summaries without removing the old encounter flow.
+- Kept normal mini game rewards active for linked matches and added `applyLinkGameBetOutcome()` in `gameState.js` so the winner gains the bet, the loser loses it, and draws cause no extra transfer.
+- Extended the Android bridge and Nearby plugin to support `mode=game`, room metadata (`gameKey`, `bet`), game-state polling, and game-result exchange while preserving the existing `combat` and `dating` session behavior.
+- Added sequence sync support for `QUICK MATCH` so the host can send a shared sequence payload and both linked devices play the same pattern.
+- Verified JavaScript syntax with `node --check` for `web/scenes/UIScene.js`, `web/gameState.js`, `web/scenes/helpers/menus.js`, `web/scenes/helpers/linkTransport.js`, `web/scenes/minigames/index.js`, and `web/scenes/minigames/sequenceMatch.js`.
+- Android Java compilation and device-to-device link testing are still pending; the Nearby plugin changes were verified by code inspection only.
+- Fixed the `LINK > GAME > HOST` bet-selection crash in `web/scenes/UIScene.js` by preserving the selected mini-game item across `resetExchangeRuntime()` inside `startHostedGame()`, preventing the later null `.key` read after choosing a bet.
+- Restored web `LINK` support by bringing `/api/link/*` back into `server.js` with the old in-memory session model and extending it for `LINK > GAME` state/result exchange.
+- Reworked `web/scenes/helpers/linkTransport.js` into a dual transport that uses HTTP on web/PWA and the native bridge on Android, while keeping the existing `UIScene` call surface unchanged.
+- Updated platform capabilities and README notes so web builds always show the `LINK` menu, but static hosting without the Node.js backend now reports a clear unavailable message when a link action is attempted.
+- Re-verified syntax with `node --check web/scenes/UIScene.js` after the host-game crash fix.

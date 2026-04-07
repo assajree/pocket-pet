@@ -27,7 +27,7 @@ import {
   initializeMiniGameSession
 } from "./minigames/index.js";
 import { MENUS, isMenuView } from "./helpers/menus.js";
-import { getMenuStatusText, buildInventoryItemName } from "./helpers/menuFormatters.js";
+import { getMenuCaption, buildInventoryItemName } from "./helpers/menuFormatters.js";
 import {
   ACTION_ANIMATION_CONFIG,
   LINK_GAME_COUNTDOWN_MS,
@@ -1718,7 +1718,7 @@ export default class UIScene extends Phaser.Scene {
       this.setMenuParent(this.getMenuParentText());
       this.setMenuIcon(item.icon !== undefined ? item.icon : item.key);
       this.screenMenuTitle.textContent = this.getMenuItemTitle(item);
-      this.screenMenuStatus.textContent = getMenuStatusText(menu, item, state, {
+      this.screenMenuStatus.textContent = getMenuCaption(menu, item, state, {
         scene: this,
         remoteEncounterSnapshot: this.remoteEncounterSnapshot
       });
