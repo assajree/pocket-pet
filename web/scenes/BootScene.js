@@ -47,8 +47,8 @@ export default class BootScene extends Phaser.Scene {
 
   create() {
     const state = loadState();
-    applyOfflineProgress(state);
-    saveState(state);
+    // applyOfflineProgress(state);
+    // saveState(state);
 
     this.registry.set("petState", state);
     this.scene.start("GameScene");

@@ -100,8 +100,7 @@ export const createNewState = () => ({
       text: "A new egg is waiting to hatch.",
       time: Date.now()
     }
-  ],
-  lastEncounterResult: null
+  ]
 });
 
 const baseState = createNewState();
@@ -131,10 +130,7 @@ export const loadState = () => {
         ...parsed.timers
       },
       inventory: normalizeInventory(parsed.inventory),
-      logs: Array.isArray(parsed.logs) && parsed.logs.length ? parsed.logs : createNewState().logs,
-      lastEncounterResult: parsed.lastEncounterResult && typeof parsed.lastEncounterResult === "object"
-        ? parsed.lastEncounterResult
-        : null
+      logs: Array.isArray(parsed.logs) && parsed.logs.length ? parsed.logs : createNewState().logs
     };
   } catch (error) {
     console.warn("Failed to load save data.", error);
@@ -694,18 +690,6 @@ export const applyEncounterOutcome = (state, outcome) => {
     state[key] = clampStatValue(key, state[key] + delta);
   });
 
-  state.lastEncounterResult = {
-    mode: outcome.mode,
-    seed: outcome.seed,
-    localChecksum: outcome.localChecksum,
-    remoteChecksum: outcome.remoteChecksum,
-    summary: outcome.summary,
-    localEffects,
-    winner: outcome.winner,
-    compatibility: outcome.compatibility,
-    tier: outcome.tier,
-    resolvedAt: Date.now()
-  };
   addLog(state, outcome.mode === "combat" ? "Encounter: combat resolved." : "Encounter: date resolved.");
   addLog(state, outcome.summary);
   const effectText = formatEncounterEffects(localEffects);
