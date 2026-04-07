@@ -99,6 +99,7 @@ export const MENUS = {
       { key: "debug-fill", label: "MAX ALL", caption: "Fill all core stats.", icon: "" },
       { key: "debug-drain", label: "LOW ALL", caption: "Lower core stats for testing.", icon: "" },
       { key: "debug-sick", label: "TOGGLE SICK", caption: "Toggle sickness on or off.", icon: "" },
+      { key: "debug-play-audio", label: "PLAY SAMPLE SFX", caption: "Play a sample sound from an audio asset file.", icon: "" },
       { key: "debug-dead", label: "DEAD", caption: "Mark the pet as dead immediately.", icon: "" },
       { key: "debug-new-egg", label: "NEW EGG", caption: "Reset the pet back to a fresh egg.", icon: "" },
       { key: "debug-reset-save", label: "RESET SAVE", caption: "Clear all save data and start again from an egg.", icon: "" },

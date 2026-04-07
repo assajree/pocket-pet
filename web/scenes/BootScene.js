@@ -20,6 +20,7 @@ export default class BootScene extends Phaser.Scene {
     this.initialState = loadState();
     this.load.setPath("./assets");
     this.load.image("poop", "poop.svg");
+    this.load.audio("debug-sample-audio", "audio/debug-sample.wav");
 
     const uiAssets = [
       "default-menu",

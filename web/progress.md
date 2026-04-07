@@ -18,6 +18,11 @@ Original prompt: อยากได้หน้าหน้าจอประม
 - Refactored menu handling in `scenes/UIScene.js` to use a shared multi-submenu config and added a new `debug` submenu with max-stats, low-stats, and toggle-sick actions backed by `gameState.js`.
 - Updated the `feed > rice` menu entry to show the current hunger value directly on the menu screen.
 - Updated the `feed > snack` menu entry to show current happiness and weight values on the menu screen.
+- Added a `DEBUG > PLAY SAMPLE SFX` entry that plays `web/assets/audio/debug-sample.wav` through Phaser's audio loader/sound manager, giving the debug submenu a concrete sample of file-based asset playback.
+- Updated `web/scenes/BootScene.js` to preload the sample audio asset and `web/service-worker.js` to precache it for offline/debug use.
+- Verified JavaScript syntax with `node --check` for `web/scenes/BootScene.js`, `web/scenes/UIScene.js`, and `web/service-worker.js`.
+- Verified the local server serves `http://127.0.0.1:8101/assets/audio/debug-sample.wav` with `200` and that the served menu/config code includes the new `debug-play-audio` entry plus the `debug-sample-audio` preload key.
+- Tried to run the `develop-web-game` Playwright client again, but browser automation is still blocked in this environment because the skill script cannot resolve the `playwright` package (`ERR_MODULE_NOT_FOUND`).
 - Adjusted the `feed > snack` details so happiness and weight render on separate lines for readability.
 - Updated `feed > rice` and `feed > snack` to show both current values and the positive effect amounts in the menu details.
 - Refactored `feed` menu items to support future additions via per-item `name`, `icon`, and `status` config instead of hardcoded render branches.

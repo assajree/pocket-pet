@@ -385,6 +385,11 @@ export default class UIScene extends Phaser.Scene {
       return;
     }
 
+    if (item.key === "debug-play-audio") {
+      this.playDebugSampleAudio();
+      return;
+    }
+
     if (this.view === "shop") {
       const purchase = purchaseItem(this.state, item.key);
       saveState(this.state, "ui:shop-purchase");
@@ -421,6 +426,29 @@ export default class UIScene extends Phaser.Scene {
     }
 
     this.showMessage(result.message || this.getSuccessMessage(item.key), false);
+  }
+
+  playDebugSampleAudio() {
+    try {
+      this.sound.stopByKey("debug-sample-audio");
+      this.sound.play("debug-sample-audio", {
+        volume: 0.45
+      });
+      this.showMessage("Played sample audio from assets/audio/debug-sample.wav.", true, {
+        returnState: {
+          view: this.view,
+          menuPath: this.menuPath.map((entry) => ({ ...entry }))
+        }
+      });
+    } catch (error) {
+      console.warn("Failed to play debug sample audio.", error);
+      this.showMessage("Sample audio could not play on this device.", false, {
+        returnState: {
+          view: this.view,
+          menuPath: this.menuPath.map((entry) => ({ ...entry }))
+        }
+      });
+    }
   }
 
   getLocalEncounterSnapshot() {

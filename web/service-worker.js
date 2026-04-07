@@ -33,6 +33,7 @@ const CORE_ASSETS = [
   "./scenes/minigames/sequenceMatch.js",
   "./scenes/minigames/tapCount.js",
   "./scenes/minigames/types.js",
+  "./assets/audio/debug-sample.wav",
   "./assets/poop.svg",
   "./assets/ui/clean.svg",
   "./assets/ui/cleaning-room.svg",
