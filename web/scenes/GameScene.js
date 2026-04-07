@@ -60,7 +60,7 @@ export default class GameScene extends Phaser.Scene {
     this.pet = this.add.image(
       this.basePetX,
       this.basePetY,
-      getPetTextureKey({ petId: this.activePetId, stage: this.activePetStage, variant: "idle" })
+      this.getSafeInitialTextureKey()
     );
     const initialPetSize = getPetDisplaySize(this.activePetId, this.activePetStage);
     this.pet.setDisplaySize(initialPetSize, initialPetSize);
@@ -123,6 +123,20 @@ export default class GameScene extends Phaser.Scene {
     this.syncVisuals();
     this.updateIdleAnimation();
     this.events.emit("state-changed", this.state);
+  }
+
+  getSafeInitialTextureKey() {
+    const preferredTexture = getPetTextureKey({ petId: this.activePetId, stage: this.activePetStage, variant: "idle" });
+    if (this.textures.exists(preferredTexture)) {
+      return preferredTexture;
+    }
+
+    const legacyTexture = `pet-${String(this.activePetStage || "").toLowerCase()}`;
+    if (this.textures.exists(legacyTexture)) {
+      return legacyTexture;
+    }
+
+    return "__MISSING";
   }
 
   handleResize(gameSize) {
