@@ -43,13 +43,13 @@ Original prompt: อยากได้หน้าหน้าจอประม
 - Kept on-screen `ok` and `cancel` buttons enabled during the feeding animation so skip works from both hardware UI buttons and keyboard input.
 - Moved menu icons and feeding animation artwork out of `scenes/UIScene.js` into SVG assets under `assets/ui`, and updated `BootScene`/`UIScene` to load and render them from Phaser text cache.
 - Refactored `feed` menu items so each item now stores current stat lines and effect stat lines separately, with shared rendering support in `UIScene.js`.
-- Added `petId` to the saved game state with backward-compatible defaults, then introduced `scenes/helpers/petAssets.js` as a runtime asset catalog/loader that namespaces pet textures by `petId`, `stage`, and variant.
+- Added `petId` to the saved game state with backward-compatible defaults, then introduced `helpers/petAssets.js` as a runtime asset catalog/loader that namespaces pet textures by `petId`, `stage`, and variant.
 - Refactored `BootScene` to preload only shared UI/core assets and load the current pet's asset bundle on demand before starting `GameScene` and `UIScene`.
 - Reworked `scenes/GameScene.js` so the displayed pet form is tracked separately from mutable game state, enabling async hot-swap loads during evolution without hitting missing textures.
 - Replaced the old hatch/evolve banner with a full-screen `EVOLUTION` transition overlay that flashes while the next stage bundle loads, keeps input locked, and reverts to the previous form if asset loading fails.
 - Updated `UIScene` to listen for the new evolution transition event and route egg/action-driven stage changes through `GameScene.handlePetStateMutation()` instead of triggering its own animation path.
 - Removed fixed pet sprite precaching from `service-worker.js`, kept the new pet asset helper in the app shell, and let pet art cache at runtime as bundles are requested.
-- Verified JavaScript syntax with `node --check` for `gameState.js`, `service-worker.js`, `scenes/BootScene.js`, `scenes/GameScene.js`, `scenes/UIScene.js`, and `scenes/helpers/petAssets.js`.
+- Verified JavaScript syntax with `node --check` for `gameState.js`, `service-worker.js`, `scenes/BootScene.js`, `scenes/GameScene.js`, `scenes/UIScene.js`, and `helpers/petAssets.js`.
 - Verified the local server still serves the updated app shell, `GameScene.js`, `service-worker.js`, and pet assets over HTTP (`200` responses), and confirmed the served code includes the pet asset helper import, dynamic bundle loader, and `EVOLUTION` overlay text.
 - Tried to rerun the Playwright game loop via the `develop-web-game` client, but the environment still lacks a resolvable `playwright` package, so screenshot-based visual verification remains blocked pending that dependency.
 - Changed `feed` item effect data to live directly on each item as stat objects like `{ hunger: 24 }`, with shared object-to-text formatting in `UIScene.js`.
@@ -61,7 +61,7 @@ Original prompt: อยากได้หน้าหน้าจอประม
 - Refactored `scenes/minigames.js` again so each `miniGameType` owns its own session creation, input handling, and status-text method through dedicated handlers instead of one shared branching function.
 - Moved `feed` menu item configs out of `UIScene.js` into `scenes/feedItems.js`, so both feed and play menu content now live outside the main UI scene file.
 - Split UI constants into `scenes/uiConfig.js`, menu definitions into `scenes/menus.js`, and status-line rendering helpers into `scenes/menuFormatters.js` so `UIScene.js` focuses more tightly on scene flow and DOM updates.
-- Broke the mini-game system into `scenes/minigames/index.js`, `playItems.js`, `tapCount.js`, `sequenceMatch.js`, and `types.js` so each mini-game type owns its own runtime logic in a dedicated module.
+- Broke the mini-game system into `minigames/index.js`, `playItems.js`, `tapCount.js`, `sequenceMatch.js`, and `types.js` so each mini-game type owns its own runtime logic in a dedicated module.
 - Updated `styles.css` for short mobile viewports like iPhone SE by switching to a `svh/dvh` height variable, aligning the shell to the top on small screens, and constraining the device shell height so the bottom hardware buttons no longer get pushed off-screen as easily.
 - Changed poop placement in `scenes/GameScene.js` from a narrow 3-column cluster to a fixed 10-column, 2-row grid that spreads across the screen width.
 - Added `MAX_POOP_COUNT = 10` in `gameState.js` and capped passive poop generation so the mess count no longer grows without limit.
@@ -101,7 +101,7 @@ Original prompt: อยากได้หน้าหน้าจอประม
 - Replaced the old HTTP link client with an Android bridge transport abstraction so future Android app builds can supply native offline linking without exposing `/api/link/*` on the web.
 - Simplified `server.js` back to static file serving only, since web builds no longer host LAN link sessions.
 - Updated README notes to clarify that link is Android-only and the PWA build is offline single-device only.
-- Verified syntax with `node --check` for `server.js`, `main.js`, `scenes/UIScene.js`, `scenes/helpers/menus.js`, `scenes/helpers/platform.js`, `scenes/helpers/linkTransport.js`, and the compatibility re-export in `scenes/helpers/linkSessionClient.js`.
+- Verified syntax with `node --check` for `server.js`, `main.js`, `scenes/UIScene.js`, `helpers/menus.js`, `helpers/platform.js`, `helpers/linkTransport.js`, and the compatibility re-export in `helpers/linkSessionClient.js`.
 - Verified the visible main-menu items in a non-Android runtime now exclude `link`, returning `["feed","play","shop","sleep","clean","medicine","debug"]`.
 - Verified the local dev server on port `8091` still serves `/` and `README.md`, while `POST /api/link/host` now returns `404` as expected.
 - Added Capacitor package scripts plus a static asset copy pipeline into `dist/` so the project can be wrapped as an Android app without relying on `server.js`.
@@ -113,15 +113,15 @@ Original prompt: อยากได้หน้าหน้าจอประม
 - Kept normal mini game rewards active for linked matches and added `applyLinkGameBetOutcome()` in `gameState.js` so the winner gains the bet, the loser loses it, and draws cause no extra transfer.
 - Extended the Android bridge and Nearby plugin to support `mode=game`, room metadata (`gameKey`, `bet`), game-state polling, and game-result exchange while preserving the existing `combat` and `dating` session behavior.
 - Added sequence sync support for `QUICK MATCH` so the host can send a shared sequence payload and both linked devices play the same pattern.
-- Verified JavaScript syntax with `node --check` for `web/scenes/UIScene.js`, `web/gameState.js`, `web/scenes/helpers/menus.js`, `web/scenes/helpers/linkTransport.js`, `web/scenes/minigames/index.js`, and `web/scenes/minigames/sequenceMatch.js`.
+- Verified JavaScript syntax with `node --check` for `web/scenes/UIScene.js`, `web/gameState.js`, `web/helpers/menus.js`, `web/helpers/linkTransport.js`, `web/minigames/index.js`, and `web/minigames/sequenceMatch.js`.
 - Android Java compilation and device-to-device link testing are still pending; the Nearby plugin changes were verified by code inspection only.
 - Fixed the `LINK > GAME > HOST` bet-selection crash in `web/scenes/UIScene.js` by preserving the selected mini-game item across `resetExchangeRuntime()` inside `startHostedGame()`, preventing the later null `.key` read after choosing a bet.
 - Restored web `LINK` support by bringing `/api/link/*` back into `server.js` with the old in-memory session model and extending it for `LINK > GAME` state/result exchange.
-- Reworked `web/scenes/helpers/linkTransport.js` into a dual transport that uses HTTP on web/PWA and the native bridge on Android, while keeping the existing `UIScene` call surface unchanged.
+- Reworked `web/helpers/linkTransport.js` into a dual transport that uses HTTP on web/PWA and the native bridge on Android, while keeping the existing `UIScene` call surface unchanged.
 - Updated platform capabilities and README notes so web builds always show the `LINK` menu, but static hosting without the Node.js backend now reports a clear unavailable message when a link action is attempted.
 - Re-verified syntax with `node --check web/scenes/UIScene.js` after the host-game crash fix.
-- Added a synth-first button audio helper in `web/scenes/helpers/buttonAudio.js` that uses Web Audio to generate short retro piezo-style beeps with slight per-button pitch changes.
+- Added a synth-first button audio helper in `web/helpers/buttonAudio.js` that uses Web Audio to generate short retro piezo-style beeps with slight per-button pitch changes.
 - Wired `web/scenes/UIScene.js` so every mapped hardware input path plays the same button sound for both on-screen buttons and keyboard aliases, while keeping game state logic unchanged.
 - Kept the audio surface intentionally small with `playButtonPress(button)` so sampled sounds can replace or extend the synth backend later without changing menu/input code.
 - Fixed `web/service-worker.js` precache install failures by removing the stale `assets/ui/new-egg.svg` entry and stopping the cross-origin Phaser CDN script from being added via `cache.addAll()`, so browser service-worker registration no longer aborts during `install`.
-- Updated `web/scenes/helpers/petAssets.js` so logical stages can point at a different sprite asset stage via `assetStage`; the default `classic` pet now reuses `child` art for `baby`, `teen`, and `adult`, preventing evolution-time 404s when only `egg` and `child` sprite folders exist.
+- Updated `web/helpers/petAssets.js` so logical stages can point at a different sprite asset stage via `assetStage`; the default `classic` pet now reuses `child` art for `baby`, `teen`, and `adult`, preventing evolution-time 404s when only `egg` and `child` sprite folders exist.

@@ -2,7 +2,7 @@ import "./build-meta.js";
 import BootScene from "./scenes/BootScene.js";
 import GameScene from "./scenes/GameScene.js";
 import UIScene from "./scenes/UIScene.js";
-import { isAndroidAppRuntime } from "./scenes/helpers/platform.js";
+import { isAndroidAppRuntime } from "./helpers/platform.js";
 
 const buildMeta = self.__POCKET_PET_BUILD__ || {
   id: "unknown",

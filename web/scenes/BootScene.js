@@ -1,5 +1,5 @@
 import { applyOfflineProgress, loadState, saveState } from "../gameState.js";
-import { getPetStageAssetBundle } from "./helpers/petAssets.js";
+import { getPetStageAssetBundle } from "../helpers/petAssets.js";
 
 export default class BootScene extends Phaser.Scene {
   constructor() {

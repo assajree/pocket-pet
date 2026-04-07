@@ -1,4 +1,4 @@
-import { getInventoryCount, getItemLabel, getShopPrice, getMaxQty, isConsumableItem } from "../../gameState.js";
+import { getInventoryCount, getItemLabel, getShopPrice, getMaxQty, isConsumableItem } from "../gameState.js";
 
 export const buildShopStatus = (itemKey, stockKey, label) => ({ money, inventory }) => {
   const qty = getInventoryCount({ inventory }, stockKey);

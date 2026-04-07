@@ -1,11 +1,11 @@
 import { AUTO_SAVE_INTERVAL_SECONDS, saveState, tickState } from "../gameState.js";
-import { createButtonAudio } from "./helpers/buttonAudio.js";
+import { createButtonAudio } from "../helpers/buttonAudio.js";
 import {
   ensurePetStageAssetsLoaded,
   getPetDisplaySize,
   getPetTextureKey,
   resolvePetId
-} from "./helpers/petAssets.js";
+} from "../helpers/petAssets.js";
 
 const PET_MOVE_BLOCK_SIZE = 16;
 const PET_MOVE_BLOCK_RANGE = 1;

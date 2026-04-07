@@ -40,15 +40,26 @@ export const applyMiniGameInput = (miniGame, item, button) => {
   return getMiniGameTypeHandler(item).applyInput(miniGame, button, item);
 };
 
-export const finalizeMiniGameResult = (miniGame) => ({
-  ...miniGame,
-  result: {
-    score: miniGame.score,
-    success: miniGame.success,
-    progress: miniGame.progress,
-    targetCount: miniGame.sequence.length
-  }
-});
+export const finalizeMiniGameResult = (miniGame, item) => {
+  const handler = getMiniGameTypeHandler(item);
+  const finalizedMiniGame =
+    typeof handler.finalizeResult === "function"
+      ? handler.finalizeResult(miniGame, item)
+      : miniGame;
+
+  return {
+    ...finalizedMiniGame,
+    result: {
+      score: finalizedMiniGame.score,
+      success: finalizedMiniGame.success,
+      progress: finalizedMiniGame.progress,
+      targetCount: finalizedMiniGame.sequence.length,
+      timeBonus: finalizedMiniGame.timeBonus ?? 0,
+      remainingMs: finalizedMiniGame.remainingMs ?? 0,
+      failureReason: finalizedMiniGame.failureReason ?? null
+    }
+  };
+};
 
 export const getMiniGameStatusText = (miniGame, item) => getMiniGameTypeHandler(item).buildStatusText(miniGame, item);
 
@@ -62,6 +73,9 @@ export const getMiniGameSummaryText = (miniGame, item) => {
     success: miniGame.result?.success ?? miniGame.success,
     progress: miniGame.result?.progress ?? miniGame.progress,
     targetCount: miniGame.result?.targetCount ?? miniGame.sequence.length,
+    timeBonus: miniGame.result?.timeBonus ?? miniGame.timeBonus ?? 0,
+    remainingMs: miniGame.result?.remainingMs ?? miniGame.remainingMs ?? 0,
+    failureReason: miniGame.result?.failureReason ?? miniGame.failureReason ?? null,
     resolvedEffects,
     effectStatusLines
   };

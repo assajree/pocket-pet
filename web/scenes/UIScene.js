@@ -25,17 +25,17 @@ import {
   getMiniGameStatusText as buildMiniGameStatusText,
   getMiniGameSummaryText as buildMiniGameSummaryText,
   initializeMiniGameSession
-} from "./minigames/index.js";
-import { MENUS, isMenuView } from "./helpers/menus.js";
-import { getMenuCaption, buildInventoryItemName } from "./helpers/menuFormatters.js";
+} from "../minigames/index.js";
+import { MENUS, isMenuView } from "../helpers/menus.js";
+import { getMenuCaption, buildInventoryItemName } from "../helpers/menuFormatters.js";
 import {
   ACTION_ANIMATION_CONFIG,
   LINK_GAME_COUNTDOWN_MS,
   LINK_GAME_RESULT_DURATION_MS,
   MINI_GAME_SUMMARY_DURATION_MS,
   SLEEP_OK_ENERGY_BOOST
-} from "./helpers/uiConfig.js";
-import { getPlatformCapabilities } from "./helpers/platform.js";
+} from "../helpers/uiConfig.js";
+import { getPlatformCapabilities } from "../helpers/platform.js";
 import {
   closeLinkSession,
   completeLinkSession,
@@ -45,10 +45,10 @@ import {
   sendLinkGameResult,
   sendLinkGameState,
   uploadLinkSnapshot
-} from "./helpers/linkTransport.js";
-import { createButtonAudio } from "./helpers/buttonAudio.js";
-import { ensurePetStageAssetsLoaded } from "./helpers/petAssets.js";
-import { resolveEffectStatus } from "./helpers/effectStatus.js";
+} from "../helpers/linkTransport.js";
+import { createButtonAudio } from "../helpers/buttonAudio.js";
+import { ensurePetStageAssetsLoaded } from "../helpers/petAssets.js";
+import { resolveEffectStatus } from "../helpers/effectStatus.js";
 
 const LINK_GAME_BET_OPTIONS = [0, 10, 20, 50, 100];
 
@@ -1338,7 +1338,7 @@ export default class UIScene extends Phaser.Scene {
   }
 
   finalizeMiniGameResult() {
-    this.miniGame = finalizeMiniGameResult(this.miniGame);
+    this.miniGame = finalizeMiniGameResult(this.miniGame, this.activeMiniGameItem);
   }
 
   finishMiniGame(cancelled = false) {

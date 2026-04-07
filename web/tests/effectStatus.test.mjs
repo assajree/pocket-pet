@@ -2,8 +2,14 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { createNewState, addMiniGameReward } from "../gameState.js";
-import { resolveEffectStatus, resolveEffectValue } from "../scenes/helpers/effectStatus.js";
-import { getMiniGameSummaryText } from "../scenes/minigames/index.js";
+import { resolveEffectStatus, resolveEffectValue } from "../helpers/effectStatus.js";
+import { SEQUENCE_MATCH_HIT_SCORE } from "../minigames/sequenceMatch.js";
+import {
+  applyMiniGameInput,
+  finalizeMiniGameResult,
+  getMiniGameSummaryText,
+  initializeMiniGameSession
+} from "../minigames/index.js";
 
 test("resolveEffectValue supports number, function, and object configs", () => {
   assert.equal(resolveEffectValue(4), 4);
@@ -114,7 +120,7 @@ test("minigame summary reuses resolved effects and appends formatted status line
 });
 
 test("play menu score-range config resolves via normalized score context", async () => {
-  const { PLAY_MENU_ITEMS } = await import("../scenes/minigames/playItems.js");
+  const { PLAY_MENU_ITEMS } = await import("../minigames/playItems.js");
   const tapSprint = PLAY_MENU_ITEMS.find((item) => item.key === "tap-sprint");
   const resolved = resolveEffectStatus(tapSprint.effectStatus, { score: 8, taps: 8 });
 
@@ -123,4 +129,159 @@ test("play menu score-range config resolves via normalized score context", async
     energy: -4,
     weight: -3
   });
+});
+
+test("sequence match awards 10000 points for each correct input", async () => {
+  const { PLAY_MENU_ITEMS } = await import("../minigames/playItems.js");
+  const quickMatch = PLAY_MENU_ITEMS.find((item) => item.key === "quick-match");
+  const miniGame = initializeMiniGameSession(quickMatch, (choices) => choices[0], {
+    sequence: ["left", "right", "ok", "left", "ok"]
+  });
+
+  const outcome = applyMiniGameInput(miniGame, quickMatch, "left");
+
+  assert.equal(outcome.type, "update");
+  assert.equal(outcome.miniGame.score, SEQUENCE_MATCH_HIT_SCORE);
+  assert.equal(outcome.miniGame.progress, 1);
+});
+
+test("sequence match completion adds remaining milliseconds as a time bonus", async () => {
+  const { PLAY_MENU_ITEMS } = await import("../minigames/playItems.js");
+  const quickMatch = PLAY_MENU_ITEMS.find((item) => item.key === "quick-match");
+  const session = {
+    ...initializeMiniGameSession(quickMatch, (choices) => choices[0], {
+      sequence: ["left"]
+    }),
+    elapsed: 2.345
+  };
+
+  const outcome = applyMiniGameInput(session, quickMatch, "left");
+
+  assert.equal(outcome.type, "complete");
+  assert.equal(outcome.miniGame.success, true);
+  assert.equal(outcome.miniGame.timeBonus, 4655);
+  assert.equal(outcome.miniGame.remainingMs, 4655);
+  assert.equal(outcome.miniGame.score, 14655);
+});
+
+test("sequence match wrong input ends the game immediately without a time bonus", async () => {
+  const { PLAY_MENU_ITEMS } = await import("../minigames/playItems.js");
+  const quickMatch = PLAY_MENU_ITEMS.find((item) => item.key === "quick-match");
+  const session = {
+    ...initializeMiniGameSession(quickMatch, (choices) => choices[0], {
+      sequence: ["right", "left", "ok"]
+    }),
+    score: 20000,
+    progress: 2,
+    elapsed: 1.25
+  };
+
+  const outcome = applyMiniGameInput(session, quickMatch, "left");
+
+  assert.equal(outcome.type, "complete");
+  assert.equal(outcome.miniGame.success, false);
+  assert.equal(outcome.miniGame.failureReason, "mistake");
+  assert.equal(outcome.miniGame.timeBonus, 0);
+  assert.equal(outcome.miniGame.score, 20000);
+});
+
+test("sequence match timeout finalization records failure reason and keeps earned reward score", async () => {
+  const { PLAY_MENU_ITEMS } = await import("../minigames/playItems.js");
+  const quickMatch = PLAY_MENU_ITEMS.find((item) => item.key === "quick-match");
+  const resolved = finalizeMiniGameResult(
+    {
+      ...initializeMiniGameSession(quickMatch, (choices) => choices[0], {
+        sequence: ["left", "ok", "right"]
+      }),
+      active: false,
+      elapsed: 7,
+      score: 30000,
+      progress: 3
+    },
+    quickMatch
+  );
+
+  assert.equal(resolved.result.success, false);
+  assert.equal(resolved.result.failureReason, "timeout");
+  assert.equal(resolved.result.timeBonus, 0);
+  assert.equal(resolved.result.score, 30000);
+
+  const rewardEffects = resolveEffectStatus(quickMatch.effectStatus, { score: resolved.result.score });
+  const state = createNewState();
+  state.evolutionStage = "child";
+  state.energy = 50;
+  state.happiness = 40;
+
+  const rewardResult = addMiniGameReward(state, rewardEffects, {
+    score: resolved.result.score,
+    taps: resolved.result.score,
+    success: resolved.result.success,
+    progress: resolved.result.progress,
+    targetCount: resolved.result.targetCount
+  });
+
+  assert.equal(rewardResult.ok, true);
+});
+
+test("sequence match summary text distinguishes success, mistake, and timeout", async () => {
+  const { PLAY_MENU_ITEMS } = await import("../minigames/playItems.js");
+  const quickMatch = PLAY_MENU_ITEMS.find((item) => item.key === "quick-match");
+
+  const successSummary = getMiniGameSummaryText(
+    {
+      score: 0,
+      duration: 7,
+      sequence: ["left", "right", "ok", "left", "ok"],
+      result: {
+        score: 54678,
+        success: true,
+        progress: 5,
+        targetCount: 5,
+        timeBonus: 4678,
+        remainingMs: 4678,
+        failureReason: null
+      }
+    },
+    quickMatch
+  );
+
+  const mistakeSummary = getMiniGameSummaryText(
+    {
+      score: 0,
+      duration: 7,
+      sequence: ["left", "right", "ok", "left", "ok"],
+      result: {
+        score: 20000,
+        success: false,
+        progress: 2,
+        targetCount: 5,
+        timeBonus: 0,
+        remainingMs: 0,
+        failureReason: "mistake"
+      }
+    },
+    quickMatch
+  );
+
+  const timeoutSummary = getMiniGameSummaryText(
+    {
+      score: 0,
+      duration: 7,
+      sequence: ["left", "right", "ok", "left", "ok"],
+      result: {
+        score: 30000,
+        success: false,
+        progress: 3,
+        targetCount: 5,
+        timeBonus: 0,
+        remainingMs: 0,
+        failureReason: "timeout"
+      }
+    },
+    quickMatch
+  );
+
+  assert.equal(successSummary, "54678 points\nSequence cleared. +4678 time bonus.");
+  assert.equal(mistakeSummary, "20000 points\nMissed input at 2/5. Reward kept.");
+  assert.equal(timeoutSummary, "30000 points\n3/5 matched. Time ran out.");
 });

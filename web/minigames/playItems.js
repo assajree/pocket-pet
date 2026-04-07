@@ -1,3 +1,7 @@
+import { SEQUENCE_MATCH_HIT_SCORE } from "./sequenceMatch.js";
+
+const QUICK_MATCH_SEQUENCE_LENGTH = 5;
+
 export const PLAY_MENU_ITEMS = [
   {
     key: "tap-sprint",
@@ -51,28 +55,37 @@ export const PLAY_MENU_ITEMS = [
   {
     key: "quick-match",
     label: "QUICK MATCH",
-    caption: "Press the shown 5-button pattern before time runs out.",
+    caption: `Press the shown ${QUICK_MATCH_SEQUENCE_LENGTH}-button pattern before time runs out.`,
     name: "QUICK MATCH",
     icon: "play",
     minigame: {
       type: "sequence-match",
       durationSeconds: 7,
-      inputPrompt: "Match 5 buttons",
-      scoreUnit: "hits",
-      sequenceLength: 5,
+      inputPrompt: `Match ${QUICK_MATCH_SEQUENCE_LENGTH} buttons`,
+      scoreUnit: "points",
+      sequenceLength: QUICK_MATCH_SEQUENCE_LENGTH,
       buttonPool: ["left", "right", "ok"],
       summaryTitle: "Match",
-      getSummaryText: ({ score, success, progress, targetCount }) =>
-        success ? `${score}/${targetCount} correct\nSequence cleared.` : `${progress}/${targetCount} matched\nTime ran out.`
+      getSummaryText: ({ score, success, progress, targetCount, timeBonus, failureReason }) => {
+        if (success) {
+          return `${score} points\nSequence cleared. +${timeBonus} time bonus.`;
+        }
+
+        if (failureReason === "mistake") {
+          return `${score} points\nMissed input at ${progress}/${targetCount}. Reward kept.`;
+        }
+
+        return `${score} points\n${progress}/${targetCount} matched. Time ran out.`;
+      }
     },
     currentStatus: ({ happiness, energy }) => ({
       happiness: Math.round(happiness),
       energy: Math.round(energy)
     }),
     effectStatus: {
-      happiness: { min: 4, max: 18, minScore: 0, maxScore: 7 },
-      energy: { min: -2, max: -7, minScore: 0, maxScore: 6 },
-      weight: { min: -2, max: -7, minScore: 0, maxScore: 6 }
+      happiness: { min: 0, max: 10, minScore: 1, maxScore: QUICK_MATCH_SEQUENCE_LENGTH * SEQUENCE_MATCH_HIT_SCORE },
+      energy: { min: -2, max: -7, minScore: 0, maxScore: QUICK_MATCH_SEQUENCE_LENGTH * SEQUENCE_MATCH_HIT_SCORE },
+      weight: { min: -2, max: -7, minScore: 0, maxScore: QUICK_MATCH_SEQUENCE_LENGTH * SEQUENCE_MATCH_HIT_SCORE }
     }
   }
 ];

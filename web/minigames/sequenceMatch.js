@@ -1,5 +1,7 @@
 import { createMiniGameState } from "./types.js";
 
+export const SEQUENCE_MATCH_HIT_SCORE = 10000;
+
 const buildBaseSession = (item) => ({
   ...createMiniGameState(),
   active: true,
@@ -35,6 +37,22 @@ const createSequence = (miniGameConfig, randomPick) => {
   return Array.from({ length: sequenceLength }, () => randomPick(buttonPool));
 };
 
+const getRemainingMs = (miniGame) =>
+  Math.max(0, Math.round((miniGame.duration - miniGame.elapsed) * 1000));
+
+const finalizeSequenceMatchState = (miniGame, success, failureReason = null) => {
+  const remainingMs = success ? getRemainingMs(miniGame) : 0;
+
+  return {
+    ...miniGame,
+    success,
+    failureReason,
+    timeBonus: remainingMs,
+    remainingMs,
+    score: miniGame.score + remainingMs
+  };
+};
+
 export const sequenceMatchType = {
   createSyncState(item, randomPick) {
     return {
@@ -61,16 +79,13 @@ export const sequenceMatchType = {
       const nextMiniGame = {
         ...miniGame,
         progress: miniGame.progress + 1,
-        score: miniGame.score + 1
+        score: miniGame.score + SEQUENCE_MATCH_HIT_SCORE
       };
 
       if (nextMiniGame.progress >= nextMiniGame.sequence.length) {
         return {
           type: "complete",
-          miniGame: {
-            ...nextMiniGame,
-            success: true
-          }
+          miniGame: finalizeSequenceMatchState(nextMiniGame, true)
         };
       }
 
@@ -79,15 +94,19 @@ export const sequenceMatchType = {
 
     if (["left", "right", "ok"].includes(button)) {
       return {
-        type: "update",
-        miniGame: {
-          ...miniGame,
-          progress: 0
-        }
+        type: "complete",
+        miniGame: finalizeSequenceMatchState(miniGame, false, "mistake")
       };
     }
 
     return { type: "noop", miniGame };
+  },
+  finalizeResult(miniGame) {
+    if (miniGame.success || miniGame.failureReason === "mistake") {
+      return miniGame;
+    }
+
+    return finalizeSequenceMatchState(miniGame, false, "timeout");
   },
   buildStatusText(miniGame, item) {
     const inputPrompt = item?.minigame?.inputPrompt || "Match buttons";
