@@ -8,6 +8,15 @@ export default class BootScene extends Phaser.Scene {
   }
 
   preload() {
+    const { width, height } = this.scale;
+    this.add
+      .text(width * 0.5, height * 0.5, "Booting...", {
+        fontFamily: '"Trebuchet MS", sans-serif',
+        fontSize: "24px",
+        color: "#2f3e2e"
+      })
+      .setOrigin(0.5);
+
     this.initialState = loadState();
     this.load.setPath("./assets");
     this.load.image("poop", "poop.svg");
