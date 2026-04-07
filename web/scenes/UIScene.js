@@ -1404,6 +1404,30 @@ export default class UIScene extends Phaser.Scene {
     return this.cache.text.get(`ui-${assetKey}`) || "";
   }
 
+  hasUiAsset(assetKey) {
+    if (!assetKey) {
+      return false;
+    }
+
+    return !!this.getUiAssetMarkup(assetKey);
+  }
+
+  getMenuIconKey(item) {
+    if (!item) {
+      return "";
+    }
+
+    if (typeof item.icon === "string" && item.icon) {
+      return item.icon;
+    }
+
+    if (typeof item.key === "string" && this.hasUiAsset(item.key)) {
+      return item.key;
+    }
+
+    return "default-menu";
+  }
+
   setPetMoodText(text = "") {
     this.petMood.textContent = text;
     this.petMood.classList.remove("pet-mood-icon");
@@ -1716,7 +1740,7 @@ export default class UIScene extends Phaser.Scene {
       this.menuIndexes[this.view] = Math.min(this.menuIndexes[this.view], items.length - 1);
       const item = items[this.menuIndexes[this.view]];
       this.setMenuParent(this.getMenuParentText());
-      this.setMenuIcon(item.icon !== undefined ? item.icon : item.key);
+      this.setMenuIcon(this.getMenuIconKey(item));
       this.screenMenuTitle.textContent = this.getMenuItemTitle(item);
       this.screenMenuStatus.textContent = getMenuCaption(menu, item, state, {
         scene: this,

@@ -19,6 +19,7 @@ export default class BootScene extends Phaser.Scene {
     this.load.image("poop", "poop.svg");
 
     const uiAssets = [
+      "default-menu",
       "feed",
       "play",
       "sleep",

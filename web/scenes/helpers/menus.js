@@ -101,7 +101,7 @@ export const MENUS = {
       { key: "debug-sick", label: "TOGGLE SICK", caption: "Toggle sickness on or off.", icon: "" },
       { key: "debug-dead", label: "DEAD", caption: "Mark the pet as dead immediately.", icon: "" },
       { key: "debug-new-egg", label: "NEW EGG", caption: "Reset the pet back to a fresh egg.", icon: "" },
-      { key: "debug-reset-save", label: "RESET SAVE", caption: "Clear all save data and start again from an egg.", icon: "new-egg" },
+      { key: "debug-reset-save", label: "RESET SAVE", caption: "Clear all save data and start again from an egg.", icon: "" },
       { key: "debug-evolve", label: "EVOLVE +1", caption: "Advance to the next pet stage.", icon: "" },
     ]
   },
