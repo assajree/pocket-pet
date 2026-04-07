@@ -3,19 +3,20 @@ export const DEFAULT_PET_ID = "classic";
 const FALLBACK_STAGE = "child";
 const VARIANT_ORDER = ["idle", "attack", "sick", "angry", "dead"];
 
-const createClassicStage = (displaySize, variants = VARIANT_ORDER) => ({
+const createClassicStage = (displaySize, variants = VARIANT_ORDER, options = {}) => ({
   displaySize,
-  variants
+  variants,
+  assetStage: options.assetStage || null
 });
 
 const PET_CATALOG = {
   [DEFAULT_PET_ID]: {
     stages: {
-      egg: createClassicStage(132),
-      baby: createClassicStage(148),
+      egg: createClassicStage(132, ["idle"]),
+      baby: createClassicStage(148, VARIANT_ORDER, { assetStage: "child" }),
       child: createClassicStage(148),
-      teen: createClassicStage(160),
-      adult: createClassicStage(170)
+      teen: createClassicStage(160, VARIANT_ORDER, { assetStage: "child" }),
+      adult: createClassicStage(170, VARIANT_ORDER, { assetStage: "child" })
     }
   }
 };
@@ -31,6 +32,18 @@ const getStageCatalog = (petId, stage) => {
   return petConfig.stages[stage]
     || petConfig.stages[FALLBACK_STAGE]
     || PET_CATALOG[DEFAULT_PET_ID].stages[FALLBACK_STAGE];
+};
+
+const getResolvedAssetStage = (petId, stage) => {
+  const stageConfig = getStageCatalog(petId, stage);
+  const configuredAssetStage = normalizeStageName(stageConfig.assetStage);
+
+  if (configuredAssetStage) {
+    return configuredAssetStage;
+  }
+
+  const normalizedStage = normalizeStageName(stage);
+  return normalizedStage || FALLBACK_STAGE;
 };
 
 const hasVariant = (petId, stage, variant) => {
@@ -88,7 +101,7 @@ const normalizeAssetStage = (petId, stage) => {
   const normalizedStage = normalizeStageName(stage);
   const petConfig = getPetConfig(resolvedPetId);
   if (petConfig.stages[normalizedStage]) {
-    return normalizedStage;
+    return getResolvedAssetStage(resolvedPetId, normalizedStage);
   }
 
   return FALLBACK_STAGE;

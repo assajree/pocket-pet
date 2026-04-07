@@ -46,6 +46,7 @@ export default class GameScene extends Phaser.Scene {
     this.transitionTextTween = null;
     this.transitionPromise = null;
     this.isEvolutionTransitionActive = false;
+    this.currentPetDisplaySize = null;
     this.audio = createButtonAudio();
   }
 
@@ -62,8 +63,7 @@ export default class GameScene extends Phaser.Scene {
       this.basePetY,
       this.getSafeInitialTextureKey()
     );
-    const initialPetSize = getPetDisplaySize(this.activePetId, this.activePetStage);
-    this.pet.setDisplaySize(initialPetSize, initialPetSize);
+    this.applyPetDisplaySize(true);
     this.pet.setScale(1);
 
     this.sickIcon = this.add.text(this.pet.x + 72, this.pet.y - 72, "!", {
@@ -204,14 +204,23 @@ export default class GameScene extends Phaser.Scene {
     return getPetTextureKey({ petId, stage, variant: "idle" });
   }
 
+  applyPetDisplaySize(force = false) {
+    const size = getPetDisplaySize(this.activePetId, this.activePetStage);
+    if (!force && this.currentPetDisplaySize === size) {
+      return;
+    }
+
+    this.pet.setDisplaySize(size, size);
+    this.currentPetDisplaySize = size;
+  }
+
   syncVisuals() {
     const texture = this.getDisplayedPetTextureKey();
     if (this.pet.texture.key !== texture && this.textures.exists(texture)) {
       this.pet.setTexture(texture);
     }
 
-    const size = getPetDisplaySize(this.activePetId, this.activePetStage);
-    this.pet.setDisplaySize(size, size);
+    this.applyPetDisplaySize();
     this.pet.setTint(this.state.isAlive ? (this.state.isSick ? 0x8c9890 : 0x44514b) : 0x7f8b85);
     this.pet.setAlpha(this.state.isAlive ? 1 : 0.55);
     this.sleepText.setVisible(this.state.isSleeping && this.state.isAlive && !this.menuVisible);

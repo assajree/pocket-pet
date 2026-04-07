@@ -119,3 +119,4 @@ Original prompt: อยากได้หน้าหน้าจอประม
 - Wired `web/scenes/UIScene.js` so every mapped hardware input path plays the same button sound for both on-screen buttons and keyboard aliases, while keeping game state logic unchanged.
 - Kept the audio surface intentionally small with `playButtonPress(button)` so sampled sounds can replace or extend the synth backend later without changing menu/input code.
 - Fixed `web/service-worker.js` precache install failures by removing the stale `assets/ui/new-egg.svg` entry and stopping the cross-origin Phaser CDN script from being added via `cache.addAll()`, so browser service-worker registration no longer aborts during `install`.
+- Updated `web/scenes/helpers/petAssets.js` so logical stages can point at a different sprite asset stage via `assetStage`; the default `classic` pet now reuses `child` art for `baby`, `teen`, and `adult`, preventing evolution-time 404s when only `egg` and `child` sprite folders exist.
