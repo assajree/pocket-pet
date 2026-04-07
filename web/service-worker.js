@@ -46,7 +46,6 @@ const CORE_ASSETS = [
   "./assets/ui/meal.svg",
   "./assets/ui/medicine.svg",
   "./assets/ui/message.svg",
-  "./assets/ui/new-egg.svg",
   "./assets/ui/play.svg",
   "./assets/ui/sleep.svg",
   "./assets/ui/snack.svg",
@@ -54,8 +53,7 @@ const CORE_ASSETS = [
   "./assets/ui/summary.svg",
   "./assets/ui/tap-sprint.svg",
   "./icons/icon-192.png",
-  "./icons/icon-512.png",
-  "https://cdn.jsdelivr.net/npm/phaser@3.90.0/dist/phaser.min.js"
+  "./icons/icon-512.png"
 ];
 const SHELL_DESTINATIONS = new Set(["document", "script", "style", "worker"]);
 const STATIC_DESTINATIONS = new Set(["image", "font"]);

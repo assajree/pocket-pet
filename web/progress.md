@@ -118,3 +118,4 @@ Original prompt: อยากได้หน้าหน้าจอประม
 - Added a synth-first button audio helper in `web/scenes/helpers/buttonAudio.js` that uses Web Audio to generate short retro piezo-style beeps with slight per-button pitch changes.
 - Wired `web/scenes/UIScene.js` so every mapped hardware input path plays the same button sound for both on-screen buttons and keyboard aliases, while keeping game state logic unchanged.
 - Kept the audio surface intentionally small with `playButtonPress(button)` so sampled sounds can replace or extend the synth backend later without changing menu/input code.
+- Fixed `web/service-worker.js` precache install failures by removing the stale `assets/ui/new-egg.svg` entry and stopping the cross-origin Phaser CDN script from being added via `cache.addAll()`, so browser service-worker registration no longer aborts during `install`.
