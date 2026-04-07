@@ -38,6 +38,15 @@ Original prompt: อยากได้หน้าหน้าจอประม
 - Kept on-screen `ok` and `cancel` buttons enabled during the feeding animation so skip works from both hardware UI buttons and keyboard input.
 - Moved menu icons and feeding animation artwork out of `scenes/UIScene.js` into SVG assets under `assets/ui`, and updated `BootScene`/`UIScene` to load and render them from Phaser text cache.
 - Refactored `feed` menu items so each item now stores current stat lines and effect stat lines separately, with shared rendering support in `UIScene.js`.
+- Added `petId` to the saved game state with backward-compatible defaults, then introduced `scenes/helpers/petAssets.js` as a runtime asset catalog/loader that namespaces pet textures by `petId`, `stage`, and variant.
+- Refactored `BootScene` to preload only shared UI/core assets and load the current pet's asset bundle on demand before starting `GameScene` and `UIScene`.
+- Reworked `scenes/GameScene.js` so the displayed pet form is tracked separately from mutable game state, enabling async hot-swap loads during evolution without hitting missing textures.
+- Replaced the old hatch/evolve banner with a full-screen `EVOLUTION` transition overlay that flashes while the next stage bundle loads, keeps input locked, and reverts to the previous form if asset loading fails.
+- Updated `UIScene` to listen for the new evolution transition event and route egg/action-driven stage changes through `GameScene.handlePetStateMutation()` instead of triggering its own animation path.
+- Removed fixed pet sprite precaching from `service-worker.js`, kept the new pet asset helper in the app shell, and let pet art cache at runtime as bundles are requested.
+- Verified JavaScript syntax with `node --check` for `gameState.js`, `service-worker.js`, `scenes/BootScene.js`, `scenes/GameScene.js`, `scenes/UIScene.js`, and `scenes/helpers/petAssets.js`.
+- Verified the local server still serves the updated app shell, `GameScene.js`, `service-worker.js`, and pet assets over HTTP (`200` responses), and confirmed the served code includes the pet asset helper import, dynamic bundle loader, and `EVOLUTION` overlay text.
+- Tried to rerun the Playwright game loop via the `develop-web-game` client, but the environment still lacks a resolvable `playwright` package, so screenshot-based visual verification remains blocked pending that dependency.
 - Changed `feed` item effect data to live directly on each item as stat objects like `{ hunger: 24 }`, with shared object-to-text formatting in `UIScene.js`.
 - Added `effectStatus` to the `play` submenu item too, and updated `applyAction()`/mini-game reward flow so both `feed` and `play` now apply stat changes from menu item config instead of hardcoded values.
 - Refactored the `play` submenu mini-game flow to read title, icon, duration, prompts, score labels, and summary text from each item config instead of hardcoding `tap-sprint` UI strings.

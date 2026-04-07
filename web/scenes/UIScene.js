@@ -47,6 +47,7 @@ import {
   uploadLinkSnapshot
 } from "./helpers/linkTransport.js";
 import { createButtonAudio } from "./helpers/buttonAudio.js";
+import { ensurePetStageAssetsLoaded } from "./helpers/petAssets.js";
 
 const LINK_GAME_BET_OPTIONS = [0, 10, 20, 50, 100];
 
@@ -146,11 +147,11 @@ export default class UIScene extends Phaser.Scene {
     };
 
     this.gameScene.events.on("state-changed", this.handleStateChanged, this);
-    this.gameScene.events.on("evolution-animation-changed", this.handleEvolutionAnimationChanged, this);
+    this.gameScene.events.on("evolution-transition-changed", this.handleEvolutionAnimationChanged, this);
     this.events.on("shutdown", () => {
       this.stopExchangePolling();
       this.gameScene.events.off("state-changed", this.handleStateChanged, this);
-      this.gameScene.events.off("evolution-animation-changed", this.handleEvolutionAnimationChanged, this);
+      this.gameScene.events.off("evolution-transition-changed", this.handleEvolutionAnimationChanged, this);
       window.removeEventListener("keydown", this.handleKeydown);
       this.summaryTimer?.remove(false);
       this.actionAnimationTimer?.remove(false);
@@ -241,11 +242,14 @@ export default class UIScene extends Phaser.Scene {
 
     if (this.view === "pet") {
       if (this.state.isAlive && this.state.evolutionStage === "Egg") {
+        const previousPetId = this.state.petId;
+        const previousStage = this.state.evolutionStage;
         const hatchStep = accelerateEggHatch(this.state, 1);
-        this.gameScene.syncVisuals();
         saveState(this.state, "ui:egg-hatch-boost");
         if (hatchStep.changedStage) {
-          this.gameScene.playEvolutionAnimation(hatchStep.previousStage, hatchStep.nextStage);
+          this.gameScene.handlePetStateMutation({ previousPetId, previousStage });
+        } else {
+          this.gameScene.syncVisuals();
         }
         this.render(this.state);
         return;
@@ -392,14 +396,16 @@ export default class UIScene extends Phaser.Scene {
       return;
     }
 
+    const previousPetId = this.state.petId;
     const previousStage = this.state.evolutionStage;
     const result = applyAction(this.state, item.key, item.effectStatus);
-    this.gameScene.syncVisuals();
     saveState(this.state, `ui:action:${item.key}`);
 
     if (result.ok) {
-      if (previousStage !== this.state.evolutionStage) {
-        this.gameScene.playEvolutionAnimation(previousStage, this.state.evolutionStage);
+      if (previousPetId !== this.state.petId || previousStage !== this.state.evolutionStage) {
+        this.gameScene.handlePetStateMutation({ previousPetId, previousStage });
+      } else {
+        this.gameScene.syncVisuals();
       }
 
       if (item.key === "meal" || item.key === "snack" || item.key === "clean") {
@@ -1655,7 +1661,7 @@ export default class UIScene extends Phaser.Scene {
   restartGame() {
     if (this.gameScene) {
       this.gameScene.events.off("state-changed", this.handleStateChanged, this);
-      this.gameScene.events.off("evolution-animation-changed", this.handleEvolutionAnimationChanged, this);
+      this.gameScene.events.off("evolution-transition-changed", this.handleEvolutionAnimationChanged, this);
     }
 
     clearState();
@@ -1677,11 +1683,17 @@ export default class UIScene extends Phaser.Scene {
     this.resetExchangeRuntime();
     saveState(freshState, "ui:restart-game");
     this.scene.stop("GameScene");
-    this.scene.start("GameScene");
-    this.gameScene = this.scene.get("GameScene");
-    this.gameScene.events.on("state-changed", this.handleStateChanged, this);
-    this.gameScene.events.on("evolution-animation-changed", this.handleEvolutionAnimationChanged, this);
-    this.render(freshState);
+    ensurePetStageAssetsLoaded(this, freshState.petId, freshState.evolutionStage)
+      .catch((error) => {
+        console.warn("Failed to preload restart pet assets.", error);
+      })
+      .finally(() => {
+        this.scene.start("GameScene");
+        this.gameScene = this.scene.get("GameScene");
+        this.gameScene.events.on("state-changed", this.handleStateChanged, this);
+        this.gameScene.events.on("evolution-transition-changed", this.handleEvolutionAnimationChanged, this);
+        this.render(freshState);
+      });
   }
 
   renderScreenMenu(state) {

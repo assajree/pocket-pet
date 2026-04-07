@@ -1,4 +1,5 @@
 import { applyOfflineProgress, loadState, saveState } from "../gameState.js";
+import { ensurePetStageAssetsLoaded } from "./helpers/petAssets.js";
 
 export default class BootScene extends Phaser.Scene {
   constructor() {
@@ -7,15 +8,6 @@ export default class BootScene extends Phaser.Scene {
 
   preload() {
     this.load.setPath("./assets");
-    this.load.image("pet-egg", "pet-egg.svg");
-    this.load.image("pet-baby", "pet-baby.svg");
-    this.load.image("pet-child", "pet-child.svg");
-    this.load.image("pet-teen", "pet-teen.svg");
-    this.load.image("pet-adult", "pet-adult.svg");
-    this.load.image("pet-angy", "pet-angy.svg");
-    this.load.image("pet-sick", "pet-sick.svg");
-    this.load.image("pet-dead", "pet-dead.svg");
-    this.load.image("pet-attack", "pet-attack.svg");
     this.load.image("poop", "poop.svg");
 
     const uiAssets = [
@@ -51,7 +43,13 @@ export default class BootScene extends Phaser.Scene {
     // saveState(state);
 
     this.registry.set("petState", state);
-    this.scene.start("GameScene");
-    this.scene.start("UIScene");
+    ensurePetStageAssetsLoaded(this, state.petId, state.evolutionStage)
+      .catch((error) => {
+        console.warn("Initial pet assets failed to load.", error);
+      })
+      .finally(() => {
+        this.scene.start("GameScene");
+        this.scene.start("UIScene");
+      });
   }
 }

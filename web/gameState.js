@@ -5,6 +5,7 @@ import {
   isConsumableItem,
   isShopItem
 } from "./scenes/helpers/items.js";
+import { DEFAULT_PET_ID } from "./scenes/helpers/petAssets.js";
 
 const SAVE_KEY = "pocket-pet-save-v1";
 export const AUTO_SAVE_INTERVAL_SECONDS = 30;
@@ -63,6 +64,7 @@ export const createNewState = () => ({
   version: 1,
   createdAt: Date.now(),
   lastUpdatedAt: Date.now(),
+  petId: DEFAULT_PET_ID,
   hunger: 82,
   happiness: 84,
   energy: 78,
@@ -126,6 +128,7 @@ export const loadState = () => {
     return {
       ...createNewState(),
       ...parsed,
+      petId: typeof parsed.petId === "string" && parsed.petId.trim() ? parsed.petId : baseState.petId,
       timers: {
         ...baseState.timers,
         ...parsed.timers
@@ -141,7 +144,7 @@ export const loadState = () => {
 
 export const saveState = (state, source = "unknown") => {
   void source;
-  console.log('saveState', source, state);
+  // console.log('saveState', source, state);
   localStorage.setItem(SAVE_KEY, JSON.stringify(state));
 };
 

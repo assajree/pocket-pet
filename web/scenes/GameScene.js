@@ -1,13 +1,12 @@
 import { AUTO_SAVE_INTERVAL_SECONDS, saveState, tickState } from "../gameState.js";
 import { createButtonAudio } from "./helpers/buttonAudio.js";
+import {
+  ensurePetStageAssetsLoaded,
+  getPetDisplaySize,
+  getPetTextureKey,
+  resolvePetId
+} from "./helpers/petAssets.js";
 
-const STAGE_TEXTURES = {
-  Egg: "pet-egg",
-  Baby: "pet-baby",
-  Child: "pet-child",
-  Teen: "pet-teen",
-  Adult: "pet-adult"
-};
 const PET_MOVE_BLOCK_SIZE = 16;
 const PET_MOVE_BLOCK_RANGE = 1;
 const PET_MOVE_STEP_FPS = 1;
@@ -16,8 +15,9 @@ const PET_FRAME_MOVE_JUMP_CHANCE = 0.15;
 const EGG_IDLE_DURATION_MS = 900;
 const EGG_IDLE_SCALE_MIN = 0.94;
 const EGG_IDLE_SCALE_MAX = 1.04;
-const EVOLUTION_ANIMATION_DURATION_MS = 950;
-const EVOLUTION_TEXT_Y_OFFSET = 96;
+const EVOLUTION_FLASH_DURATION_MS = 180;
+const EVOLUTION_FADE_DURATION_MS = 240;
+const EVOLUTION_MIN_DISPLAY_MS = 900;
 const PET_JUMP_HEIGHT_MIN = 30;
 const PET_JUMP_HEIGHT_MAX = 60;
 const PET_JUMP_HOLD_FRAMES = 1;
@@ -28,6 +28,7 @@ const POOP_SIDE_PADDING = 14;
 const POOP_TOP_OFFSET = 96;
 const POOP_ROW_GAP = 24;
 const LOW_HAPPINESS_THRESHOLD = 35;
+const EVOLUTION_OVERLAY_TEXT = "EVOLUTION";
 
 export default class GameScene extends Phaser.Scene {
   constructor() {
@@ -41,22 +42,29 @@ export default class GameScene extends Phaser.Scene {
     this.jumpFramesRemaining = 0;
     this.moveStepAccumulator = 0;
     this.jumpStepAccumulator = 0;
-    this.previousEvolutionStage = null;
-    this.evolutionTween = null;
-    this.evolutionTextTween = null;
+    this.transitionFlashTween = null;
+    this.transitionTextTween = null;
+    this.transitionPromise = null;
+    this.isEvolutionTransitionActive = false;
     this.audio = createButtonAudio();
   }
 
   create() {
     this.state = this.registry.get("petState");
+    this.activePetId = resolvePetId(this.state.petId);
+    this.activePetStage = this.state.evolutionStage;
     this.basePetX = this.scale.width / 2;
     this.basePetY = this.scale.height / 2 + 20;
     this.poopSpots = [];
 
-    this.pet = this.add.image(this.basePetX, this.basePetY, STAGE_TEXTURES[this.state.evolutionStage]);
-    this.pet.setDisplaySize(148, 148);
+    this.pet = this.add.image(
+      this.basePetX,
+      this.basePetY,
+      getPetTextureKey({ petId: this.activePetId, stage: this.activePetStage, variant: "idle" })
+    );
+    const initialPetSize = getPetDisplaySize(this.activePetId, this.activePetStage);
+    this.pet.setDisplaySize(initialPetSize, initialPetSize);
     this.pet.setScale(1);
-    this.previousEvolutionStage = this.state.evolutionStage;
 
     this.sickIcon = this.add.text(this.pet.x + 72, this.pet.y - 72, "!", {
       fontFamily: "Courier New",
@@ -76,15 +84,26 @@ export default class GameScene extends Phaser.Scene {
     });
     this.sleepText.setVisible(false);
 
-    this.evolutionText = this.add.text(this.basePetX, this.basePetY - EVOLUTION_TEXT_Y_OFFSET, "", {
+    this.evolutionBackdrop = this.add.rectangle(0, 0, this.scale.width, this.scale.height, 0x44514b, 0);
+    this.evolutionBackdrop.setOrigin(0);
+    this.evolutionBackdrop.setDepth(50);
+    this.evolutionBackdrop.setVisible(false);
+
+    this.evolutionFlash = this.add.rectangle(0, 0, this.scale.width, this.scale.height, 0xf4f7f0, 0);
+    this.evolutionFlash.setOrigin(0);
+    this.evolutionFlash.setDepth(51);
+    this.evolutionFlash.setVisible(false);
+
+    this.evolutionText = this.add.text(this.scale.width / 2, this.scale.height / 2, EVOLUTION_OVERLAY_TEXT, {
       fontFamily: "Courier New",
-      fontSize: "22px",
-      color: "#44514b",
-      stroke: "#f4f7f0",
-      strokeThickness: 5,
+      fontSize: "30px",
+      color: "#f4f7f0",
+      stroke: "#44514b",
+      strokeThickness: 6,
       align: "center"
     });
     this.evolutionText.setOrigin(0.5);
+    this.evolutionText.setDepth(52);
     this.evolutionText.setVisible(false);
 
     this.poopSprites = this.add.group();
@@ -94,10 +113,10 @@ export default class GameScene extends Phaser.Scene {
       this.scale.off("resize", this.handleResize, this);
       this.idleTween?.stop();
       this.idleTween = null;
-      this.evolutionTween?.stop();
-      this.evolutionTween = null;
-      this.evolutionTextTween?.stop();
-      this.evolutionTextTween = null;
+      this.transitionFlashTween?.stop();
+      this.transitionFlashTween = null;
+      this.transitionTextTween?.stop();
+      this.transitionTextTween = null;
       this.stopMovementTweens();
     });
 
@@ -113,7 +132,9 @@ export default class GameScene extends Phaser.Scene {
     this.snapPetToGrid();
     this.sickIcon.setPosition(this.pet.x + 72, this.pet.y - 72);
     this.sleepText.setPosition(this.pet.x + 86, this.pet.y - 28);
-    this.evolutionText.setPosition(this.basePetX, this.basePetY - EVOLUTION_TEXT_Y_OFFSET);
+    this.evolutionBackdrop.setSize(width, height);
+    this.evolutionFlash.setSize(width, height);
+    this.evolutionText.setPosition(width / 2, height / 2);
     this.layoutPoop();
   }
 
@@ -151,48 +172,41 @@ export default class GameScene extends Phaser.Scene {
     return { x, y };
   }
 
-  getPetTextureKey() {
-    if (!this.state.isAlive) {
-      return "pet-dead";
-    }
+  getDisplayedPetTextureKey() {
+    const petId = this.activePetId;
+    const stage = this.activePetStage;
 
-    if (this.evolutionTween) {
-      return STAGE_TEXTURES[this.state.evolutionStage];
+    if (!this.state.isAlive) {
+      return getPetTextureKey({ petId, stage, variant: "dead" });
     }
 
     if (this.jumpTween) {
-      return "pet-attack";
+      return getPetTextureKey({ petId, stage, variant: "attack" });
     }
 
     if (this.state.isSick) {
-      return "pet-sick";
+      return getPetTextureKey({ petId, stage, variant: "sick" });
     }
 
     if (this.state.happiness < LOW_HAPPINESS_THRESHOLD) {
-      return "pet-angy";
+      return getPetTextureKey({ petId, stage, variant: "angry" });
     }
 
-    return STAGE_TEXTURES[this.state.evolutionStage];
+    return getPetTextureKey({ petId, stage, variant: "idle" });
   }
 
   syncVisuals() {
-    const texture = this.getPetTextureKey();
-    if (this.pet.texture.key !== texture) {
+    const texture = this.getDisplayedPetTextureKey();
+    if (this.pet.texture.key !== texture && this.textures.exists(texture)) {
       this.pet.setTexture(texture);
-      const size = this.state.evolutionStage === "Adult"
-        ? 170
-        : this.state.evolutionStage === "Teen"
-          ? 160
-          : this.state.evolutionStage === "Egg"
-            ? 132
-            : 148;
-      this.pet.setDisplaySize(size, size);
     }
 
+    const size = getPetDisplaySize(this.activePetId, this.activePetStage);
+    this.pet.setDisplaySize(size, size);
     this.pet.setTint(this.state.isAlive ? (this.state.isSick ? 0x8c9890 : 0x44514b) : 0x7f8b85);
     this.pet.setAlpha(this.state.isAlive ? 1 : 0.55);
-    this.sleepText.setVisible(this.state.isSleeping && this.state.isAlive);
-    this.sickIcon.setVisible(this.state.isSick && this.state.isAlive);
+    this.sleepText.setVisible(this.state.isSleeping && this.state.isAlive && !this.menuVisible);
+    this.sickIcon.setVisible(this.state.isSick && this.state.isAlive && !this.menuVisible);
 
     const currentCount = this.poopSprites.getLength();
     if (currentCount < this.state.poopCount) {
@@ -215,14 +229,17 @@ export default class GameScene extends Phaser.Scene {
 
   canAnimatePet() {
     return this.state.isAlive
-      && !this.evolutionTween
-      && this.state.evolutionStage !== "Egg"
+      && !this.isEvolutionTransitionActive
+      && this.activePetStage !== "Egg"
       && !this.state.isSleeping
       && !this.menuVisible;
   }
 
   canPlayEggIdle() {
-    return this.state.isAlive && !this.evolutionTween && this.state.evolutionStage === "Egg" && !this.menuVisible;
+    return this.state.isAlive
+      && !this.isEvolutionTransitionActive
+      && this.activePetStage === "Egg"
+      && !this.menuVisible;
   }
 
   stopMovementTweens() {
@@ -234,7 +251,7 @@ export default class GameScene extends Phaser.Scene {
   }
 
   updateIdleAnimation() {
-    if (this.evolutionTween) {
+    if (this.isEvolutionTransitionActive) {
       return;
     }
 
@@ -263,64 +280,144 @@ export default class GameScene extends Phaser.Scene {
     });
   }
 
-  playEvolutionAnimation(previousStage, nextStage) {
-    this.idleTween?.stop();
-    this.idleTween = null;
-    this.stopMovementTweens();
-    this.evolutionTween?.stop();
-    this.evolutionTextTween?.stop();
-    this.snapPetToGrid();
-    this.syncVisuals();
-    this.pet.setAlpha(1);
-    this.pet.setScale(1, 1);
-    this.pet.setTint(0x44514b);
-    this.audio.playEvolutionCue(previousStage, nextStage);
+  setEvolutionTransitionActive(isActive) {
+    this.isEvolutionTransitionActive = isActive;
+    this.events.emit("evolution-transition-changed", isActive);
+    this.events.emit("evolution-animation-changed", isActive);
+  }
 
-    const bannerText = previousStage === "Egg" ? "HATCH!" : "EVOLVE!";
-    this.evolutionText.setText(bannerText);
-    this.evolutionText.setAlpha(0);
-    this.evolutionText.setScale(0.7);
+  showEvolutionOverlay(text = EVOLUTION_OVERLAY_TEXT) {
+    this.transitionFlashTween?.stop();
+    this.transitionTextTween?.stop();
+    this.evolutionBackdrop.setVisible(true);
+    this.evolutionFlash.setVisible(true);
     this.evolutionText.setVisible(true);
+    this.evolutionBackdrop.setAlpha(0.88);
+    this.evolutionFlash.setAlpha(0.08);
+    this.evolutionText.setText(text);
+    this.evolutionText.setAlpha(1);
+    this.evolutionText.setScale(0.88);
 
-    this.evolutionTextTween = this.tweens.add({
-      targets: this.evolutionText,
-      alpha: 1,
-      scaleX: 1,
-      scaleY: 1,
-      y: this.basePetY - EVOLUTION_TEXT_Y_OFFSET - 10,
-      duration: EVOLUTION_ANIMATION_DURATION_MS / 2,
-      ease: "Quad.easeOut",
-      yoyo: true
-    });
-
-    this.evolutionTween = this.tweens.add({
-      targets: this.pet,
-      scaleX: { from: 0.82, to: 1.18 },
-      scaleY: { from: 0.82, to: 1.18 },
-      alpha: { from: 0.35, to: 1 },
-      duration: EVOLUTION_ANIMATION_DURATION_MS / 3,
+    this.transitionFlashTween = this.tweens.add({
+      targets: this.evolutionFlash,
+      alpha: { from: 0.08, to: 0.32 },
+      duration: EVOLUTION_FLASH_DURATION_MS,
       ease: "Sine.easeInOut",
       yoyo: true,
-      repeat: 2,
-      onYoyo: () => {
-        this.pet.setTint(this.pet.tintTopLeft === 0x44514b ? 0xf4f7f0 : 0x44514b);
-      },
-      onRepeat: () => {
-        this.pet.setTint(this.pet.tintTopLeft === 0x44514b ? 0xf4f7f0 : 0x44514b);
-      },
-      onComplete: () => {
-        this.evolutionTween = null;
-        this.pet.setAlpha(this.state.isAlive ? 1 : 0.55);
-        this.syncVisuals();
-        this.evolutionText.setVisible(false);
-        this.evolutionText.setAlpha(0);
-        this.evolutionText.setScale(1);
-        this.evolutionText.setY(this.basePetY - EVOLUTION_TEXT_Y_OFFSET);
-        this.evolutionTextTween = null;
-        this.updateIdleAnimation();
-        this.events.emit("state-changed", this.state);
-      }
+      repeat: -1
     });
+
+    this.transitionTextTween = this.tweens.add({
+      targets: this.evolutionText,
+      scaleX: { from: 0.88, to: 1.02 },
+      scaleY: { from: 0.88, to: 1.02 },
+      duration: EVOLUTION_FLASH_DURATION_MS * 2,
+      ease: "Sine.easeInOut",
+      yoyo: true,
+      repeat: -1
+    });
+  }
+
+  wait(ms) {
+    return new Promise((resolve) => {
+      this.time.delayedCall(ms, resolve);
+    });
+  }
+
+  hideEvolutionOverlay() {
+    return new Promise((resolve) => {
+      this.transitionFlashTween?.stop();
+      this.transitionTextTween?.stop();
+      this.transitionFlashTween = null;
+      this.transitionTextTween = null;
+
+      this.tweens.add({
+        targets: [this.evolutionBackdrop, this.evolutionFlash, this.evolutionText],
+        alpha: 0,
+        duration: EVOLUTION_FADE_DURATION_MS,
+        ease: "Quad.easeOut",
+        onComplete: () => {
+          this.evolutionBackdrop.setVisible(false);
+          this.evolutionFlash.setVisible(false);
+          this.evolutionText.setVisible(false);
+          this.evolutionText.setScale(1);
+          resolve();
+        }
+      });
+    });
+  }
+
+  async startPetSwapTransition({
+    previousPetId = this.activePetId,
+    previousStage = this.activePetStage,
+    nextPetId = this.state.petId,
+    nextStage = this.state.evolutionStage
+  } = {}) {
+    if (this.transitionPromise) {
+      return this.transitionPromise;
+    }
+
+    this.transitionPromise = (async () => {
+      const resolvedPreviousPetId = resolvePetId(previousPetId);
+      const resolvedNextPetId = resolvePetId(nextPetId);
+      const transitionStartedAt = Date.now();
+
+      this.idleTween?.stop();
+      this.idleTween = null;
+      this.stopMovementTweens();
+      this.snapPetToGrid();
+      this.pet.setAlpha(1);
+      this.pet.setScale(1, 1);
+      this.pet.setTint(0x44514b);
+      this.setEvolutionTransitionActive(true);
+      this.showEvolutionOverlay();
+      this.audio.playEvolutionCue(previousStage, nextStage);
+
+      try {
+        await ensurePetStageAssetsLoaded(this, resolvedNextPetId, nextStage);
+        const remainingDelay = EVOLUTION_MIN_DISPLAY_MS - (Date.now() - transitionStartedAt);
+        if (remainingDelay > 0) {
+          await this.wait(remainingDelay);
+        }
+
+        this.activePetId = resolvedNextPetId;
+        this.activePetStage = nextStage;
+        this.syncVisuals();
+      } catch (error) {
+        console.warn("Pet asset swap failed.", error);
+        this.state.petId = resolvedPreviousPetId;
+        this.state.evolutionStage = previousStage;
+        this.activePetId = resolvedPreviousPetId;
+        this.activePetStage = previousStage;
+        this.syncVisuals();
+        saveState(this.state, "game:pet-swap-reverted");
+      }
+
+      await this.hideEvolutionOverlay();
+      this.setEvolutionTransitionActive(false);
+      this.updateIdleAnimation();
+      this.events.emit("state-changed", this.state);
+    })().finally(() => {
+      this.transitionPromise = null;
+    });
+
+    return this.transitionPromise;
+  }
+
+  handlePetStateMutation({ previousPetId = this.activePetId, previousStage = this.activePetStage } = {}) {
+    if (resolvePetId(previousPetId) !== resolvePetId(this.state.petId) || previousStage !== this.state.evolutionStage) {
+      void this.startPetSwapTransition({
+        previousPetId,
+        previousStage,
+        nextPetId: this.state.petId,
+        nextStage: this.state.evolutionStage
+      });
+      return;
+    }
+
+    this.syncVisuals();
+    this.updateIdleAnimation();
+    this.events.emit("state-changed", this.state);
   }
 
   stepPetMovement() {
@@ -360,7 +457,6 @@ export default class GameScene extends Phaser.Scene {
     this.pet.setVisible(petVisible);
     this.sickIcon.setVisible(petVisible && this.state.isSick && this.state.isAlive);
     this.sleepText.setVisible(petVisible && this.state.isSleeping && this.state.isAlive);
-    this.evolutionText.setVisible(petVisible && !!this.evolutionTween);
     this.poopSprites.getChildren().forEach((sprite) => sprite.setVisible(petVisible));
     this.updateIdleAnimation();
     if (isVisible || !this.canAnimatePet()) {
@@ -370,6 +466,10 @@ export default class GameScene extends Phaser.Scene {
   }
 
   update(_time, delta) {
+    if (this.isEvolutionTransitionActive) {
+      return;
+    }
+
     const deltaSeconds = delta / 1000;
     const moveStepInterval = 1000 / PET_MOVE_STEP_FPS;
     const jumpStepInterval = 1000 / PET_JUMP_STEP_FPS;
@@ -379,17 +479,11 @@ export default class GameScene extends Phaser.Scene {
 
     const wholeElapsedSeconds = Math.floor(this.elapsedAccumulator);
     if (wholeElapsedSeconds >= 1) {
+      const previousPetId = this.state.petId;
       const previousStage = this.state.evolutionStage;
       tickState(this.state, wholeElapsedSeconds);
       this.elapsedAccumulator -= wholeElapsedSeconds;
-      this.syncVisuals();
-      if (previousStage !== this.state.evolutionStage) {
-        this.playEvolutionAnimation(previousStage, this.state.evolutionStage);
-      } else {
-        this.updateIdleAnimation();
-      }
-      this.previousEvolutionStage = this.state.evolutionStage;
-      this.events.emit("state-changed", this.state);
+      this.handlePetStateMutation({ previousPetId, previousStage });
     }
 
     if (this.jumpTween) {
