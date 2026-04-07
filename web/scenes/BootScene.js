@@ -1,6 +1,8 @@
 import { applyOfflineProgress, loadState, saveState } from "../gameState.js";
 import { getPetStageAssetBundle } from "../helpers/petAssets.js";
 
+const BOOT_SCREEN_DURATION_MS = 3000;
+
 export default class BootScene extends Phaser.Scene {
   constructor() {
     super("BootScene");
@@ -61,7 +63,9 @@ export default class BootScene extends Phaser.Scene {
     // saveState(state);
 
     this.registry.set("petState", state);
-    this.scene.start("GameScene");
-    this.scene.start("UIScene");
+    this.time.delayedCall(BOOT_SCREEN_DURATION_MS, () => {
+      this.scene.start("GameScene");
+      this.scene.start("UIScene");
+    });
   }
 }
