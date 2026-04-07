@@ -2,6 +2,7 @@ import { PLAY_MENU_ITEMS } from "./playItems.js";
 import { sequenceMatchType } from "./sequenceMatch.js";
 import { tapCountType } from "./tapCount.js";
 import { createMiniGameState } from "./types.js";
+import { formatStatusObject } from "../helpers/menuFormatters.js";
 
 const getMiniGameType = (item) => item?.minigame?.type || "tap-count";
 
@@ -53,17 +54,29 @@ export const getMiniGameStatusText = (miniGame, item) => getMiniGameTypeHandler(
 
 export const getMiniGameSummaryText = (miniGame, item) => {
   const miniGameConfig = item?.minigame || {};
+  const resolvedEffects = miniGame.result?.resolvedEffects || {};
+  const effectStatusLines = formatStatusObject(resolvedEffects);
   const summaryPayload = {
     score: miniGame.result?.score ?? miniGame.score,
     duration: miniGame.duration,
     success: miniGame.result?.success ?? miniGame.success,
     progress: miniGame.result?.progress ?? miniGame.progress,
-    targetCount: miniGame.result?.targetCount ?? miniGame.sequence.length
+    targetCount: miniGame.result?.targetCount ?? miniGame.sequence.length,
+    resolvedEffects,
+    effectStatusLines
   };
 
-  if (typeof miniGameConfig.getSummaryText === "function") {
-    return miniGameConfig.getSummaryText(summaryPayload);
+  const summaryText = typeof miniGameConfig.getSummaryText === "function"
+    ? miniGameConfig.getSummaryText(summaryPayload)
+    : `${getMiniGameScoreText(miniGame, item)}\nPlease wait...`;
+
+  if (effectStatusLines.length) {
+    return [summaryText, ...effectStatusLines].filter(Boolean).join("\n");
   }
 
-  return `${getMiniGameScoreText(miniGame, item)}\nPlease wait...`;
+  if (typeof miniGameConfig.getSummaryText === "function") {
+    return summaryText;
+  }
+
+  return summaryText;
 };

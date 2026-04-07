@@ -6,6 +6,7 @@ import {
   isShopItem
 } from "./scenes/helpers/items.js";
 import { DEFAULT_PET_ID } from "./scenes/helpers/petAssets.js";
+import { resolveEffectStatus } from "./effectStatus.js";
 
 const SAVE_KEY = "pocket-pet-save-v2";
 export const AUTO_SAVE_INTERVAL_SECONDS = 30;
@@ -798,35 +799,12 @@ export const purchaseItem = (state, key) => {
   return { ok: true };
 };
 
-const resolveEffectValue = (effectConfig, context = {}) => {
-  if (typeof effectConfig === "function") {
-    return effectConfig(context);
-  }
-
-  if (typeof effectConfig === "number") {
-    return effectConfig;
-  }
-
-  if (effectConfig && typeof effectConfig === "object") {
-    if (typeof effectConfig.value === "function") {
-      return effectConfig.value(context);
-    }
-
-    if (typeof effectConfig.value === "number") {
-      return effectConfig.value;
-    }
-  }
-
-  return 0;
-};
-
-const applyEffectStatus = (state, effectStatus, context = {}) => {
-  if (!effectStatus || typeof effectStatus !== "object") {
+const applyEffectStatus = (state, resolvedEffects) => {
+  if (!resolvedEffects || typeof resolvedEffects !== "object") {
     return;
   }
 
-  Object.entries(effectStatus).forEach(([stat, effectConfig]) => {
-    const effectValue = resolveEffectValue(effectConfig, context);
+  Object.entries(resolvedEffects).forEach(([stat, effectValue]) => {
     if (!effectValue || typeof state[stat] !== "number") {
       return;
     }
@@ -855,15 +833,17 @@ export const applyDebugFill = (state) => {
   return { ok: true };
 };
 
-export const applyAction = (state, action, effectStatus = null, context = {}) => {
+export const applyAction = (state, action, effectStatus = null, context = {}, resolvedEffects = null) => {
   if (!state.isAlive) {
     return { ok: false, message: "Your pet is gone. Start a new game." };
   }
 
+  const actionEffects = resolvedEffects || resolveEffectStatus(effectStatus, context);
+
   switch (action) {
     case "feed":
     case "meal":
-      applyEffectStatus(state, effectStatus, context);
+      applyEffectStatus(state, actionEffects);
       state.cleanliness = clamp(state.cleanliness - 5);
       addLog(state, "You served rice and filled your pet up.");
       return { ok: true };
@@ -871,7 +851,7 @@ export const applyAction = (state, action, effectStatus = null, context = {}) =>
       if (!useInventoryItem(state, "snack")) {
         return { ok: false, message: "No snack left. Visit the shop." };
       }
-      applyEffectStatus(state, effectStatus, context);
+      applyEffectStatus(state, actionEffects);
       addLog(state, "A sweet snack made your pet happier and a little heavier.");
       return { ok: true };
     case "play":
@@ -880,7 +860,7 @@ export const applyAction = (state, action, effectStatus = null, context = {}) =>
         return { ok: false, message: "Your pet is too tired to play." };
       }
       state.isSleeping = false;
-      applyEffectStatus(state, effectStatus, context);
+      applyEffectStatus(state, actionEffects);
       addLog(state, "Playtime lifted your pet's mood.");
       return { ok: true };
     case "sleep":
@@ -1079,9 +1059,9 @@ export const applyOfflineProgress = (state) => {
   }
 };
 
-export const addMiniGameReward = (state, effectStatus, context = {}) => {
+export const addMiniGameReward = (state, resolvedEffects, context = {}) => {
   const score = context.score ?? context.taps ?? 0;
-  const result = applyAction(state, "play", effectStatus, { ...context, taps: score, score });
+  const result = applyAction(state, "play", null, { ...context, taps: score, score }, resolvedEffects);
   if (result.ok) {
     const earnedMoney = Math.max(1, Math.round(score / 2));
     state.money = clampStatValue("money", state.money + earnedMoney);

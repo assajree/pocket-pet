@@ -48,6 +48,7 @@ import {
 } from "./helpers/linkTransport.js";
 import { createButtonAudio } from "./helpers/buttonAudio.js";
 import { ensurePetStageAssetsLoaded } from "./helpers/petAssets.js";
+import { resolveEffectStatus } from "../effectStatus.js";
 
 const LINK_GAME_BET_OPTIONS = [0, 10, 20, 50, 100];
 
@@ -1355,10 +1356,19 @@ export default class UIScene extends Phaser.Scene {
     }
 
     this.finalizeMiniGameResult();
+    const rewardContext = {
+      score: this.miniGame.score,
+      taps: this.miniGame.score,
+      success: this.miniGame.success,
+      progress: this.miniGame.progress,
+      targetCount: this.miniGame.sequence.length
+    };
+    const resolvedEffects = resolveEffectStatus(this.activeMiniGameItem?.effectStatus, rewardContext);
+    this.miniGame.result.resolvedEffects = resolvedEffects;
     const result = addMiniGameReward(
       this.state,
-      this.activeMiniGameItem?.effectStatus,
-      { score: this.miniGame.score, taps: this.miniGame.score, success: this.miniGame.success }
+      resolvedEffects,
+      rewardContext
     );
     if (!result.ok) {
       this.activeMiniGameItem = null;

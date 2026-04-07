@@ -44,7 +44,8 @@ export const PLAY_MENU_ITEMS = [
     }),
     effectStatus: {
       happiness: { min: 6, max: 20, value: ({ taps = 0 }) => Math.min(20, 6 + taps * 2) },
-      energy: { min: -2, max: -8, value: ({ taps = 0 }) => -Math.min(8, Math.max(2, Math.ceil(taps / 2))) }
+      energy: { min: -2, max: -8, value: ({ taps = 0 }) => -Math.min(8, Math.max(2, Math.ceil(taps / 2))) },
+      weight: { min: -2, max: -8, value: ({ taps = 0 }) => -Math.min(8, Math.max(2, Math.ceil(taps / 2))) }
     }
   },
   {
@@ -70,7 +71,8 @@ export const PLAY_MENU_ITEMS = [
     }),
     effectStatus: {
       happiness: { min: 4, max: 18, value: ({ score = 0 }) => Math.min(18, 4 + score * 2) },
-      energy: { min: -2, max: -7, value: ({ score = 0 }) => -Math.min(7, Math.max(2, score + 1)) }
+      energy: { min: -2, max: -7, value: ({ score = 0 }) => -Math.min(7, Math.max(2, score + 1)) },
+      weight: { min: -2, max: -7, value: ({ score = 0 }) => -Math.min(7, Math.max(2, score + 1)) }
     }
   }
 ];
