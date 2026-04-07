@@ -1,4 +1,5 @@
 import { AUTO_SAVE_INTERVAL_SECONDS, saveState, tickState } from "../gameState.js";
+import { createButtonAudio } from "./helpers/buttonAudio.js";
 
 const STAGE_TEXTURES = {
   Egg: "pet-egg",
@@ -43,6 +44,7 @@ export default class GameScene extends Phaser.Scene {
     this.previousEvolutionStage = null;
     this.evolutionTween = null;
     this.evolutionTextTween = null;
+    this.audio = createButtonAudio();
   }
 
   create() {
@@ -272,6 +274,7 @@ export default class GameScene extends Phaser.Scene {
     this.pet.setAlpha(1);
     this.pet.setScale(1, 1);
     this.pet.setTint(0x44514b);
+    this.audio.playEvolutionCue(previousStage, nextStage);
 
     const bannerText = previousStage === "Egg" ? "HATCH!" : "EVOLVE!";
     this.evolutionText.setText(bannerText);
