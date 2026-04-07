@@ -136,7 +136,7 @@ export default class UIScene extends Phaser.Scene {
     this.handleStateChanged = (state) => {
       this.state = state;
       this.render(state);
-      saveState(state);
+      // saveState(state, "ui:state-changed");
     };
     this.handleEvolutionAnimationChanged = (isActive) => {
       this.isEvolutionAnimationActive = !!isActive;
@@ -238,7 +238,7 @@ export default class UIScene extends Phaser.Scene {
       if (this.state.isAlive && this.state.evolutionStage === "Egg") {
         const hatchStep = accelerateEggHatch(this.state, 1);
         this.gameScene.syncVisuals();
-        saveState(this.state);
+        saveState(this.state, "ui:egg-hatch-boost");
         if (hatchStep.changedStage) {
           this.gameScene.playEvolutionAnimation(hatchStep.previousStage, hatchStep.nextStage);
         }
@@ -378,7 +378,7 @@ export default class UIScene extends Phaser.Scene {
 
     if (this.view === "shop") {
       const purchase = purchaseItem(this.state, item.key);
-      saveState(this.state);
+      saveState(this.state, "ui:shop-purchase");
       if (purchase.ok) {
         this.render(this.state);
         return;
@@ -390,7 +390,7 @@ export default class UIScene extends Phaser.Scene {
     const previousStage = this.state.evolutionStage;
     const result = applyAction(this.state, item.key, item.effectStatus);
     this.gameScene.syncVisuals();
-    saveState(this.state);
+    saveState(this.state, `ui:action:${item.key}`);
 
     if (result.ok) {
       if (previousStage !== this.state.evolutionStage) {
@@ -1065,7 +1065,7 @@ export default class UIScene extends Phaser.Scene {
     }
 
     this.gameScene.syncVisuals();
-    saveState(this.state);
+    saveState(this.state, "ui:link-encounter-result");
 
     try {
       await completeLinkSession(this.exchangeSessionCode, this.exchangeRole);
@@ -1132,7 +1132,7 @@ export default class UIScene extends Phaser.Scene {
       this.linkGameOutcome = outcome;
       applyLinkGameBetOutcome(this.state, this.pendingLinkGameBet, outcome);
       this.gameScene.syncVisuals();
-      saveState(this.state);
+      saveState(this.state, "ui:link-game-result");
     }
 
     if (!this.linkGameResultTimer) {
@@ -1328,7 +1328,7 @@ export default class UIScene extends Phaser.Scene {
     }
 
     this.gameScene.syncVisuals();
-    saveState(this.state);
+    saveState(this.state, "ui:minigame-reward");
     if (this.exchangeMode === "game") {
       this.showLinkedGameSummary();
       return;
@@ -1381,7 +1381,7 @@ export default class UIScene extends Phaser.Scene {
     }
 
     this.gameScene.syncVisuals();
-    saveState(this.state);
+    saveState(this.state, "ui:sleep-boost");
     this.render(this.state);
   }
 
@@ -1646,7 +1646,7 @@ export default class UIScene extends Phaser.Scene {
     this.activeMiniGameItem = null;
     this.messageReturnState = null;
     this.resetExchangeRuntime();
-    saveState(freshState);
+    saveState(freshState, "ui:restart-game");
     this.scene.stop("GameScene");
     this.scene.start("GameScene");
     this.gameScene = this.scene.get("GameScene");

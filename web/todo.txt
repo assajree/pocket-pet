@@ -1,0 +1,6 @@
+- multiple pet
+- load only current pet asset on boot
+- game effective to weight
+- deny to eat
+- move web file into sub folder
+- add button sound

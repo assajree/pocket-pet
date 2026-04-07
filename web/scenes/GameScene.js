@@ -1,4 +1,4 @@
-import { saveState, tickState } from "../gameState.js";
+import { AUTO_SAVE_INTERVAL_SECONDS, saveState, tickState } from "../gameState.js";
 
 const STAGE_TEXTURES = {
   Egg: "pet-egg",
@@ -413,8 +413,8 @@ export default class GameScene extends Phaser.Scene {
       }
     }
 
-    if (this.saveAccumulator >= 5) {
-      saveState(this.state);
+    if (this.saveAccumulator >= AUTO_SAVE_INTERVAL_SECONDS) {
+      saveState(this.state, "game:auto-save");
       this.saveAccumulator = 0;
     }
   }

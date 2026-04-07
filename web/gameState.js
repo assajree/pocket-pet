@@ -7,6 +7,7 @@ import {
 } from "./scenes/helpers/items.js";
 
 const SAVE_KEY = "pocket-pet-save-v1";
+export const AUTO_SAVE_INTERVAL_SECONDS = 30;
 const MAX_LOGS = 18;
 const MAX_POOP_COUNT = 10;
 const SLEEP_ENERGY_PER_SECOND = 2;
@@ -138,7 +139,9 @@ export const loadState = () => {
   }
 };
 
-export const saveState = (state) => {
+export const saveState = (state, source = "unknown") => {
+  void source;
+  console.log('saveState', source, state);
   localStorage.setItem(SAVE_KEY, JSON.stringify(state));
 };
 

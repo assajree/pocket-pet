@@ -63,7 +63,7 @@ The generated APK will be under `android/app/build/outputs/apk/debug/`.
 
 ## Save and offline progress
 
-- Game state is saved in `localStorage` with automatic saves during play and UI actions.
+- Game state is saved in `localStorage` with automatic saves every 30 seconds during play and on UI actions.
 - When the game boots, it loads the previous save and calculates offline progress from the elapsed real time since `lastUpdatedAt`.
 - Offline progress is applied by calling `tickState(state, elapsedSeconds)`, so the same simulation rules are used both online and offline.
 - This means hunger, happiness, energy, age, cleanliness, sickness rolls, poop rolls, health changes, evolution checks, and death checks all continue while the game is closed.
