@@ -372,7 +372,7 @@ export default class UIScene extends Phaser.Scene {
 
   runAction(item) {
     if (item.key === "new-egg") {
-      this.showActionAnimation("new-egg");
+      this.restartGame();
       return;
     }
 
@@ -1241,11 +1241,6 @@ export default class UIScene extends Phaser.Scene {
     this.actionAnimationTimer = null;
     this.currentActionAnimation = null;
     this.inputLockedUntil = 0;
-
-    if (action === "new-egg") {
-      this.restartGame();
-      return;
-    }
 
     this.view = config.nextView;
     this.render(this.state);
