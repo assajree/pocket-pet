@@ -6,7 +6,7 @@ import {
   isShopItem
 } from "./scenes/helpers/items.js";
 import { DEFAULT_PET_ID } from "./scenes/helpers/petAssets.js";
-import { resolveEffectStatus } from "./effectStatus.js";
+import { resolveEffectStatus } from "./scenes/helpers/effectStatus.js";
 
 const SAVE_KEY = "pocket-pet-save-v2";
 export const AUTO_SAVE_INTERVAL_SECONDS = 30;

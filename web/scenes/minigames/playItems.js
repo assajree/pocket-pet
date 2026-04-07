@@ -19,9 +19,9 @@ export const PLAY_MENU_ITEMS = [
       weight: Math.round(weight)
     }),
     effectStatus: {
-      happiness: { min: 8, max: 24, value: ({ taps = 0 }) => Math.min(24, 8 + taps * 2) },
-      energy: { min: 0, max: -10, value: ({ taps = 0 }) => -Math.min(10, Math.floor(taps / 2)) },
-      weight: { min: -1, max: -4, value: ({ taps = 0 }) => -Math.min(4, Math.max(1, Math.floor(taps / 4))) }
+      happiness: { min: 8, max: 24, minScore: 0, maxScore: 8 },
+      energy: { min: 0, max: -10, minScore: 0, maxScore: 20 },
+      weight: { min: -1, max: -4, minScore: 0, maxScore: 12 }
     }
   },
   {
@@ -43,9 +43,9 @@ export const PLAY_MENU_ITEMS = [
       energy: Math.round(energy)
     }),
     effectStatus: {
-      happiness: { min: 6, max: 20, value: ({ taps = 0 }) => Math.min(20, 6 + taps * 2) },
-      energy: { min: -2, max: -8, value: ({ taps = 0 }) => -Math.min(8, Math.max(2, Math.ceil(taps / 2))) },
-      weight: { min: -2, max: -8, value: ({ taps = 0 }) => -Math.min(8, Math.max(2, Math.ceil(taps / 2))) }
+      happiness: { min: 6, max: 20, minScore: 0, maxScore: 7 },
+      energy: { min: -2, max: -8, minScore: 0, maxScore: 12 },
+      weight: { min: -2, max: -8, minScore: 0, maxScore: 12 }
     }
   },
   {
@@ -70,9 +70,9 @@ export const PLAY_MENU_ITEMS = [
       energy: Math.round(energy)
     }),
     effectStatus: {
-      happiness: { min: 4, max: 18, value: ({ score = 0 }) => Math.min(18, 4 + score * 2) },
-      energy: { min: -2, max: -7, value: ({ score = 0 }) => -Math.min(7, Math.max(2, score + 1)) },
-      weight: { min: -2, max: -7, value: ({ score = 0 }) => -Math.min(7, Math.max(2, score + 1)) }
+      happiness: { min: 4, max: 18, minScore: 0, maxScore: 7 },
+      energy: { min: -2, max: -7, minScore: 0, maxScore: 6 },
+      weight: { min: -2, max: -7, minScore: 0, maxScore: 6 }
     }
   }
 ];

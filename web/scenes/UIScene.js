@@ -48,7 +48,7 @@ import {
 } from "./helpers/linkTransport.js";
 import { createButtonAudio } from "./helpers/buttonAudio.js";
 import { ensurePetStageAssetsLoaded } from "./helpers/petAssets.js";
-import { resolveEffectStatus } from "../effectStatus.js";
+import { resolveEffectStatus } from "./helpers/effectStatus.js";
 
 const LINK_GAME_BET_OPTIONS = [0, 10, 20, 50, 100];
 
