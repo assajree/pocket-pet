@@ -8,10 +8,10 @@ const buildBaseSession = (item) => ({
   duration: item?.minigame?.durationSeconds || 5
 });
 
-const getMiniGameButtonLabel = (button) => {
+export const getSequenceMatchButtonLabel = (button) => {
   const labels = {
-    left: "L",
-    right: "R",
+    left: "<",
+    right: ">",
     ok: "O",
     cancel: "X"
   };
@@ -22,7 +22,7 @@ const getMiniGameButtonLabel = (button) => {
 const getMiniGameSequenceText = (miniGame) =>
   miniGame.sequence
     .map((button, index) => {
-      const label = getMiniGameButtonLabel(button);
+      const label = getSequenceMatchButtonLabel(button);
       return index === miniGame.progress ? `[${label}]` : label;
     })
     .join(" ");

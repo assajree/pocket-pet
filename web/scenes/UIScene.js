@@ -22,6 +22,7 @@ import {
   createMiniGameSyncState,
   createMiniGameState,
   finalizeMiniGameResult,
+  getSequenceMatchNextButtonLabel,
   getMiniGameStatusText as buildMiniGameStatusText,
   getMiniGameSummaryText as buildMiniGameSummaryText,
   initializeMiniGameSession
@@ -51,6 +52,7 @@ import { ensurePetStageAssetsLoaded } from "../helpers/petAssets.js";
 import { resolveEffectStatus } from "../helpers/effectStatus.js";
 
 const LINK_GAME_BET_OPTIONS = [0, 10, 20, 50, 100];
+const QUICK_MATCH_HIT_FLASH_MS = 150;
 
 const formatCountdown = (secondsRemaining) => {
   const minutes = Math.floor(secondsRemaining / 60);
@@ -99,6 +101,8 @@ export default class UIScene extends Phaser.Scene {
     this.isEvolutionAnimationActive = false;
     this.summaryTimer = null;
     this.actionAnimationTimer = null;
+    this.quickMatchHitFlashTimer = null;
+    this.quickMatchHitFlashActive = false;
     this.currentActionAnimation = null;
     this.activeMiniGameItem = null;
     this.remoteEncounterSnapshot = null;
@@ -157,6 +161,7 @@ export default class UIScene extends Phaser.Scene {
       this.summaryTimer?.remove(false);
       this.actionAnimationTimer?.remove(false);
       this.linkGameResultTimer?.remove(false);
+      this.quickMatchHitFlashTimer?.remove(false);
     });
   }
 
@@ -492,6 +497,24 @@ export default class UIScene extends Phaser.Scene {
     this.linkGameOutcome = "";
     this.linkGameResultTimer?.remove(false);
     this.linkGameResultTimer = null;
+    this.clearQuickMatchHitFlash();
+  }
+
+  clearQuickMatchHitFlash() {
+    this.quickMatchHitFlashTimer?.remove(false);
+    this.quickMatchHitFlashTimer = null;
+    this.quickMatchHitFlashActive = false;
+  }
+
+  triggerQuickMatchHitFlash() {
+    this.clearQuickMatchHitFlash();
+    this.quickMatchHitFlashActive = true;
+    this.inputLockedUntil = Math.max(this.inputLockedUntil, this.time.now + QUICK_MATCH_HIT_FLASH_MS);
+    this.quickMatchHitFlashTimer = this.time.delayedCall(QUICK_MATCH_HIT_FLASH_MS, () => {
+      this.quickMatchHitFlashTimer = null;
+      this.quickMatchHitFlashActive = false;
+      this.render(this.state);
+    });
   }
 
   stopExchangePolling() {
@@ -1304,6 +1327,7 @@ export default class UIScene extends Phaser.Scene {
   }
 
   startMiniGame(item) {
+    this.clearQuickMatchHitFlash();
     this.activeMiniGameItem = item;
     this.miniGame = initializeMiniGameSession(
       item,
@@ -1328,11 +1352,15 @@ export default class UIScene extends Phaser.Scene {
     }
 
     if (outcome.type === "complete") {
+      this.clearQuickMatchHitFlash();
       this.finishMiniGame(false);
       return;
     }
 
     if (outcome.type === "update") {
+      if (this.isQuickMatchPlayView()) {
+        this.triggerQuickMatchHitFlash();
+      }
       this.render(this.state);
     }
   }
@@ -1346,6 +1374,7 @@ export default class UIScene extends Phaser.Scene {
       return;
     }
 
+    this.clearQuickMatchHitFlash();
     this.miniGame.active = false;
 
     if (cancelled) {
@@ -1504,6 +1533,27 @@ export default class UIScene extends Phaser.Scene {
 
   getMiniGameIcon() {
     return this.activeMiniGameItem?.icon || "play";
+  }
+
+  isQuickMatchPlayView() {
+    return this.view === "minigame" && this.activeMiniGameItem?.key === "quick-match";
+  }
+
+  getQuickMatchPlayMarkup() {
+    const inputPrompt = this.getMiniGameConfig().inputPrompt || "Match buttons";
+    const nextButton = getSequenceMatchNextButtonLabel(this.miniGame);
+    const progressText = `MATCH ${this.miniGame.progress}/${this.miniGame.sequence.length}`;
+    const timeLeft = Math.max(0, this.miniGame.duration - this.miniGame.elapsed).toFixed(1);
+    const nextButtonClasses = `quick-match-next-button${this.quickMatchHitFlashActive ? " hidden-feedback" : ""}`;
+
+    return `
+      <div class="quick-match-play">
+        <div class="quick-match-prompt">${inputPrompt}</div>
+        <div class="${nextButtonClasses}">${nextButton}</div>
+        <div class="quick-match-progress">${progressText}</div>
+        <div class="quick-match-timer">${timeLeft}s</div>
+      </div>
+    `;
   }
 
   getVisibleMenuItems(menuKey) {
@@ -1715,6 +1765,7 @@ export default class UIScene extends Phaser.Scene {
     this.summaryTimer = null;
     this.actionAnimationTimer?.remove(false);
     this.actionAnimationTimer = null;
+    this.clearQuickMatchHitFlash();
     this.currentActionAnimation = null;
     this.activeMiniGameItem = null;
     this.messageReturnState = null;
@@ -1748,6 +1799,7 @@ export default class UIScene extends Phaser.Scene {
     this.gameScene.setMenuVisible(fullScreenMenu);
     this.screenMenu.classList.toggle("status-view", this.view === "status");
     this.screenMenu.classList.toggle("action-animation-view", this.view === "action-animation");
+    this.screenMenu.classList.toggle("quick-match-play-view", this.isQuickMatchPlayView());
     const inputLocked = this.isInputLocked();
     const allowFeedSkip = this.view === "action-animation";
     this.hardwareLeft.disabled = inputLocked;
@@ -1925,9 +1977,14 @@ export default class UIScene extends Phaser.Scene {
 
     if (this.view === "minigame") {
       this.setMenuParent(this.getMenuParentText());
-      this.setMenuIcon(this.getMiniGameIcon());
       this.screenMenuTitle.textContent = this.getMiniGameTitle();
-      this.screenMenuStatus.textContent = this.getMiniGameStatusText();
+      if (this.isQuickMatchPlayView()) {
+        this.setMenuIcon("");
+        this.screenMenuStatus.innerHTML = this.getQuickMatchPlayMarkup();
+      } else {
+        this.setMenuIcon(this.getMiniGameIcon());
+        this.screenMenuStatus.textContent = this.getMiniGameStatusText();
+      }
       this.setMenuIndicator(0, 0);
       return;
     }

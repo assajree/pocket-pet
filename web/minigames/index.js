@@ -1,5 +1,5 @@
 import { PLAY_MENU_ITEMS } from "./playItems.js";
-import { sequenceMatchType } from "./sequenceMatch.js";
+import { getSequenceMatchButtonLabel, sequenceMatchType } from "./sequenceMatch.js";
 import { tapCountType } from "./tapCount.js";
 import { createMiniGameState } from "./types.js";
 import { formatStatusObject } from "../helpers/menuFormatters.js";
@@ -62,6 +62,9 @@ export const finalizeMiniGameResult = (miniGame, item) => {
 };
 
 export const getMiniGameStatusText = (miniGame, item) => getMiniGameTypeHandler(item).buildStatusText(miniGame, item);
+
+export const getSequenceMatchNextButtonLabel = (miniGame) =>
+  getSequenceMatchButtonLabel(miniGame?.sequence?.[miniGame?.progress] || "");
 
 export const getMiniGameSummaryText = (miniGame, item) => {
   const miniGameConfig = item?.minigame || {};
