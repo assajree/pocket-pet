@@ -1358,7 +1358,7 @@ export default class UIScene extends Phaser.Scene {
     }
 
     if (outcome.type === "update") {
-      if (this.isQuickMatchPlayView()) {
+      if (this.getMiniGameType() === "sequence-match") {
         this.triggerQuickMatchHitFlash();
       }
       this.render(this.state);
@@ -1535,23 +1535,60 @@ export default class UIScene extends Phaser.Scene {
     return this.activeMiniGameItem?.icon || "play";
   }
 
-  isQuickMatchPlayView() {
-    return this.view === "minigame" && this.activeMiniGameItem?.key === "quick-match";
+  getMiniGameType() {
+    return this.activeMiniGameItem?.minigame?.type || "tap-count";
   }
 
-  getQuickMatchPlayMarkup() {
+  isTextMiniGamePlayView() {
+    return this.view === "minigame" && ["sequence-match", "tap-count"].includes(this.getMiniGameType());
+  }
+
+  getMiniGameTimeLeftText() {
+    return `${Math.max(0, this.miniGame.duration - this.miniGame.elapsed).toFixed(1)}s`;
+  }
+
+  getSequenceMatchPlayMarkup() {
     const inputPrompt = this.getMiniGameConfig().inputPrompt || "Match buttons";
     const nextButton = getSequenceMatchNextButtonLabel(this.miniGame);
     const progressText = `MATCH ${this.miniGame.progress}/${this.miniGame.sequence.length}`;
-    const timeLeft = Math.max(0, this.miniGame.duration - this.miniGame.elapsed).toFixed(1);
     const nextButtonClasses = `quick-match-next-button${this.quickMatchHitFlashActive ? " hidden-feedback" : ""}`;
 
     return `
-      <div class="quick-match-play">
-        <div class="quick-match-prompt">${inputPrompt}</div>
+      <div class="mini-game-play mini-game-play-sequence-match">
+        <div class="mini-game-play-prompt">${inputPrompt}</div>
         <div class="${nextButtonClasses}">${nextButton}</div>
-        <div class="quick-match-progress">${progressText}</div>
-        <div class="quick-match-timer">${timeLeft}s</div>
+        <div class="mini-game-play-meta">${progressText}</div>
+        <div class="mini-game-play-timer">${this.getMiniGameTimeLeftText()}</div>
+      </div>
+    `;
+  }
+
+  getTapCountPlayMarkup() {
+    const inputPrompt = this.getMiniGameConfig().inputPrompt || "O play  X exit";
+    const scoreUnit = (this.getMiniGameConfig().scoreUnit || "taps").toUpperCase();
+
+    return `
+      <div class="mini-game-play mini-game-play-tap-count">
+        <div class="mini-game-play-prompt">${inputPrompt}</div>
+        <div class="mini-game-play-count">${this.miniGame.score}</div>
+        <div class="mini-game-play-meta">${scoreUnit}</div>
+        <div class="mini-game-play-timer">${this.getMiniGameTimeLeftText()}</div>
+      </div>
+    `;
+  }
+
+  getMiniGamePlayMarkup() {
+    if (this.getMiniGameType() === "tap-count") {
+      return this.getTapCountPlayMarkup();
+    }
+
+    if (this.getMiniGameType() === "sequence-match") {
+      return this.getSequenceMatchPlayMarkup();
+    }
+
+    return `
+      <div class="mini-game-play">
+        <div class="mini-game-play-prompt">${this.getMiniGameStatusText()}</div>
       </div>
     `;
   }
@@ -1799,7 +1836,7 @@ export default class UIScene extends Phaser.Scene {
     this.gameScene.setMenuVisible(fullScreenMenu);
     this.screenMenu.classList.toggle("status-view", this.view === "status");
     this.screenMenu.classList.toggle("action-animation-view", this.view === "action-animation");
-    this.screenMenu.classList.toggle("quick-match-play-view", this.isQuickMatchPlayView());
+    this.screenMenu.classList.toggle("mini-game-play-view", this.isTextMiniGamePlayView());
     const inputLocked = this.isInputLocked();
     const allowFeedSkip = this.view === "action-animation";
     this.hardwareLeft.disabled = inputLocked;
@@ -1978,9 +2015,9 @@ export default class UIScene extends Phaser.Scene {
     if (this.view === "minigame") {
       this.setMenuParent(this.getMenuParentText());
       this.screenMenuTitle.textContent = this.getMiniGameTitle();
-      if (this.isQuickMatchPlayView()) {
+      if (this.isTextMiniGamePlayView()) {
         this.setMenuIcon("");
-        this.screenMenuStatus.innerHTML = this.getQuickMatchPlayMarkup();
+        this.screenMenuStatus.innerHTML = this.getMiniGamePlayMarkup();
       } else {
         this.setMenuIcon(this.getMiniGameIcon());
         this.screenMenuStatus.textContent = this.getMiniGameStatusText();
