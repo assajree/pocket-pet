@@ -109,7 +109,7 @@ body {
   touch-action: manipulation;
 }
 
-.sample-preview {
+.media-preview {
   position: absolute;
   inset: 14px;
   border-radius: 12px;
@@ -125,7 +125,7 @@ body {
   pointer-events: none;
 }
 
-.sample-preview-image {
+.media-preview-image {
   display: block;
   max-width: 100%;
   max-height: 100%;
@@ -582,7 +582,7 @@ body {
     padding: 68px 12px 32px;
   }
 
-  .sample-preview {
+  .media-preview {
     inset: 14px;
     padding: 14px;
   }

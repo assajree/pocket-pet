@@ -54,6 +54,7 @@ import { resolveEffectStatus } from "../helpers/effectStatus.js";
 
 const LINK_GAME_BET_OPTIONS = [0, 10, 20, 50, 100];
 const QUICK_MATCH_HIT_FLASH_MS = 150;
+const MEDIA_PREVIEW_VIEW = "media-preview";
 
 const formatCountdown = (secondsRemaining) => {
   const minutes = Math.floor(secondsRemaining / 60);
@@ -130,6 +131,10 @@ export default class UIScene extends Phaser.Scene {
     this.linkGameSyncState = null;
     this.linkGameOutcome = "";
     this.messageReturnState = null;
+    this.mediaPreview = null;
+    this.mediaPreviewTimer = null;
+    this.mediaPreviewUnlockTimer = null;
+    this.mediaPreviewObjectUrl = "";
     this.isRestarting = false;
     this.platformCapabilities = getPlatformCapabilities();
     this.buttonAudio = createButtonAudio();
@@ -164,6 +169,9 @@ export default class UIScene extends Phaser.Scene {
       this.actionAnimationTimer?.remove(false);
       this.linkGameResultTimer?.remove(false);
       this.quickMatchHitFlashTimer?.remove(false);
+      this.mediaPreviewTimer?.remove(false);
+      this.mediaPreviewUnlockTimer?.remove(false);
+      this.clearMediaPreviewObjectUrl();
     });
   }
 
@@ -177,8 +185,8 @@ export default class UIScene extends Phaser.Scene {
     this.screenMenuIcon = document.getElementById("screen-menu-icon");
     this.screenMenuStatus = document.getElementById("screen-menu-status");
     this.screenMenuIndicator = document.getElementById("screen-menu-indicator");
-    this.samplePreview = document.getElementById("sample-preview");
-    this.samplePreviewImage = document.getElementById("sample-preview-image");
+    this.mediaPreviewContainer = document.getElementById("media-preview");
+    this.mediaPreviewImage = document.getElementById("media-preview-image");
     this.hardwareLeft = document.getElementById("hardware-left");
     this.hardwareRight = document.getElementById("hardware-right");
     this.hardwareCancel = document.getElementById("hardware-cancel");
@@ -250,9 +258,11 @@ export default class UIScene extends Phaser.Scene {
       return;
     }
 
-    if (this.view === "sample-gif-preview") {
+    if (this.view === MEDIA_PREVIEW_VIEW) {
       if (button === "ok" || button === "cancel") {
-        this.closeSampleGifPreview();
+        if (!this.isMediaPreviewInputLocked()) {
+          this.closeMediaPreview();
+        }
       }
       return;
     }
@@ -424,7 +434,9 @@ export default class UIScene extends Phaser.Scene {
     }
 
     if (item.key === "debug-preview-gif") {
-      this.openSampleGifPreview();
+      this.openMediaPreview({
+        assetKey: "debug-sample-gif"
+      });
       return;
     }
 
@@ -505,27 +517,149 @@ export default class UIScene extends Phaser.Scene {
     }
   }
 
-  buildSampleMenuReturnState() {
+  buildMediaPreviewReturnState() {
     return {
-      view: "sample",
-      menuPath: [
-        { key: "main", label: "" },
-        { key: "debug", label: "DEBUG" },
-        { key: "sample", label: "SAMPLE" }
-      ]
+      view: this.view,
+      menuPath: this.menuPath.map((entry) => ({ ...entry }))
     };
   }
 
-  openSampleGifPreview() {
-    this.view = "sample-gif-preview";
+  clearMediaPreviewObjectUrl() {
+    if (!this.mediaPreviewObjectUrl) {
+      return;
+    }
+
+    URL.revokeObjectURL(this.mediaPreviewObjectUrl);
+    this.mediaPreviewObjectUrl = "";
+  }
+
+  clearMediaPreviewRuntime() {
+    this.mediaPreviewTimer?.remove(false);
+    this.mediaPreviewTimer = null;
+    this.mediaPreviewUnlockTimer?.remove(false);
+    this.mediaPreviewUnlockTimer = null;
+    this.mediaPreview = null;
+    this.clearMediaPreviewObjectUrl();
+    if (this.mediaPreviewImage) {
+      this.mediaPreviewImage.removeAttribute("src");
+    }
+  }
+
+  createMediaPreviewSourceFromAssetKey(assetKey) {
+    if (!assetKey) {
+      return null;
+    }
+
+    if (this.cache.binary.exists(assetKey)) {
+      const binaryData = this.cache.binary.get(assetKey);
+      let arrayBuffer = null;
+      if (binaryData instanceof ArrayBuffer) {
+        arrayBuffer = binaryData;
+      } else if (ArrayBuffer.isView(binaryData)) {
+        arrayBuffer = binaryData.buffer.slice(binaryData.byteOffset, binaryData.byteOffset + binaryData.byteLength);
+      }
+      if (!arrayBuffer) {
+        return null;
+      }
+      return {
+        src: URL.createObjectURL(new Blob([arrayBuffer], { type: "image/gif" })),
+        mediaType: "gif"
+      };
+    }
+
+    if (this.cache.text.exists(assetKey)) {
+      const markup = this.cache.text.get(assetKey);
+      if (typeof markup !== "string" || !markup.trim().startsWith("<svg")) {
+        return null;
+      }
+      return {
+        src: URL.createObjectURL(new Blob([markup], { type: "image/svg+xml" })),
+        mediaType: "svg"
+      };
+    }
+
+    return null;
+  }
+
+  openMediaPreview({ assetKey, inputLockMs = 0, autoCloseMs = -1, returnMode = "previous" } = {}) {
+    const resolvedSource = this.createMediaPreviewSourceFromAssetKey(assetKey);
+    if (!resolvedSource) {
+      this.showMessage(`Preview asset '${assetKey || "unknown"}' is unavailable.`, false, {
+        returnState: this.buildMediaPreviewReturnState()
+      });
+      return;
+    }
+
+    this.clearMediaPreviewRuntime();
+    this.mediaPreviewObjectUrl = resolvedSource.src;
+    this.mediaPreview = {
+      assetKey,
+      mediaType: resolvedSource.mediaType,
+      inputLockMs,
+      inputUnlockAt: inputLockMs > 0 ? this.time.now + inputLockMs : 0,
+      autoCloseMs,
+      returnMode,
+      returnState: this.buildMediaPreviewReturnState()
+    };
+    if (this.mediaPreviewImage) {
+      this.mediaPreviewImage.setAttribute("src", resolvedSource.src);
+      this.mediaPreviewImage.setAttribute("alt", `${resolvedSource.mediaType.toUpperCase()} asset preview`);
+    }
+    if (inputLockMs > 0) {
+      this.mediaPreviewUnlockTimer = this.time.delayedCall(inputLockMs, () => {
+        this.mediaPreviewUnlockTimer = null;
+        this.render(this.state);
+      });
+    }
+    this.view = MEDIA_PREVIEW_VIEW;
+    this.render(this.state);
+    if (autoCloseMs >= 0) {
+      this.mediaPreviewTimer = this.time.delayedCall(autoCloseMs, () => {
+        this.closeMediaPreview();
+      });
+    }
+  }
+
+  isMediaPreviewInputLocked() {
+    if (!this.mediaPreview) {
+      return false;
+    }
+
+    return this.mediaPreview.inputLockMs === -1 || this.time.now < this.mediaPreview.inputUnlockAt;
+  }
+
+  closeMediaPreview() {
+    if (!this.mediaPreview) {
+      return;
+    }
+
+    const { returnMode, returnState } = this.mediaPreview;
+    this.clearMediaPreviewRuntime();
+    if (returnMode === "pet") {
+      this.statusPageIndex = 0;
+      this.menuPath = [];
+      this.view = "pet";
+      this.render(this.state);
+      return;
+    }
+
+    this.view = returnState?.view || "pet";
+    this.menuPath = Array.isArray(returnState?.menuPath)
+      ? returnState.menuPath.map((entry) => ({ ...entry }))
+      : [];
     this.render(this.state);
   }
 
-  closeSampleGifPreview() {
-    const returnState = this.buildSampleMenuReturnState();
-    this.view = returnState.view;
-    this.menuPath = returnState.menuPath;
-    this.render(this.state);
+  getMediaPreviewParentText() {
+    const path = this.mediaPreview?.returnState?.menuPath;
+    if (!Array.isArray(path) || !path.length) {
+      return "PREVIEW";
+    }
+
+    const labels = path
+      .map((entry) => String(entry?.label || "").trim())
+      .filter(Boolean);
+    return labels.length ? labels.join(" / ") : "PREVIEW";
   }
 
   getLocalEncounterSnapshot() {
@@ -1521,7 +1655,7 @@ export default class UIScene extends Phaser.Scene {
   }
 
   isInputLocked() {
-    return this.time.now < this.inputLockedUntil || this.isEvolutionAnimationActive;
+    return this.time.now < this.inputLockedUntil || this.isEvolutionAnimationActive || this.isMediaPreviewInputLocked();
   }
 
   boostSleepingEnergy() {
@@ -1836,8 +1970,8 @@ export default class UIScene extends Phaser.Scene {
       return;
     }
 
-    if (this.view === "sample-gif-preview") {
-      this.closeSampleGifPreview();
+    if (this.view === MEDIA_PREVIEW_VIEW) {
+      this.closeMediaPreview();
       return;
     }
 
@@ -1896,6 +2030,7 @@ export default class UIScene extends Phaser.Scene {
     this.currentActionAnimation = null;
     this.activeMiniGameItem = null;
     this.messageReturnState = null;
+    this.clearMediaPreviewRuntime();
     this.resetExchangeRuntime();
     saveState(freshState, "ui:restart-game");
     this.render(freshState);
@@ -1917,7 +2052,7 @@ export default class UIScene extends Phaser.Scene {
   renderScreenMenu(state) {
     const petNeedIconKeys = getPetNeedIconKeys(state);
     const shouldShowNeedIcon = petNeedIconKeys.length > 0;
-    const sampleGifPreviewActive = this.view === "sample-gif-preview";
+    const mediaPreviewActive = this.view === MEDIA_PREVIEW_VIEW;
 
     this.brandTitle.textContent = "Pocket Pet";
     this.brandStatus.textContent = state.isAlive ? "Pet View" : "New Egg";
@@ -1938,12 +2073,9 @@ export default class UIScene extends Phaser.Scene {
     this.hardwareRight.disabled = inputLocked;
     this.hardwareCancel.disabled = inputLocked && !allowFeedSkip;
     this.hardwareOk.disabled = inputLocked && !allowFeedSkip;
-    if (this.samplePreview) {
-      this.samplePreview.classList.toggle("hidden", !sampleGifPreviewActive);
-      this.samplePreview.setAttribute("aria-hidden", sampleGifPreviewActive ? "false" : "true");
-    }
-    if (this.samplePreviewImage && this.samplePreviewImage.getAttribute("src") !== "./assets/cat.gif") {
-      this.samplePreviewImage.setAttribute("src", "./assets/cat.gif");
+    if (this.mediaPreviewContainer) {
+      this.mediaPreviewContainer.classList.toggle("hidden", !mediaPreviewActive);
+      this.mediaPreviewContainer.setAttribute("aria-hidden", mediaPreviewActive ? "false" : "true");
     }
     this.petMood.textContent = `Mood: ${getMoodList(state).join(" • ")}`;
     if (fullScreenMenu) {
@@ -2027,14 +2159,22 @@ export default class UIScene extends Phaser.Scene {
       return;
     }
 
-    if (this.view === "sample-gif-preview") {
-      this.setMenuParent("DEBUG / SAMPLE");
+    if (this.view === MEDIA_PREVIEW_VIEW) {
+      const autoCloseText = this.mediaPreview?.autoCloseMs === -1
+        ? "Auto close: off"
+        : `Auto close: ${Math.max(0, this.mediaPreview?.autoCloseMs || 0)}ms`;
+      const lockText = this.mediaPreview?.inputLockMs === -1
+        ? "Input lock: until preview closes"
+        : `Input lock: ${Math.max(0, this.mediaPreview?.inputLockMs || 0)}ms`;
+      this.setMenuParent(this.getMediaPreviewParentText());
       this.setMenuIcon("");
-      this.screenMenuTitle.textContent = "GIF";
+      this.screenMenuTitle.textContent = (this.mediaPreview?.mediaType || "media").toUpperCase();
       this.screenMenuStatus.textContent = [
-        "Playing assets/cat.gif",
+        `Asset: ${this.mediaPreview?.assetKey || "-"}`,
+        lockText,
+        autoCloseText,
         "",
-        "Press O or X to exit"
+        this.isMediaPreviewInputLocked() ? "Input locked" : "Press O or X to exit"
       ].join("\n");
       this.setMenuIndicator(0, 0);
       return;
