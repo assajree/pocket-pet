@@ -125,3 +125,7 @@ Original prompt: อยากได้หน้าหน้าจอประม
 - Kept the audio surface intentionally small with `playButtonPress(button)` so sampled sounds can replace or extend the synth backend later without changing menu/input code.
 - Fixed `web/service-worker.js` precache install failures by removing the stale `assets/ui/new-egg.svg` entry and stopping the cross-origin Phaser CDN script from being added via `cache.addAll()`, so browser service-worker registration no longer aborts during `install`.
 - Updated `web/helpers/petAssets.js` so logical stages can point at a different sprite asset stage via `assetStage`; the default `classic` pet now reuses `child` art for `baby`, `teen`, and `adult`, preventing evolution-time 404s when only `egg` and `child` sprite folders exist.
+- Added a dedicated sleep idle animation in `web/scenes/GameScene.js` that plays a gentle breathing loop while the pet is asleep, while keeping the existing egg pulse idle behavior unchanged.
+- Moved the sleeping `Zz` indicator to sit above the pet's head and refactored overlay positioning in `web/scenes/GameScene.js` so the sleep text tracks pet movement, resize, jumps, and stage-size changes consistently.
+- Verified syntax with `node --check web/scenes/GameScene.js`.
+- Tried to run the `develop-web-game` Playwright client again, but it still fails in this environment because the skill script cannot resolve the `playwright` package (`ERR_MODULE_NOT_FOUND`), so screenshot-based verification is still pending.

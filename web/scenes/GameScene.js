@@ -15,6 +15,11 @@ const PET_FRAME_MOVE_JUMP_CHANCE = 0.15;
 const EGG_IDLE_DURATION_MS = 900;
 const EGG_IDLE_SCALE_MIN = 0.94;
 const EGG_IDLE_SCALE_MAX = 1.04;
+const SLEEP_IDLE_DURATION_MS = 1400;
+const SLEEP_IDLE_SCALE_MIN = 0.98;
+const SLEEP_IDLE_SCALE_MAX = 1.02;
+const SLEEP_IDLE_BOB_OFFSET = 4;
+const SLEEP_TEXT_TOP_MARGIN = 6;
 const EVOLUTION_FLASH_DURATION_MS = 180;
 const EVOLUTION_FADE_DURATION_MS = 240;
 const EVOLUTION_MIN_DISPLAY_MS = 900;
@@ -46,6 +51,7 @@ export default class GameScene extends Phaser.Scene {
     this.transitionTextTween = null;
     this.transitionPromise = null;
     this.isEvolutionTransitionActive = false;
+    this.currentIdleMode = null;
     this.currentPetDisplaySize = null;
     this.audio = createButtonAudio();
   }
@@ -82,6 +88,7 @@ export default class GameScene extends Phaser.Scene {
       stroke: "#dce7d9",
       strokeThickness: 4
     });
+    this.sleepText.setOrigin(0.5, 1);
     this.sleepText.setVisible(false);
 
     this.evolutionBackdrop = this.add.rectangle(0, 0, this.scale.width, this.scale.height, 0x44514b, 0);
@@ -113,6 +120,7 @@ export default class GameScene extends Phaser.Scene {
       this.scale.off("resize", this.handleResize, this);
       this.idleTween?.stop();
       this.idleTween = null;
+      this.currentIdleMode = null;
       this.transitionFlashTween?.stop();
       this.transitionFlashTween = null;
       this.transitionTextTween?.stop();
@@ -139,8 +147,7 @@ export default class GameScene extends Phaser.Scene {
     this.basePetX = width / 2;
     this.basePetY = height / 2 + 20;
     this.snapPetToGrid();
-    this.sickIcon.setPosition(this.pet.x + 72, this.pet.y - 72);
-    this.sleepText.setPosition(this.pet.x + 86, this.pet.y - 28);
+    this.updateOverlayPositions();
     this.evolutionBackdrop.setSize(width, height);
     this.evolutionFlash.setSize(width, height);
     this.evolutionText.setPosition(width / 2, height / 2);
@@ -214,6 +221,16 @@ export default class GameScene extends Phaser.Scene {
     this.currentPetDisplaySize = size;
   }
 
+  updateSleepTextPosition() {
+    const sleepTextY = this.pet.y - (this.pet.displayHeight / 2) - SLEEP_TEXT_TOP_MARGIN;
+    this.sleepText.setPosition(this.pet.x, sleepTextY);
+  }
+
+  updateOverlayPositions() {
+    this.sickIcon.setPosition(this.pet.x + 72, this.pet.y - 72);
+    this.updateSleepTextPosition();
+  }
+
   syncVisuals() {
     const texture = this.getDisplayedPetTextureKey();
     if (this.pet.texture.key !== texture && this.textures.exists(texture)) {
@@ -221,6 +238,7 @@ export default class GameScene extends Phaser.Scene {
     }
 
     this.applyPetDisplaySize();
+    this.updateOverlayPositions();
     this.pet.setTint(this.state.isAlive ? (this.state.isSick ? 0x8c9890 : 0x44514b) : 0x7f8b85);
     this.pet.setAlpha(this.state.isAlive ? 1 : 0.55);
     this.sleepText.setVisible(this.state.isSleeping && this.state.isAlive && !this.menuVisible);
@@ -266,6 +284,7 @@ export default class GameScene extends Phaser.Scene {
     this.jumpTween = null;
     this.jumpFramesRemaining = 0;
     this.pet?.setY(this.basePetY);
+    this.updateOverlayPositions();
   }
 
   updateIdleAnimation() {
@@ -273,28 +292,52 @@ export default class GameScene extends Phaser.Scene {
       return;
     }
 
-    const shouldPlayEggIdle = this.canPlayEggIdle();
-    if (shouldPlayEggIdle && this.idleTween) {
+    const idleMode = this.canPlayEggIdle()
+      ? "egg"
+      : (this.state.isAlive && this.state.isSleeping && !this.menuVisible ? "sleep" : null);
+
+    if (idleMode && this.idleTween && this.currentIdleMode === idleMode) {
       return;
     }
 
     this.idleTween?.stop();
     this.idleTween = null;
+    this.currentIdleMode = null;
     this.pet.setScale(1, 1);
     this.pet.setY(this.basePetY);
+    this.updateOverlayPositions();
 
-    if (!shouldPlayEggIdle) {
+    if (!idleMode) {
+      return;
+    }
+
+    this.currentIdleMode = idleMode;
+
+    if (idleMode === "egg") {
+      this.idleTween = this.tweens.add({
+        targets: this.pet,
+        scaleX: { from: EGG_IDLE_SCALE_MIN, to: EGG_IDLE_SCALE_MAX },
+        scaleY: { from: EGG_IDLE_SCALE_MIN, to: EGG_IDLE_SCALE_MAX },
+        duration: EGG_IDLE_DURATION_MS,
+        ease: "Sine.easeInOut",
+        yoyo: true,
+        repeat: -1
+      });
       return;
     }
 
     this.idleTween = this.tweens.add({
       targets: this.pet,
-      scaleX: { from: EGG_IDLE_SCALE_MIN, to: EGG_IDLE_SCALE_MAX },
-      scaleY: { from: EGG_IDLE_SCALE_MIN, to: EGG_IDLE_SCALE_MAX },
-      duration: EGG_IDLE_DURATION_MS,
+      scaleX: { from: SLEEP_IDLE_SCALE_MIN, to: SLEEP_IDLE_SCALE_MAX },
+      scaleY: { from: SLEEP_IDLE_SCALE_MAX, to: SLEEP_IDLE_SCALE_MIN },
+      y: { from: this.basePetY, to: this.basePetY + SLEEP_IDLE_BOB_OFFSET },
+      duration: SLEEP_IDLE_DURATION_MS,
       ease: "Sine.easeInOut",
       yoyo: true,
-      repeat: -1
+      repeat: -1,
+      onUpdate: () => {
+        this.updateOverlayPositions();
+      }
     });
   }
 
@@ -387,6 +430,7 @@ export default class GameScene extends Phaser.Scene {
       this.pet.setAlpha(1);
       this.pet.setScale(1, 1);
       this.pet.setTint(0x44514b);
+      this.updateOverlayPositions();
       this.setEvolutionTransitionActive(true);
       this.showEvolutionOverlay();
       this.audio.playEvolutionCue(previousStage, nextStage);
@@ -455,8 +499,7 @@ export default class GameScene extends Phaser.Scene {
       const targetX = this.getSnappedPetX(this.pet.x + fallbackStep * PET_MOVE_BLOCK_SIZE);
       this.pet.setFlipX(targetX < this.pet.x);
       this.snapPetToGrid(targetX);
-      this.sickIcon.setPosition(this.pet.x + 72, this.pet.y - 72);
-      this.sleepText.setPosition(this.pet.x + 86, this.pet.y - 28);
+      this.updateOverlayPositions();
       return;
     }
 
@@ -465,8 +508,7 @@ export default class GameScene extends Phaser.Scene {
     this.jumpFramesRemaining = PET_JUMP_HOLD_FRAMES;
     this.pet.setY(this.basePetY - jumpHeight);
     this.syncVisuals();
-    this.sickIcon.setPosition(this.pet.x + 72, this.pet.y - 72);
-    this.sleepText.setPosition(this.pet.x + 86, this.pet.y - 28);
+    this.updateOverlayPositions();
   }
 
   setMenuVisible(isVisible) {
@@ -513,8 +555,7 @@ export default class GameScene extends Phaser.Scene {
           this.jumpTween = null;
           this.pet.setY(this.basePetY);
           this.syncVisuals();
-          this.sickIcon.setPosition(this.pet.x + 72, this.pet.y - 72);
-          this.sleepText.setPosition(this.pet.x + 86, this.pet.y - 28);
+          this.updateOverlayPositions();
         }
       }
     } else {
