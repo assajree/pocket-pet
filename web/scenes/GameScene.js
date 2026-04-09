@@ -526,11 +526,18 @@ export default class GameScene extends Phaser.Scene {
 
   setMenuVisible(isVisible) {
     this.menuVisible = isVisible;
+    if (!this.pet || !this.sickIcon || !this.sleepText) {
+      return;
+    }
+
     const petVisible = !isVisible;
     this.pet.setVisible(petVisible);
     this.sickIcon.setVisible(petVisible && this.state.isSick && this.state.isAlive);
     this.sleepText.setVisible(petVisible && this.state.isSleeping && this.state.isAlive);
-    this.poopSprites.getChildren().forEach((sprite) => sprite.setVisible(petVisible));
+    const poopSprites = this.poopSprites && typeof this.poopSprites.getChildren === "function"
+      ? this.poopSprites.getChildren()
+      : [];
+    poopSprites.forEach((sprite) => sprite.setVisible(petVisible));
     this.updateIdleAnimation();
     if (isVisible || !this.canAnimatePet()) {
       this.stopMovementTweens();
