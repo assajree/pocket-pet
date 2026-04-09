@@ -34,6 +34,7 @@ import {
   LINK_GAME_COUNTDOWN_MS,
   LINK_GAME_RESULT_DURATION_MS,
   MINI_GAME_SUMMARY_DURATION_MS,
+  MINI_GAME_SUMMARY_INPUT_LOCK_MS,
   SLEEP_OK_ENERGY_BOOST
 } from "../helpers/uiConfig.js";
 import { getPlatformCapabilities } from "../helpers/platform.js";
@@ -235,6 +236,14 @@ export default class UIScene extends Phaser.Scene {
 
     if (this.view === "action-animation" && (button === "ok" || button === "cancel")) {
       this.skipActionAnimation();
+      return;
+    }
+
+    if (this.view === "summary") {
+      if (this.time.now < this.inputLockedUntil) {
+        return;
+      }
+      this.closeMiniGameSummary();
       return;
     }
 
@@ -1432,17 +1441,23 @@ export default class UIScene extends Phaser.Scene {
     return buildMiniGameSummaryText(this.miniGame, this.activeMiniGameItem);
   }
 
+  closeMiniGameSummary() {
+    this.summaryTimer?.remove(false);
+    this.summaryTimer = null;
+    this.inputLockedUntil = 0;
+    this.view = "pet";
+    this.activeMiniGameItem = null;
+    this.render(this.state);
+  }
+
   showMiniGameSummary() {
     this.summaryTimer?.remove(false);
+    this.summaryTimer = null;
     this.view = "summary";
-    this.inputLockedUntil = this.time.now + MINI_GAME_SUMMARY_DURATION_MS;
+    this.inputLockedUntil = this.time.now + MINI_GAME_SUMMARY_INPUT_LOCK_MS;
     this.render(this.state);
     this.summaryTimer = this.time.delayedCall(MINI_GAME_SUMMARY_DURATION_MS, () => {
-      this.inputLockedUntil = 0;
-      this.view = "pet";
-      this.activeMiniGameItem = null;
-      this.render(this.state);
-      this.summaryTimer = null;
+      this.closeMiniGameSummary();
     });
   }
 
