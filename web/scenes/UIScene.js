@@ -290,12 +290,7 @@ export default class UIScene extends Phaser.Scene {
         return;
       }
 
-      if (button === "cancel") {
-        this.statusPageIndex = 0;
-        this.view = "status";
-        this.render(this.state);
-        return;
-      }
+      
 
       if (!this.state.isAlive) {
         this.openDeadMenu();
@@ -307,6 +302,15 @@ export default class UIScene extends Phaser.Scene {
         return;
       }
 
+      // open status screen
+      if (button === "ok" || button === "cancel") {
+        this.statusPageIndex = 0;
+        this.view = "status";
+        this.render(this.state);
+        return;
+      }
+
+      // open main menu
       this.openMainMenu({ selectLastItem: button === "left" });
       return;
     }
@@ -360,7 +364,8 @@ export default class UIScene extends Phaser.Scene {
       }
 
       if (button === "ok") {
-        this.closeMenu();
+        this.stepStatusPage("right");
+        // this.closeMenu();
       }
       return;
     }
@@ -1663,14 +1668,26 @@ export default class UIScene extends Phaser.Scene {
       return;
     }
 
+    let wokeUp = false;
     this.state.energy = Math.min(100, this.state.energy + SLEEP_OK_ENERGY_BOOST);
     if (this.state.energy >= 100) {
       this.state.isSleeping = false;
       this.state.actionLockUntil = 0;
+      wokeUp = true;
     }
 
     this.gameScene.syncVisuals();
     saveState(this.state, "ui:sleep-boost");
+    if (wokeUp) {
+      this.buttonAudio.playEvolutionCue("sleep");
+      this.openMediaPreview({
+        assetKey: "ui-reaction-happy",
+        inputLockMs: -1,
+        autoCloseMs: 1000,
+        returnMode: "pet"
+      });
+      return;
+    }
     this.render(this.state);
   }
 
