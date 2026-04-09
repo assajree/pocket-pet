@@ -1,4 +1,4 @@
-import { getInventoryCount, getItemLabel, getShopPrice, getMaxQty, isConsumableItem } from "../gameState.js";
+import { getInventoryCount, getItemLabel, getShopPrice, getMaxQty, isConsumableItem} from "../gameState.js";
 
 export const buildShopStatus = (itemKey, stockKey, label) => ({ money, inventory }) => {
   const qty = getInventoryCount({ inventory }, stockKey);
@@ -12,7 +12,7 @@ export const buildShopStatus = (itemKey, stockKey, label) => ({ money, inventory
 };
 
 export const buildInventoryItemName = (itemKey) => ({ inventory }) =>
-  `${getItemLabel(itemKey)} x${!isConsumableItem(itemKey) ? "INF" : getInventoryCount({ inventory }, itemKey)}`;
+  `${getItemLabel(itemKey)} ${!isConsumableItem(itemKey) ? "" : "x" + getInventoryCount({ inventory }, itemKey)}`;
 
 export const buildInventoryItemStatus = (itemKey, extraStatsFn) => (state) => {
   const lines = [`QTY ${!isConsumableItem(itemKey) ? "INF" : getInventoryCount(state, itemKey)}`];
@@ -66,24 +66,37 @@ export const formatStatusObject = (statusObject) => {
     });
 };
 
+export const buildItemQtyText = (state, item) => {
+  return !isConsumableItem(item.key) ? " " : `${getInventoryCount(state, item.key)}/${item.maxQty}`;
+};
 
 export const getMenuCaption = (menu, item, state, context = {}) => {
   const safeItem = isPlainObject(item) ? item : {};
-  const menuCaption = typeof safeItem.caption === "string" ? safeItem.caption : "";
   const effectStatus = formatStatusObject(safeItem.effectStatus);
 
+  var menuCaption = typeof safeItem.caption === "string" ? safeItem.caption + "\n" : "";
+  const itemQty = buildItemQtyText(state, item);
+  if(itemQty)
+  {
+    menuCaption = `${itemQty}\n\n${menuCaption}`;
+  }
+
   if (effectStatus.length) {
-    return [...effectStatus, menuCaption].filter(Boolean).join("\n");
+    return [menuCaption, ...effectStatus].filter(Boolean).join("\n");
   }
 
   if (typeof safeItem.status === "function") {
     const value = safeItem.status(state, context);
-    return menuCaption ? `${value}\n${menuCaption}` : value;
+    return menuCaption ? `${menuCaption}\n${value}` : value;
   }
 
   if (typeof safeItem.status === "string") {
-    return menuCaption ? `${safeItem.status}\n${menuCaption}` : safeItem.status;
+    return menuCaption ? `${menuCaption}\n${safeItem.status}` : safeItem.status;
   }
 
   return menuCaption;
+};
+
+export const getShopExtraCaption = (item, state) => {
+  return `${item.shopPrice}G\n`;
 };

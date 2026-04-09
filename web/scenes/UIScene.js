@@ -28,7 +28,7 @@ import {
   initializeMiniGameSession
 } from "../minigames/index.js";
 import { MENUS, isMenuView } from "../helpers/menus.js";
-import { getMenuCaption, buildInventoryItemName } from "../helpers/menuFormatters.js";
+import { getMenuCaption, buildInventoryItemName, getShopExtraCaption } from "../helpers/menuFormatters.js";
 import {
   ACTION_ANIMATION_CONFIG,
   LINK_GAME_COUNTDOWN_MS,
@@ -376,7 +376,7 @@ export default class UIScene extends Phaser.Scene {
 
     if (this.view === "message") {
       if (button === "cancel" || button === "ok") {
-        this.closeMenu();
+        this.closeMenu();       
       }
       return;
     }
@@ -403,6 +403,7 @@ export default class UIScene extends Phaser.Scene {
   }
 
   selectMenuItem(menuKey, item) {
+
     if (String(item.key || "").startsWith("link-game-select-")) {
       this.pendingLinkGameItem = this.getLinkGameItemByKey(String(item.key).replace("link-game-select-", ""));
     }
@@ -425,6 +426,12 @@ export default class UIScene extends Phaser.Scene {
     }
 
     this.runAction(item);
+  }
+
+  getParentMenuKey(){
+    const parentMenuKey = this.menuPath[this.menuPath.length - 1]?.key || "main";
+    // console.log('getParentMenuKey()', parentMenuKey);
+    return parentMenuKey;
   }
 
   runAction(item) {
@@ -452,7 +459,16 @@ export default class UIScene extends Phaser.Scene {
         this.render(this.state);
         return;
       }
-      this.showMessage(purchase.message || "Unable to buy item.", false);
+      this.showMessage(purchase.message || "Unable to buy item.", false, {
+        returnState: {
+          view: this.view,
+          menuPath: [
+            { key: "main", label: "" },
+            { key: "shop", label: "SHOP" },
+            ...[item],
+          ]
+        }
+      });
       return;
     }
 
@@ -479,6 +495,13 @@ export default class UIScene extends Phaser.Scene {
         return;
       }
 
+      // eat other food items
+      const parentMenuKey = this.getParentMenuKey();
+      if (parentMenuKey === "feed") {
+        this.showActionAnimation("meal");
+        return;
+      }
+
       if (item.key === "medicine") {
         this.showActionAnimation("reaction-happy");
         return;
@@ -498,6 +521,8 @@ export default class UIScene extends Phaser.Scene {
 
     this.showMessage(result.message || this.getSuccessMessage(item.key), false);
   }
+
+ 
 
   playDebugSampleAudio() {
     try {
@@ -1847,12 +1872,12 @@ export default class UIScene extends Phaser.Scene {
     if (typeof item.name === "function") {
       return item.name(this.state);
     }
-    if (item.label) {
-      return item.label;
-    }
-    if (item.key && !item.name) {
-      return buildInventoryItemName(item.key)(this.state);
-    }
+    // if (item.label) {
+    //   return item.label;
+    // }
+    // if (item.key && !item.name) {
+    //   return buildInventoryItemName(item.key)(this.state);
+    // }
     return item.name || item.label;
   }
 
@@ -1883,10 +1908,15 @@ export default class UIScene extends Phaser.Scene {
   }
 
   setMenuParent(text = "") {
+    // console.log('setMenuParent()', text);
     if (!this.screenMenuParent) {
       return;
     }
 
+    if(text=="SHOP"){
+      text = `MONEY : ${this.state.money}G`;
+    }
+    
     this.screenMenuParent.textContent = text;
     this.screenMenuParent.classList.toggle("hidden", !text);
   }
@@ -2137,10 +2167,21 @@ export default class UIScene extends Phaser.Scene {
       this.setMenuParent(this.getMenuParentText());
       this.setMenuIcon(this.getMenuIconKey(item));
       this.screenMenuTitle.textContent = this.getMenuItemTitle(item);
-      this.screenMenuStatus.textContent = getMenuCaption(menu, item, state, {
-        scene: this,
-        remoteEncounterSnapshot: this.remoteEncounterSnapshot
-      });
+
+      const parentMenuKey = this.getParentMenuKey();
+      if(parentMenuKey == "shop"){
+        this.screenMenuStatus.textContent = getShopExtraCaption(item, state) + getMenuCaption(menu, item, state, {
+          scene: this,
+          remoteEncounterSnapshot: this.remoteEncounterSnapshot
+        });
+      }
+      else{
+        this.screenMenuStatus.textContent = getMenuCaption(menu, item, state, {
+          scene: this,
+          remoteEncounterSnapshot: this.remoteEncounterSnapshot
+        });
+      }
+      
       this.setMenuIndicator(items.length, this.menuIndexes[this.view]);
       return;
     }
@@ -2167,7 +2208,7 @@ export default class UIScene extends Phaser.Scene {
       return;
     }
 
-    if (this.view === "message") {
+    if (this.view === "message") {     
       this.setMenuParent("");
       this.setMenuIcon("message");
       this.screenMenuTitle.textContent = this.messageSuccess ? "Done" : "Notice";

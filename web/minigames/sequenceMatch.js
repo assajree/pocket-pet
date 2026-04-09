@@ -1,6 +1,6 @@
 import { createMiniGameState } from "./types.js";
 
-export const SEQUENCE_MATCH_HIT_SCORE = 10000;
+export const SEQUENCE_MATCH_HIT_SCORE = 1;
 
 const buildBaseSession = (item) => ({
   ...createMiniGameState(),
@@ -49,7 +49,7 @@ const finalizeSequenceMatchState = (miniGame, success, failureReason = null) => 
     failureReason,
     timeBonus: remainingMs,
     remainingMs,
-    score: miniGame.score + remainingMs
+    score: miniGame.score + (remainingMs/10000.0)
   };
 };
 
@@ -79,7 +79,7 @@ export const sequenceMatchType = {
       const nextMiniGame = {
         ...miniGame,
         progress: miniGame.progress + 1,
-        score: miniGame.score + SEQUENCE_MATCH_HIT_SCORE
+        score: (miniGame.score + SEQUENCE_MATCH_HIT_SCORE)
       };
 
       if (nextMiniGame.progress >= nextMiniGame.sequence.length) {

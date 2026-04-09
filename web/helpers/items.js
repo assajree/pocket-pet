@@ -15,15 +15,25 @@ export const ITEM_LIST = [
     icon: "snack",
     consumable: true,
     shopPrice: 6,
-    maxQty: 9,
+    maxQty: 99,
     effectStatus: { happiness: 16, weight: 6 }
+  },
+  {
+    key: "medicine-food",
+    label: "Medicine",
+    caption: "Bitter taste \nbut heals the pet.",
+    icon: "medicine",
+    consumable: true,
+    shopPrice: 10,
+    maxQty: 99,
+    effectStatus: { health: 5, love: -1 }
   }
 ];
 
 const ITEM_MAP = Object.fromEntries(ITEM_LIST.map((item) => [item.key, item]));
 
 export const getItemDef = (itemKey) => ITEM_MAP[itemKey];
-export const isConsumableItem = (itemKey) => ITEM_MAP[itemKey]?.consumable !== false;
+export const isConsumableItem = (itemKey) => ITEM_MAP[itemKey]?.consumable == true;
 export const getItemLabel = (itemKey) => ITEM_MAP[itemKey]?.label || itemKey.toUpperCase();
 export const getShopPrice = (itemKey) => ITEM_MAP[itemKey]?.shopPrice ?? 0;
 export const getMaxQty = (itemKey) => ITEM_MAP[itemKey]?.maxQty ?? 0;

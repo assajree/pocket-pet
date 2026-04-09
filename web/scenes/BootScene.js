@@ -42,7 +42,9 @@ export default class BootScene extends Phaser.Scene {
       "debug",
       "debug-fill",
       "debug-drain",
-      "debug-sick",
+      "debug-sick"
+    ];
+    const animationAssets = [
       "feeding-meal",
       "feeding-snack",
       "cleaning-room",
@@ -52,6 +54,9 @@ export default class BootScene extends Phaser.Scene {
 
     uiAssets.forEach((assetKey) => {
       this.load.text(`ui-${assetKey}`, `ui/${assetKey}.svg`);
+    });
+    animationAssets.forEach((assetKey) => {
+      this.load.text(`ui-${assetKey}`, `animation/${assetKey}.svg`);
     });
 
     const initialPetBundle = getPetStageAssetBundle(this.initialState.petId, this.initialState.evolutionStage);

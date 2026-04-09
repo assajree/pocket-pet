@@ -55,7 +55,7 @@ export const PLAY_MENU_ITEMS = [
   {
     key: "quick-match",
     label: "QUICK MATCH",
-    caption: `Press the shown ${QUICK_MATCH_SEQUENCE_LENGTH}-button pattern before time runs out.`,
+    caption: `Press the buttons before time runs out.`,
     name: "QUICK MATCH",
     icon: "play",
     minigame: {
@@ -67,15 +67,16 @@ export const PLAY_MENU_ITEMS = [
       buttonPool: ["left", "right", "ok"],
       summaryTitle: "Match",
       getSummaryText: ({ score, success, progress, targetCount, timeBonus, failureReason }) => {
-        if (success) {
-          return `${score} points\nSequence cleared. +${timeBonus} time bonus.`;
-        }
+        // if (success) {
+        //   return `${score} points\nSequence cleared. +${timeBonus} time bonus.`;
+        // }
 
-        if (failureReason === "mistake") {
-          return `${score} points\nMissed input at ${progress}/${targetCount}. Reward kept.`;
-        }
+        // if (failureReason === "mistake") {
+        //   return `${score} points\nMissed input at ${progress}/${targetCount}. Reward kept.`;
+        // }
 
-        return `${score} points\n${progress}/${targetCount} matched. Time ran out.`;
+        // return `${score} points\n${progress}/${targetCount} matched. Time ran out.`;
+        return `${score} points`
       }
     },
     currentStatus: ({ happiness, energy }) => ({
@@ -83,9 +84,8 @@ export const PLAY_MENU_ITEMS = [
       energy: Math.round(energy)
     }),
     effectStatus: {
-      happiness: { min: 0, max: 10, minScore: 1, maxScore: QUICK_MATCH_SEQUENCE_LENGTH * SEQUENCE_MATCH_HIT_SCORE },
-      energy: { min: -2, max: -7, minScore: 0, maxScore: QUICK_MATCH_SEQUENCE_LENGTH * SEQUENCE_MATCH_HIT_SCORE },
-      weight: { min: -2, max: -7, minScore: 0, maxScore: QUICK_MATCH_SEQUENCE_LENGTH * SEQUENCE_MATCH_HIT_SCORE }
+      happiness: { min: 0, max: 10, minScore: 0, maxScore: QUICK_MATCH_SEQUENCE_LENGTH * SEQUENCE_MATCH_HIT_SCORE },
+      energy: { min: -1, max: -1, minScore: 0, maxScore: 0 },
     }
   }
 ];

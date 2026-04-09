@@ -856,7 +856,7 @@ export const applyDebugFill = (state) => {
   state.str = 25;
   state.agi = 25;
   state.int = 25;
-  setInventoryCount(state, "snack", 9);
+  setInventoryCount(state, "snack", 99);
   state.love = 100;
   state.isSick = false;
   resetSicknessEpisode(state);
@@ -987,8 +987,13 @@ export const applyAction = (state, action, effectStatus = null, context = {}, re
       return { ok: true };
     case "minigame":
       return { ok: true };
-    default:
-      return { ok: false, message: "Unknown action." };
+    default: // food
+      if (!useInventoryItem(state, action)) {
+        return { ok: false, message: "No item left. Visit the shop." };
+      }
+      applyEffectStatus(state, actionEffects);
+      addLog(state, `Feed ${action}.`);
+      return { ok: true };
   }
 };
 

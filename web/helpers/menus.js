@@ -41,8 +41,7 @@ export const MENUS = {
     caption: "",
     items: ITEM_LIST,
     visibleWhen: (item, state) => {
-      if (item.key === "snack") return getInventoryCount(state, item.key) > 0;
-      return true;
+      return getInventoryCount(state, item.key) > 0;
     }
   },
   play: {
