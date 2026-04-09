@@ -129,3 +129,6 @@ Original prompt: อยากได้หน้าหน้าจอประม
 - Moved the sleeping `Zz` indicator to sit above the pet's head and refactored overlay positioning in `web/scenes/GameScene.js` so the sleep text tracks pet movement, resize, jumps, and stage-size changes consistently.
 - Verified syntax with `node --check web/scenes/GameScene.js`.
 - Tried to run the `develop-web-game` Playwright client again, but it still fails in this environment because the skill script cannot resolve the `playwright` package (`ERR_MODULE_NOT_FOUND`), so screenshot-based verification is still pending.
+- Added a new `love` state to `gameState.js`, surfaced it on the `Info` status page, and wired medicine so healing a sick pet raises love while unnecessary medicine lowers love.
+- Added untreated-sickness episode tracking with dedicated constants for delay, love loss, health tick interval, and health loss; once a pet stays sick longer than 10 minutes, love is penalized once and health starts draining on a timer until cured.
+- Verified syntax with `node --check gameState.js` and `node --check scenes/UIScene.js`; `node --test tests/loveState.test.mjs` is blocked here by `spawn EPERM`, so the same assertions were run through an inline `node --input-type=module` verification script instead.

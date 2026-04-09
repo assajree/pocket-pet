@@ -1691,6 +1691,7 @@ export default class UIScene extends Phaser.Scene {
           ["Age", `${state.ageMinutes}m`],
           ["Stage", state.evolutionStage],
           ["Health", Math.round(state.health)],
+          ["Love", Math.round(state.love ?? 0)],
           ["Money", `${Math.round(state.money)}G`]
         ]
       },

@@ -19,6 +19,12 @@ const MAX_MONEY = 9999;
 const EGG_HATCH_SECONDS = 60;
 const CHILD_HATCH_CORE_STAT = 20;
 const CHILD_HATCH_COMBAT_STAT = 5;
+const MEDICINE_LOVE_GAIN_ON_SICK_HEAL = 8;
+const MEDICINE_LOVE_LOSS_ON_UNNEEDED_USE = 6;
+const SICK_UNTREATED_LOVE_DELAY_SECONDS = 600;
+const SICK_UNTREATED_LOVE_LOSS = 10;
+const SICK_UNTREATED_HEALTH_TICK_SECONDS = 20;
+const SICK_UNTREATED_HEALTH_LOSS = 6;
 const EXCHANGE_SNAPSHOT_VERSION = 1;
 const EXCHANGE_STAGE_ORDER = ["egg", "child", "teen", "adult"];
 const EXCHANGE_STAGE_BONUS = {
@@ -72,6 +78,7 @@ export const createNewState = () => ({
   health: 92,
   cleanliness: 88,
   weight: 32,
+  love: 0,
   money: 24,
   str: 12,
   agi: 11,
@@ -96,7 +103,11 @@ export const createNewState = () => ({
     poopRoll: 0,
     sicknessRoll: 0,
     healthTick: 0,
-    cleanlinessTick: 0
+    cleanlinessTick: 0,
+    sickUntreatedSeconds: 0,
+    sickUntreatedHealthTick: 0,
+    sickUntreatedLovePenaltyApplied: false,
+    sickUntreatedHealthDrainLogged: false
   },
   logs: [
     {
@@ -116,6 +127,23 @@ const addLog = (state, text) => {
     time: Date.now()
   });
   state.logs = state.logs.slice(0, MAX_LOGS);
+};
+
+const resetSicknessEpisode = (state) => {
+  if (!state?.timers) {
+    return;
+  }
+
+  state.timers.sickUntreatedSeconds = 0;
+  state.timers.sickUntreatedHealthTick = 0;
+  state.timers.sickUntreatedLovePenaltyApplied = false;
+  state.timers.sickUntreatedHealthDrainLogged = false;
+};
+
+const startSicknessEpisode = (state, message = "Your pet caught a bug and needs medicine.") => {
+  state.isSick = true;
+  resetSicknessEpisode(state);
+  addLog(state, message);
 };
 
 export const loadState = () => {
@@ -163,6 +191,7 @@ const lockEggState = (state) => {
   state.health = 100;
   state.cleanliness = 100;
   state.isSick = false;
+  resetSicknessEpisode(state);
   state.isSleeping = false;
   state.poopCount = 0;
   state.actionLockUntil = 0;
@@ -178,6 +207,7 @@ const applyChildHatchState = (state) => {
   state.agi = CHILD_HATCH_COMBAT_STAT;
   state.int = CHILD_HATCH_COMBAT_STAT;
   state.isSick = false;
+  resetSicknessEpisode(state);
   state.isSleeping = false;
   state.poopCount = 0;
   state.actionLockUntil = 0;
@@ -304,6 +334,8 @@ const maybeDie = (state, reasonText) => {
   if (state.hunger <= 0 || state.health <= 0) {
     state.isAlive = false;
     state.isSleeping = false;
+    state.isSick = false;
+    resetSicknessEpisode(state);
     state.hunger = clamp(state.hunger);
     state.health = clamp(state.health);
     addLog(state, reasonText);
@@ -825,7 +857,9 @@ export const applyDebugFill = (state) => {
   state.int = 25;
   setInventoryCount(state, "snack", 9);
   setInventoryCount(state, "medicine", 9);
+  state.love = 100;
   state.isSick = false;
+  resetSicknessEpisode(state);
   state.poopCount = 0;
   state.isSleeping = false;
   state.actionLockUntil = 0;
@@ -883,15 +917,16 @@ export const applyAction = (state, action, effectStatus = null, context = {}, re
       if (!useInventoryItem(state, "medicine")) {
         return { ok: false, message: "No medicine left. Visit the shop." };
       }
-      if (!state.isSick && state.health > 90) {
-        if (isConsumableItem("medicine")) {
-          adjustInventoryCount(state, "medicine", 1);
-        }
+      if (!state.isSick) {
+        state.love = clampStatValue("love", state.love - MEDICINE_LOVE_LOSS_ON_UNNEEDED_USE);
+        addLog(state, `Medicine was not needed. Love dropped by ${MEDICINE_LOVE_LOSS_ON_UNNEEDED_USE}.`);
         return { ok: false, message: "Medicine is not needed right now." };
       }
       state.isSick = false;
+      resetSicknessEpisode(state);
       state.health = clamp(state.health + 24);
-      addLog(state, "Medicine helped your pet recover.");
+      state.love = clampStatValue("love", state.love + MEDICINE_LOVE_GAIN_ON_SICK_HEAL);
+      addLog(state, `Medicine helped your pet recover. Love rose by ${MEDICINE_LOVE_GAIN_ON_SICK_HEAL}.`);
       return { ok: true };
     case "debug-fill":
       return applyDebugFill(state);
@@ -919,6 +954,7 @@ export const applyAction = (state, action, effectStatus = null, context = {}, re
       state.str = 5;
       state.agi = 5;
       state.int = 5;
+      state.love = 0;
       setInventoryCount(state, "snack", 0);
       setInventoryCount(state, "medicine", 0);
       state.isSleeping = false;
@@ -926,8 +962,13 @@ export const applyAction = (state, action, effectStatus = null, context = {}, re
       addLog(state, "Debug: core stats were lowered for testing.");
       return { ok: true };
     case "debug-sick":
-      state.isSick = !state.isSick;
-      addLog(state, state.isSick ? "Debug: pet marked sick." : "Debug: pet cured.");
+      if (state.isSick) {
+        state.isSick = false;
+        resetSicknessEpisode(state);
+        addLog(state, "Debug: pet cured.");
+      } else {
+        startSicknessEpisode(state, "Debug: pet marked sick.");
+      }
       return { ok: true };
     case "debug-evolve":
       evolveToNextStage(state);
@@ -935,6 +976,8 @@ export const applyAction = (state, action, effectStatus = null, context = {}, re
     case "debug-dead":
       state.isAlive = false;
       state.isSleeping = false;
+      state.isSick = false;
+      resetSicknessEpisode(state);
       addLog(state, "Debug: pet marked dead.");
       return { ok: true };
     case "minigame":
@@ -952,6 +995,41 @@ const applyPassiveEffects = (state) => {
 
   state.health = clamp(state.health - poopPenalty - sickPenalty - starvationPenalty - exhaustionPenalty);
   state.cleanliness = clamp(state.cleanliness - state.poopCount * 0.45);
+};
+
+const applyUntreatedSicknessEffects = (state, delta) => {
+  if (!state.isSick) {
+    resetSicknessEpisode(state);
+    return;
+  }
+
+  const previousUntreatedSeconds = state.timers.sickUntreatedSeconds;
+  const nextUntreatedSeconds = previousUntreatedSeconds + delta;
+  state.timers.sickUntreatedSeconds = nextUntreatedSeconds;
+
+  if (!state.timers.sickUntreatedLovePenaltyApplied && nextUntreatedSeconds >= SICK_UNTREATED_LOVE_DELAY_SECONDS) {
+    state.love = clampStatValue("love", state.love - SICK_UNTREATED_LOVE_LOSS);
+    state.timers.sickUntreatedLovePenaltyApplied = true;
+    addLog(state, `You left your pet sick too long. Love dropped by ${SICK_UNTREATED_LOVE_LOSS}.`);
+  }
+
+  const previousOverdueSeconds = Math.max(0, previousUntreatedSeconds - SICK_UNTREATED_LOVE_DELAY_SECONDS);
+  const nextOverdueSeconds = Math.max(0, nextUntreatedSeconds - SICK_UNTREATED_LOVE_DELAY_SECONDS);
+  const newlyOverdueSeconds = nextOverdueSeconds - previousOverdueSeconds;
+
+  if (newlyOverdueSeconds > 0) {
+    if (!state.timers.sickUntreatedHealthDrainLogged) {
+      state.timers.sickUntreatedHealthDrainLogged = true;
+      addLog(state, "Your pet stayed sick too long. Health will now keep dropping.");
+    }
+
+    state.timers.sickUntreatedHealthTick += newlyOverdueSeconds;
+  }
+
+  while (state.timers.sickUntreatedHealthTick >= SICK_UNTREATED_HEALTH_TICK_SECONDS) {
+    state.health = clampStatValue("health", state.health - SICK_UNTREATED_HEALTH_LOSS);
+    state.timers.sickUntreatedHealthTick -= SICK_UNTREATED_HEALTH_TICK_SECONDS;
+  }
 };
 
 export const tickState = (state, deltaSeconds) => {
@@ -1013,6 +1091,8 @@ export const tickState = (state, deltaSeconds) => {
     state.timers.cleanlinessTick -= 25;
   }
 
+  applyUntreatedSicknessEffects(state, delta);
+
   while (state.timers.healthTick >= 20) {
     applyPassiveEffects(state);
     state.timers.healthTick -= 20;
@@ -1029,8 +1109,7 @@ export const tickState = (state, deltaSeconds) => {
 
   while (state.timers.sicknessRoll >= 50) {
     if (!state.isSick && Math.random() < 0.14) {
-      state.isSick = true;
-      addLog(state, "Your pet caught a bug and needs medicine.");
+      startSicknessEpisode(state);
     }
     state.timers.sicknessRoll -= 50;
   }
