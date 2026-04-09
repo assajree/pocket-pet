@@ -121,6 +121,7 @@ export const createNewState = () => ({
 const baseState = createNewState();
 
 const addLog = (state, text) => {
+  console.log('LOG:', text);
   state.logs.unshift({
     id: createLogId(),
     text,

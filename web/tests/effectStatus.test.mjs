@@ -112,11 +112,11 @@ test("minigame summary reuses resolved effects and appends formatted status line
   const item = {
     minigame: {
       scoreUnit: "taps",
-      getSummaryText: ({ score }) => `${score} taps\nPlease wait...`
+      getSummaryText: ({ score }) => `${score} taps`
     }
   };
 
-  assert.equal(getMiniGameSummaryText(miniGame, item), "8 taps\nPlease wait...\n+18 HAPPY\n-5 ENERGY");
+  assert.equal(getMiniGameSummaryText(miniGame, item), "8 taps\n+18 HAPPY\n-5 ENERGY");
 });
 
 test("play menu score-range config resolves via normalized score context", async () => {

@@ -2285,7 +2285,7 @@ export default class UIScene extends Phaser.Scene {
       this.setMenuParent(this.getMenuParentText());
       this.setMenuIcon("summary");
       this.screenMenuTitle.textContent = this.getMiniGameConfig().summaryTitle || "Result";
-      this.screenMenuStatus.textContent = this.getMiniGameSummaryText();
+      this.screenMenuStatus.textContent = this.getMiniGameSummaryText() + "\n\nPress any key to continue.";
       this.setMenuIndicator(0, 0);
       return;
     }

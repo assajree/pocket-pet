@@ -15,7 +15,7 @@ export const PLAY_MENU_ITEMS = [
       inputPrompt: "O tap  X exit",
       scoreUnit: "taps",
       summaryTitle: "Result",
-      getSummaryText: ({ score }) => `${score} taps\nPlease wait...`
+      getSummaryText: ({ score }) => `${score} taps`
     },
     currentStatus: ({ happiness, energy, weight }) => ({
       happiness: Math.round(happiness),

@@ -7,3 +7,4 @@
 - ระบบใช้ชีวิตเอง
 - ตัวกลางสำหรับเล่นเสียง + ปรับ volume ได้
 - ตัวกลางสำหรับเล่น animation จาก gif,  svg
+- play smile animation after wakeup

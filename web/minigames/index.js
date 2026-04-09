@@ -85,10 +85,10 @@ export const getMiniGameSummaryText = (miniGame, item) => {
 
   const summaryText = typeof miniGameConfig.getSummaryText === "function"
     ? miniGameConfig.getSummaryText(summaryPayload)
-    : `${getMiniGameScoreText(miniGame, item)}\nPlease wait...`;
+    : `${getMiniGameScoreText(miniGame, item)}\n`;
 
   if (effectStatusLines.length) {
-    return [summaryText, ...effectStatusLines].filter(Boolean).join("\n");
+    return [summaryText + "\n", ...effectStatusLines].filter(Boolean).join("\n");
   }
 
   if (typeof miniGameConfig.getSummaryText === "function") {
