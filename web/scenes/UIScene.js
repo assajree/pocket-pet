@@ -176,6 +176,8 @@ export default class UIScene extends Phaser.Scene {
     this.screenMenuIcon = document.getElementById("screen-menu-icon");
     this.screenMenuStatus = document.getElementById("screen-menu-status");
     this.screenMenuIndicator = document.getElementById("screen-menu-indicator");
+    this.samplePreview = document.getElementById("sample-preview");
+    this.samplePreviewImage = document.getElementById("sample-preview-image");
     this.hardwareLeft = document.getElementById("hardware-left");
     this.hardwareRight = document.getElementById("hardware-right");
     this.hardwareCancel = document.getElementById("hardware-cancel");
@@ -244,6 +246,13 @@ export default class UIScene extends Phaser.Scene {
         return;
       }
       this.closeMiniGameSummary();
+      return;
+    }
+
+    if (this.view === "sample-gif-preview") {
+      if (button === "ok" || button === "cancel") {
+        this.closeSampleGifPreview();
+      }
       return;
     }
 
@@ -405,6 +414,11 @@ export default class UIScene extends Phaser.Scene {
       return;
     }
 
+    if (item.key === "debug-preview-gif") {
+      this.openSampleGifPreview();
+      return;
+    }
+
     if (this.view === "shop") {
       const purchase = purchaseItem(this.state, item.key);
       saveState(this.state, "ui:shop-purchase");
@@ -474,6 +488,29 @@ export default class UIScene extends Phaser.Scene {
         }
       });
     }
+  }
+
+  buildSampleMenuReturnState() {
+    return {
+      view: "sample",
+      menuPath: [
+        { key: "main", label: "" },
+        { key: "debug", label: "DEBUG" },
+        { key: "sample", label: "SAMPLE" }
+      ]
+    };
+  }
+
+  openSampleGifPreview() {
+    this.view = "sample-gif-preview";
+    this.render(this.state);
+  }
+
+  closeSampleGifPreview() {
+    const returnState = this.buildSampleMenuReturnState();
+    this.view = returnState.view;
+    this.menuPath = returnState.menuPath;
+    this.render(this.state);
   }
 
   getLocalEncounterSnapshot() {
@@ -1784,6 +1821,11 @@ export default class UIScene extends Phaser.Scene {
       return;
     }
 
+    if (this.view === "sample-gif-preview") {
+      this.closeSampleGifPreview();
+      return;
+    }
+
     if (this.view === "link-code-entry") {
       this.resetJoinCodeEntry();
     }
@@ -1853,6 +1895,7 @@ export default class UIScene extends Phaser.Scene {
   renderScreenMenu(state) {
     const petNeedIconKeys = getPetNeedIconKeys(state);
     const shouldShowNeedIcon = petNeedIconKeys.length > 0;
+    const sampleGifPreviewActive = this.view === "sample-gif-preview";
 
     this.brandTitle.textContent = "Pocket Pet";
     this.brandStatus.textContent = state.isAlive ? "Pet View" : "New Egg";
@@ -1871,6 +1914,13 @@ export default class UIScene extends Phaser.Scene {
     this.hardwareRight.disabled = inputLocked;
     this.hardwareCancel.disabled = inputLocked && !allowFeedSkip;
     this.hardwareOk.disabled = inputLocked && !allowFeedSkip;
+    if (this.samplePreview) {
+      this.samplePreview.classList.toggle("hidden", !sampleGifPreviewActive);
+      this.samplePreview.setAttribute("aria-hidden", sampleGifPreviewActive ? "false" : "true");
+    }
+    if (this.samplePreviewImage && this.samplePreviewImage.getAttribute("src") !== "./assets/cat.gif") {
+      this.samplePreviewImage.setAttribute("src", "./assets/cat.gif");
+    }
     this.petMood.textContent = `Mood: ${getMoodList(state).join(" • ")}`;
     if (fullScreenMenu) {
       this.petMood.classList.add("hidden");
@@ -1949,6 +1999,19 @@ export default class UIScene extends Phaser.Scene {
       this.setMenuIcon("message");
       this.screenMenuTitle.textContent = this.messageSuccess ? "Done" : "Notice";
       this.screenMenuStatus.textContent = this.messageText;
+      this.setMenuIndicator(0, 0);
+      return;
+    }
+
+    if (this.view === "sample-gif-preview") {
+      this.setMenuParent("DEBUG / SAMPLE");
+      this.setMenuIcon("");
+      this.screenMenuTitle.textContent = "GIF";
+      this.screenMenuStatus.textContent = [
+        "Playing assets/cat.gif",
+        "",
+        "Press O or X to exit"
+      ].join("\n");
       this.setMenuIndicator(0, 0);
       return;
     }

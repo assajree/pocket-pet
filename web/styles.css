@@ -109,6 +109,31 @@ body {
   touch-action: manipulation;
 }
 
+.sample-preview {
+  position: absolute;
+  inset: 14px;
+  border-radius: 12px;
+  background:
+    radial-gradient(circle at top, rgba(244, 247, 240, 0.35), transparent 56%),
+    rgba(183, 199, 181, 0.98);
+  box-shadow: inset 0 0 0 1px rgba(78, 74, 74, 0.16);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.sample-preview-image {
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  image-rendering: auto;
+  filter: saturate(0.95) contrast(1.02);
+}
+
 .pet-mood {
   position: absolute;
   left: 22px;
@@ -555,6 +580,11 @@ body {
   .screen-menu {
     inset: 14px;
     padding: 68px 12px 32px;
+  }
+
+  .sample-preview {
+    inset: 14px;
+    padding: 14px;
   }
 
   .pet-mood {

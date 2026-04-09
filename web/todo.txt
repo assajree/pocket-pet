@@ -1,2 +1,7 @@
 - multiple pet
 - deny to eat
+- ทำเสียงตอน poop
+- change pet
+- add log under screen
+- เพิ่ม stat นิสัยเช่น ความสะอาด
+- ระบบใช้ชีวิตเอง
