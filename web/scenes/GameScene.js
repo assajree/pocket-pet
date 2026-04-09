@@ -34,6 +34,7 @@ const POOP_TOP_OFFSET = 96;
 const POOP_ROW_GAP = 24;
 const LOW_HAPPINESS_THRESHOLD = 35;
 const EVOLUTION_OVERLAY_TEXT = "EVOLUTION";
+const POOP_SOUND_KEY = "poop-sfx";
 
 export default class GameScene extends Phaser.Scene {
   constructor() {
@@ -131,6 +132,18 @@ export default class GameScene extends Phaser.Scene {
     this.syncVisuals();
     this.updateIdleAnimation();
     this.events.emit("state-changed", this.state);
+  }
+
+  playPoopSound(poopsCreated = 1) {
+    if (poopsCreated <= 0) {
+      return;
+    }
+
+    if (!this.sound || this.sound.lock || !this.cache.audio.exists(POOP_SOUND_KEY)) {
+      return;
+    }
+
+    this.sound.play(POOP_SOUND_KEY);
   }
 
   getSafeInitialTextureKey() {
@@ -541,8 +554,11 @@ export default class GameScene extends Phaser.Scene {
     if (wholeElapsedSeconds >= 1) {
       const previousPetId = this.state.petId;
       const previousStage = this.state.evolutionStage;
+      const previousPoopCount = this.state.poopCount;
       tickState(this.state, wholeElapsedSeconds);
+      const poopsCreated = Math.max(0, this.state.poopCount - previousPoopCount);
       this.elapsedAccumulator -= wholeElapsedSeconds;
+      this.playPoopSound(poopsCreated);
       this.handlePetStateMutation({ previousPetId, previousStage });
     }
 

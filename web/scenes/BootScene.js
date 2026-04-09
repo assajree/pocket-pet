@@ -22,6 +22,7 @@ export default class BootScene extends Phaser.Scene {
     this.initialState = loadState();
     this.load.setPath("./assets");
     this.load.image("poop", "poop.svg");
+    this.load.audio("poop-sfx", "audio/fart.mp3");
     this.load.audio("debug-sample-audio", "audio/debug-sample.wav");
     this.load.binary("debug-sample-gif", "cat.gif");
 

@@ -78,6 +78,7 @@ Original prompt: อยากได้หน้าหน้าจอประม
 - Verified `server.js`, `scripts/prepare-capacitor-assets.mjs`, `web/main.js`, and `web/service-worker.js` syntax, ran `npm run build:web-assets`, and confirmed `/build-meta.js`, `/service-worker.js`, and `/` now serve with `Cache-Control: no-store` where expected.
 - Attempted the `develop-web-game` Playwright validation loop against a local server, but the shared client still fails in this environment because the `playwright` package is not installed for the skill script to import.
 - Added a dedicated dead-state menu with a `NEW EGG` action, so the normal main menu is replaced after the pet dies and restart happens via that menu instead of immediately.
+- Added a dedicated poop sound effect using `web/assets/audio/fart.mp3`, preloaded in `BootScene`, precached in `service-worker.js`, and triggered from `GameScene` only when `tickState()` increases `poopCount`.
 - Added a top-of-screen menu parent breadcrumb and a `menuPath` stack in `scenes/UIScene.js`, so submenu ancestry now renders as a parent trail and can scale to deeper nested menus.
 - Adjusted the menu breadcrumb so it excludes `MAIN` and anchors to the top-left corner of the menu screen instead of sitting above the title.
 - Added persistent `money` plus item inventory for rice, snack, and medicine; introduced a `SHOP` submenu with purchasable items, made feed/medicine consume inventory, and added small money rewards from mini games so the economy loop is playable.
