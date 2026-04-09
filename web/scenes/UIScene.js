@@ -424,10 +424,20 @@ export default class UIScene extends Phaser.Scene {
         return;
       }
 
-        if (this.view !== "feed") {
-          this.view = "pet";
-        }
+      if (item.key === "medicine") {
+        this.showActionAnimation("reaction-happy");
+        return;
+      }
+
+      if (this.view !== "feed") {
+        this.view = "pet";
+      }
       this.render(this.state);
+      return;
+    }
+
+    if (item.key === "medicine") {
+      this.showActionAnimation("reaction-angry");
       return;
     }
 
@@ -1472,7 +1482,9 @@ export default class UIScene extends Phaser.Scene {
 
   setActionAnimationIcon(action) {
     const config = ACTION_ANIMATION_CONFIG[action] || {};
-    const assetKey = config.assetKey || (action === "clean" ? "cleaning-room" : (action === "snack" ? "feeding-snack" : "feeding-meal"));
+    const assetKey = config.assetKey || (action === "clean"
+      ? "cleaning-room"
+      : (action === "snack" ? "feeding-snack" : "feeding-meal"));
     this.screenMenuIcon.innerHTML = this.getUiAssetMarkup(assetKey);
     this.screenMenuIcon.classList.toggle("hidden", !this.screenMenuIcon.innerHTML);
     this.screenMenuIcon.classList.add("action-icon");

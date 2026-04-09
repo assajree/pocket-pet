@@ -48,6 +48,8 @@ const CORE_ASSETS = [
   "./assets/ui/medicine.svg",
   "./assets/ui/message.svg",
   "./assets/ui/play.svg",
+  "./assets/ui/reaction-angry.svg",
+  "./assets/ui/reaction-happy.svg",
   "./assets/ui/sleep.svg",
   "./assets/ui/snack.svg",
   "./assets/ui/status.svg",

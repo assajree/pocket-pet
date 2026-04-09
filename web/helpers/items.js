@@ -17,15 +17,6 @@ export const ITEM_LIST = [
     shopPrice: 6,
     maxQty: 9,
     effectStatus: { happiness: 16, weight: 6 }
-  },
-  {
-    key: "medicine",
-    label: "Med",
-    caption: "Buy one medicine dose.",
-    icon: "medicine",
-    consumable: true,
-    shopPrice: 12,
-    maxQty: 9
   }
 ];
 

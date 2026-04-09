@@ -140,7 +140,7 @@ const resetSicknessEpisode = (state) => {
   state.timers.sickUntreatedHealthDrainLogged = false;
 };
 
-const startSicknessEpisode = (state, message = "Your pet caught a bug and needs medicine.") => {
+const startSicknessEpisode = (state, message = "Your pet caught a bug and needs treatment.") => {
   state.isSick = true;
   resetSicknessEpisode(state);
   addLog(state, message);
@@ -856,7 +856,6 @@ export const applyDebugFill = (state) => {
   state.agi = 25;
   state.int = 25;
   setInventoryCount(state, "snack", 9);
-  setInventoryCount(state, "medicine", 9);
   state.love = 100;
   state.isSick = false;
   resetSicknessEpisode(state);
@@ -914,19 +913,16 @@ export const applyAction = (state, action, effectStatus = null, context = {}, re
       addLog(state, "You cleaned up and freshened the room.");
       return { ok: true };
     case "medicine":
-      if (!useInventoryItem(state, "medicine")) {
-        return { ok: false, message: "No medicine left. Visit the shop." };
-      }
       if (!state.isSick) {
         state.love = clampStatValue("love", state.love - MEDICINE_LOVE_LOSS_ON_UNNEEDED_USE);
-        addLog(state, `Medicine was not needed. Love dropped by ${MEDICINE_LOVE_LOSS_ON_UNNEEDED_USE}.`);
-        return { ok: false, message: "Medicine is not needed right now." };
+        addLog(state, `Treatment was not needed. Love dropped by ${MEDICINE_LOVE_LOSS_ON_UNNEEDED_USE}.`);
+        return { ok: false, message: "Your pet does not need treatment right now." };
       }
       state.isSick = false;
       resetSicknessEpisode(state);
       state.health = clamp(state.health + 24);
       state.love = clampStatValue("love", state.love + MEDICINE_LOVE_GAIN_ON_SICK_HEAL);
-      addLog(state, `Medicine helped your pet recover. Love rose by ${MEDICINE_LOVE_GAIN_ON_SICK_HEAL}.`);
+      addLog(state, `Treatment helped your pet recover. Love rose by ${MEDICINE_LOVE_GAIN_ON_SICK_HEAL}.`);
       return { ok: true };
     case "debug-fill":
       return applyDebugFill(state);
@@ -956,7 +952,6 @@ export const applyAction = (state, action, effectStatus = null, context = {}, re
       state.int = 5;
       state.love = 0;
       setInventoryCount(state, "snack", 0);
-      setInventoryCount(state, "medicine", 0);
       state.isSleeping = false;
       state.actionLockUntil = 0;
       addLog(state, "Debug: core stats were lowered for testing.");

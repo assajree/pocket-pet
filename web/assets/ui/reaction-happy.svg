@@ -1,0 +1,37 @@
+<svg viewBox="0 0 84 64" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Happy reaction animation">
+  <style>
+    .line { fill: none; stroke: #44514b; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+    .ink { fill: #44514b; }
+    .shell { fill: #b7c7b5; stroke: #44514b; stroke-width: 2.2; }
+    .pet { transform-origin: 42px 36px; animation: petBounce 900ms ease-in-out infinite; }
+    .spark { animation: sparkPop 900ms ease-out infinite; opacity: 0; }
+    .spark.two { animation-delay: 180ms; }
+    .spark.three { animation-delay: 320ms; }
+    @keyframes petBounce {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-3px); }
+    }
+    @keyframes sparkPop {
+      0% { opacity: 0; transform: scale(0.4); }
+      25% { opacity: 1; transform: scale(1); }
+      100% { opacity: 0; transform: scale(1.25); }
+    }
+  </style>
+  <rect width="84" height="64" fill="#f4efe6"/>
+  <g class="spark" transform="translate(16 16)">
+    <path class="line" d="M0 3h6M3 0v6"/>
+  </g>
+  <g class="spark two" transform="translate(63 14)">
+    <path class="line" d="M0 3h6M3 0v6"/>
+  </g>
+  <g class="spark three" transform="translate(62 44)">
+    <path class="line" d="M0 3h6M3 0v6"/>
+  </g>
+  <g class="pet">
+    <ellipse cx="42" cy="51" rx="18" ry="5" fill="#a8b7a3" opacity="0.45"/>
+    <path class="shell" d="M42 17c11 0 21 10 21 22 0 11-9 17-21 17S21 50 21 39c0-12 10-22 21-22Z"/>
+    <circle class="ink" cx="34" cy="34" r="2.5"/>
+    <circle class="ink" cx="50" cy="34" r="2.5"/>
+    <path class="line" d="M33 42c2 3 5 4 9 4s7-1 9-4"/>
+  </g>
+</svg>

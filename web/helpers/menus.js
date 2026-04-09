@@ -33,7 +33,7 @@ export const MENUS = {
       { key: "shop", label: "SHOP", caption: "Buy item.", submenu: "shop" },
       { key: "sleep", label: "SLEEP", caption: "Turn the lights off for sleep." },
       { key: "clean", label: "CLEAN", caption: "Clean the room and the mess." },
-      { key: "medicine", label: "MEDICINE", caption: "Use medicine when your pet is sick." },
+      { key: "medicine", label: "HEAL", caption: "Treat your pet when it feels sick." },
       { key: "debug", label: "DEBUG", caption: "Open debug tools.", submenu: "debug" }
     ]
   },
@@ -41,7 +41,6 @@ export const MENUS = {
     caption: "",
     items: ITEM_LIST,
     visibleWhen: (item, state) => {
-      if (item.key === "medicine") return false;
       if (item.key === "snack") return getInventoryCount(state, item.key) > 0;
       return true;
     }

@@ -64,7 +64,6 @@ test("healing a sick pet increases love and clears sickness tracking", () => {
   state.isSick = true;
   state.love = 10;
   state.health = 40;
-  state.inventory.medicine = 1;
   state.timers.sickUntreatedSeconds = 120;
   state.timers.sickUntreatedHealthTick = 8;
   state.timers.sickUntreatedLovePenaltyApplied = true;
@@ -85,15 +84,13 @@ test("using medicine when not sick lowers love and does not heal", () => {
   state.evolutionStage = "child";
   state.love = 20;
   state.health = 70;
-  state.inventory.medicine = 1;
 
   const result = applyAction(state, "medicine");
 
   assert.equal(result.ok, false);
-  assert.equal(result.message, "Medicine is not needed right now.");
+  assert.equal(result.message, "Your pet does not need treatment right now.");
   assert.equal(state.health, 70);
   assert.equal(state.love, 14);
-  assert.equal(state.inventory.medicine, 0);
 });
 
 test("untreated sickness deducts love once after the delay and then drains health over time", () => {
