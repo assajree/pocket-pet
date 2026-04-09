@@ -130,6 +130,7 @@ export default class UIScene extends Phaser.Scene {
     this.linkGameSyncState = null;
     this.linkGameOutcome = "";
     this.messageReturnState = null;
+    this.isRestarting = false;
     this.platformCapabilities = getPlatformCapabilities();
     this.buttonAudio = createButtonAudio();
   }
@@ -321,6 +322,14 @@ export default class UIScene extends Phaser.Scene {
     }
 
     if (this.view === "link-game-result") {
+      return;
+    }
+
+    if (this.view === "dead") {
+      if (button === "cancel") {
+        return;
+      }
+      this.handleMenuNavigation(this.view, button);
       return;
     }
 
@@ -1860,6 +1869,11 @@ export default class UIScene extends Phaser.Scene {
   }
 
   restartGame() {
+    if (this.isRestarting) {
+      return;
+    }
+
+    this.isRestarting = true;
     if (this.gameScene) {
       this.gameScene.events.off("state-changed", this.handleStateChanged, this);
       this.gameScene.events.off("evolution-transition-changed", this.handleEvolutionAnimationChanged, this);
@@ -1884,12 +1898,14 @@ export default class UIScene extends Phaser.Scene {
     this.messageReturnState = null;
     this.resetExchangeRuntime();
     saveState(freshState, "ui:restart-game");
+    this.render(freshState);
     this.scene.stop("GameScene");
     ensurePetStageAssetsLoaded(this, freshState.petId, freshState.evolutionStage)
       .catch((error) => {
         console.warn("Failed to preload restart pet assets.", error);
       })
       .finally(() => {
+        this.isRestarting = false;
         this.scene.start("GameScene");
         this.gameScene = this.scene.get("GameScene");
         this.gameScene.events.on("state-changed", this.handleStateChanged, this);
@@ -1910,7 +1926,9 @@ export default class UIScene extends Phaser.Scene {
     const shouldShowEggCountdown = state.evolutionStage === "egg" && !fullScreenMenu;
     const shouldShowSleepEnergy = state.isSleeping && !fullScreenMenu;
     const shouldShowDeadText = !state.isAlive && !fullScreenMenu;
-    this.gameScene.setMenuVisible(fullScreenMenu);
+    if (this.gameScene?.scene?.isActive()) {
+      this.gameScene.setMenuVisible(fullScreenMenu);
+    }
     this.screenMenu.classList.toggle("status-view", this.view === "status");
     this.screenMenu.classList.toggle("action-animation-view", this.view === "action-animation");
     this.screenMenu.classList.toggle("mini-game-play-view", this.isTextMiniGamePlayView());

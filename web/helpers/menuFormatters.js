@@ -37,6 +37,8 @@ const STATUS_LABELS = {
   bet: "BET"
 };
 
+const isPlainObject = (value) => !!value && typeof value === "object" && !Array.isArray(value);
+
 const formatStatusRange = (key, value) => {
   const label = STATUS_LABELS[key] || key.toUpperCase();
   if (typeof value.min === "number" && typeof value.max === "number") {
@@ -48,8 +50,12 @@ const formatStatusRange = (key, value) => {
   return label;
 };
 
-export const formatStatusObject = (statusObject) =>
-  Object.entries(statusObject)
+export const formatStatusObject = (statusObject) => {
+  if (!isPlainObject(statusObject)) {
+    return [];
+  }
+
+  return Object.entries(statusObject)
     .filter(([, value]) => value)
     .map(([key, value]) => {
       if (value && typeof value === "object") {
@@ -58,24 +64,25 @@ export const formatStatusObject = (statusObject) =>
 
       return `${value > 0 ? "+" : ""}${value} ${STATUS_LABELS[key] || key.toUpperCase()}`;
     });
+};
 
 
 export const getMenuCaption = (menu, item, state, context = {}) => {
-  // console.log('getMenuCaption()', {'item': item});
-  const menuCaption = item.caption;
-  const effectStatus = formatStatusObject(item.effectStatus??{});
+  const safeItem = isPlainObject(item) ? item : {};
+  const menuCaption = typeof safeItem.caption === "string" ? safeItem.caption : "";
+  const effectStatus = formatStatusObject(safeItem.effectStatus);
 
   if (effectStatus.length) {
     return [...effectStatus, menuCaption].filter(Boolean).join("\n");
   }
 
-  if (typeof item.status === "function") {
-    const value = item.status(state, context);
+  if (typeof safeItem.status === "function") {
+    const value = safeItem.status(state, context);
     return menuCaption ? `${value}\n${menuCaption}` : value;
   }
 
-  if (typeof item.status === "string") {
-    return menuCaption ? `${item.status}\n${menuCaption}` : item.status;
+  if (typeof safeItem.status === "string") {
+    return menuCaption ? `${safeItem.status}\n${menuCaption}` : safeItem.status;
   }
 
   return menuCaption;

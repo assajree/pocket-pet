@@ -116,7 +116,7 @@ export const MENUS = {
   dead: {
     caption: "Pet is gone",
     items: [
-      { key: "new-egg", label: "NEW EGG", caption: "Hatch a fresh egg and start over.", icon: "" }
+      { key: "new-egg", label: "NEW EGG", caption: "Hatch a fresh egg and start over.", icon: "" },
     ]
   }
 };
