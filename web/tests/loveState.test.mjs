@@ -122,3 +122,29 @@ test("untreated sickness deducts love once after the delay and then drains healt
     Math.random = originalRandom;
   }
 });
+
+test("debug-poop adds one poop, reduces cleanliness, and respects the cap", () => {
+  const state = createNewState();
+  state.evolutionStage = "child";
+  state.cleanliness = 8;
+
+  const firstResult = applyAction(state, "debug-poop");
+
+  assert.equal(firstResult.ok, true);
+  assert.equal(state.poopCount, 1);
+  assert.equal(state.cleanliness, 0);
+
+  for (let index = 0; index < 20; index += 1) {
+    const result = applyAction(state, "debug-poop");
+    assert.equal(result.ok, true);
+  }
+
+  assert.equal(state.poopCount, 10);
+  assert.equal(state.cleanliness, 0);
+
+  const cappedResult = applyAction(state, "debug-poop");
+
+  assert.equal(cappedResult.ok, true);
+  assert.equal(state.poopCount, 10);
+  assert.equal(state.cleanliness, 0);
+});

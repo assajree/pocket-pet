@@ -965,6 +965,15 @@ export const applyAction = (state, action, effectStatus = null, context = {}, re
         startSicknessEpisode(state, "Debug: pet marked sick.");
       }
       return { ok: true };
+    case "debug-poop":
+      if (state.poopCount >= MAX_POOP_COUNT) {
+        addLog(state, "Debug: poop count already at max.");
+        return { ok: true };
+      }
+      state.poopCount += 1;
+      state.cleanliness = clamp(state.cleanliness - 10);
+      addLog(state, "Debug: forced one poop.");
+      return { ok: true };
     case "debug-evolve":
       evolveToNextStage(state);
       return { ok: true };

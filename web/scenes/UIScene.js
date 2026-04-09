@@ -432,10 +432,16 @@ export default class UIScene extends Phaser.Scene {
 
     const previousPetId = this.state.petId;
     const previousStage = this.state.evolutionStage;
+    const previousPoopCount = this.state.poopCount;
     const result = applyAction(this.state, item.key, item.effectStatus);
     saveState(this.state, `ui:action:${item.key}`);
 
     if (result.ok) {
+      const poopsCreated = Math.max(0, this.state.poopCount - previousPoopCount);
+      if (poopsCreated > 0) {
+        this.gameScene.playPoopSound(poopsCreated);
+      }
+
       if (previousPetId !== this.state.petId || previousStage !== this.state.evolutionStage) {
         this.gameScene.handlePetStateMutation({ previousPetId, previousStage });
       } else {
