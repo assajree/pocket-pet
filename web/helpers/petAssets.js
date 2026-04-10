@@ -18,6 +18,16 @@ const PET_CATALOG = {
       teen: createClassicStage(160, VARIANT_ORDER, { assetStage: "child" }),
       adult: createClassicStage(170, VARIANT_ORDER, { assetStage: "child" })
     }
+  },
+  specie1: {
+    stages: {
+      teen: createClassicStage(160, ["idle"])
+    }
+  },
+  specie2: {
+    stages: {
+      teen: createClassicStage(160, ["idle"])
+    }
   }
 };
 
