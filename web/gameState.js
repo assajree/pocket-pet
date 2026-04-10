@@ -323,7 +323,12 @@ export const evolveToSpecies = (state, targetSpecies) => {
     return { ok: false, message: `No rule for ${targetSpecies}` };
   }
 
+  clearState();
+  const freshEgg = createNewState();
+  freshEgg.evolutionStage = "child";
+  Object.assign(state, freshEgg);
   applyDebugFill(state);
+
   if (matchingRule.minAgeMinutes !== undefined) {
     state.ageMinutes = Math.max(state.ageMinutes, matchingRule.minAgeMinutes);
   }

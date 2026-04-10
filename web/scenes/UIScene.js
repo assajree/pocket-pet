@@ -1918,11 +1918,11 @@ export default class UIScene extends Phaser.Scene {
 
   getVisibleMenuItems(menuKey) {
     if (menuKey === "debug-evolve-species") {
-      return Object.keys(PET_CATALOG).map((speciesId) => ({
+      return Object.entries(PET_CATALOG).map(([speciesId, petData]) => ({
         key: `debug-evolve-to-${speciesId}`,
-        label: speciesId.toUpperCase(),
-        caption: `Force evolution to ${speciesId}.`,
-        icon: "debug-evolve"
+        label: petData.specieName.toUpperCase(),
+        caption: `Force evolution to ${petData.specieName}.`,
+        icon: ""
       }));
     }
 
