@@ -44,6 +44,7 @@ export {
 
 const EVOLUTION_RULES = [
   {
+    currentSpecies: ["egg"],
     currentStage: "egg",
     minAgeMinutes: 1,
     nextSpecies: DEFAULT_PET_ID,
@@ -91,7 +92,7 @@ export const createNewState = () => ({
   version: 1,
   createdAt: Date.now(),
   lastUpdatedAt: Date.now(),
-  petId: DEFAULT_PET_ID,
+  petId: "egg",
 
   // care status 
   hunger: 82,
@@ -180,6 +181,12 @@ export const loadState = () => {
     }
 
     const parsed = JSON.parse(raw);
+
+    // Migration: If previously classic + egg stage, transition to new egg specie
+    if (parsed.petId === DEFAULT_PET_ID && parsed.evolutionStage === "egg") {
+      parsed.petId = "egg";
+    }
+
     return {
       ...createNewState(),
       ...parsed,

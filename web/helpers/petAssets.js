@@ -10,15 +10,13 @@ const createClassicStage = (displaySize, variants = VARIANT_ORDER, options = {})
 });
 
 export const PET_CATALOG = {
+  egg: {
+    specieName: "Egg",
+    ...createClassicStage(132, ["idle"])
+  },
   [DEFAULT_PET_ID]: {
     specieName: "Classic",
-    stages: {
-      egg: createClassicStage(132, ["idle"]),
-      baby: createClassicStage(148, VARIANT_ORDER, { assetStage: "child" }),
-      child: createClassicStage(148),
-      teen: createClassicStage(160, VARIANT_ORDER, { assetStage: "child" }),
-      adult: createClassicStage(170, VARIANT_ORDER, { assetStage: "child" })
-    }
+    ...createClassicStage(160, VARIANT_ORDER)
   },
   specie1: {
     specieName: "Octopus",
