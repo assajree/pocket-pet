@@ -19,16 +19,8 @@ const PET_CATALOG = {
       adult: createClassicStage(170, VARIANT_ORDER, { assetStage: "child" })
     }
   },
-  specie1: {
-    stages: {
-      teen: createClassicStage(160, ["idle"])
-    }
-  },
-  specie2: {
-    stages: {
-      teen: createClassicStage(160, ["idle"])
-    }
-  }
+  specie1: createClassicStage(160, ["idle"]),
+  specie2: createClassicStage(160, ["idle"])
 };
 
 const pendingBundleLoads = new Map();
@@ -39,9 +31,12 @@ const normalizeStageName = (stage) => String(stage || "").trim().toLowerCase();
 
 const getStageCatalog = (petId, stage) => {
   const petConfig = getPetConfig(petId);
-  return petConfig.stages[stage]
-    || petConfig.stages[FALLBACK_STAGE]
-    || PET_CATALOG[DEFAULT_PET_ID].stages[FALLBACK_STAGE];
+  if (petConfig.stages) {
+    return petConfig.stages[stage]
+      || petConfig.stages[FALLBACK_STAGE]
+      || PET_CATALOG[DEFAULT_PET_ID].stages[FALLBACK_STAGE];
+  }
+  return petConfig;
 };
 
 const getResolvedAssetStage = (petId, stage) => {
@@ -58,12 +53,27 @@ const getResolvedAssetStage = (petId, stage) => {
 
 const hasVariant = (petId, stage, variant) => {
   const petConfig = getPetConfig(petId);
-  return !!petConfig.stages?.[stage]?.variants?.includes(variant);
+  if (petConfig.stages) {
+    return !!petConfig.stages?.[stage]?.variants?.includes(variant);
+  }
+  return !!petConfig.variants?.includes(variant);
 };
 
-const buildAssetUrl = (petId, stage, variant) => `./assets/pet/${petId}/${stage}/${variant}.svg`;
+const buildAssetUrl = (petId, stage, variant) => {
+  const petConfig = getPetConfig(petId);
+  if (petConfig.stages) {
+    return `./assets/pet/${petId}/${stage}/${variant}.svg`;
+  }
+  return `./assets/pet/${petId}/${variant}.svg`;
+};
 
-const buildTextureKey = (petId, stage, variant) => `pet:${petId}:${stage}:${variant}`;
+const buildTextureKey = (petId, stage, variant) => {
+  const petConfig = getPetConfig(petId);
+  if (petConfig.stages) {
+    return `pet:${petId}:${stage}:${variant}`;
+  }
+  return `pet:${petId}:${variant}`;
+};
 
 const getTextureCandidateDescriptors = (petId, stage, variant) => {
   const resolvedPetId = PET_CATALOG[petId] ? petId : DEFAULT_PET_ID;
@@ -81,7 +91,7 @@ const getTextureCandidateDescriptors = (petId, stage, variant) => {
 
   return candidates
     .filter((candidate) => {
-      const key = `${candidate.petId}:${candidate.stage}:${candidate.variant}`;
+      const key = buildTextureKey(candidate.petId, candidate.stage, candidate.variant);
       if (seen.has(key)) {
         return false;
       }
@@ -110,6 +120,11 @@ const normalizeAssetStage = (petId, stage) => {
   const resolvedPetId = resolvePetId(petId);
   const normalizedStage = normalizeStageName(stage);
   const petConfig = getPetConfig(resolvedPetId);
+  
+  if (!petConfig.stages) {
+    return normalizedStage || FALLBACK_STAGE;
+  }
+
   if (petConfig.stages[normalizedStage]) {
     return getResolvedAssetStage(resolvedPetId, normalizedStage);
   }
