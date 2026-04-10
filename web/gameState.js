@@ -72,6 +72,8 @@ export const createNewState = () => ({
   createdAt: Date.now(),
   lastUpdatedAt: Date.now(),
   petId: DEFAULT_PET_ID,
+
+  // care status 
   hunger: 82,
   happiness: 84,
   energy: 78,
@@ -80,9 +82,12 @@ export const createNewState = () => ({
   weight: 32,
   love: 0,
   money: 24,
+
+  // rpg status increase by plaing mini game
   str: 12,
   agi: 11,
   int: 10,
+
   ageMinutes: 0,
   evolutionStage: "egg",
   isAlive: true,
@@ -853,9 +858,6 @@ export const applyDebugFill = (state) => {
   state.health = 100;
   state.cleanliness = 100;
   state.money = 999;
-  state.str = 25;
-  state.agi = 25;
-  state.int = 25;
   setInventoryCount(state, "snack", 99);
   state.love = 100;
   state.isSick = false;
@@ -948,10 +950,8 @@ export const applyAction = (state, action, effectStatus = null, context = {}, re
       state.health = 20;
       state.cleanliness = 20;
       state.money = 5;
-      state.str = 5;
-      state.agi = 5;
-      state.int = 5;
-      state.love = 0;
+      state.love = 10;
+
       setInventoryCount(state, "snack", 0);
       state.isSleeping = false;
       state.actionLockUntil = 0;

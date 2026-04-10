@@ -282,7 +282,7 @@ export const createGameSynth = () => {
 
     let t = context.currentTime;
     for (const entry of notes) {
-      const durationMs = entry.duration ?? 300;
+      const durationMs = entry.duration ?? NOTE_DURATION_MS.quarter;
       const stepSec = durationMs / 1000;
       const midi = parseNoteToMidi(entry.note, entry.octave);
       if (midi != null) {

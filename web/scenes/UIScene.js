@@ -1990,32 +1990,33 @@ export default class UIScene extends Phaser.Scene {
       {
         title: "Info",
         lines: [
-          ["Age", `${state.ageMinutes}m`],
-          ["Stage", state.evolutionStage],
-          ["Health", Math.round(state.health)],
-          ["Love", Math.round(state.love ?? 0)],
-          ["Money", `${Math.round(state.money)}G`]
+          ["Age    ".padStart(13), `${state.ageMinutes}m`],
+          ["Stage  ".padStart(13), state.evolutionStage],
+          ["Health ".padStart(13), Math.round(state.health)],
+          ["Love   ".padStart(13), Math.round(state.love ?? 0)],
+          ["Money  ".padStart(13), `${Math.round(state.money)}G`]
         ]
       },
       {
         title: "Needs",
         lines: [
-          ["Hunger", Math.round(state.hunger)],
-          ["Happiness", Math.round(state.happiness)],
-          ["Energy", Math.round(state.energy)],
-          ["Weight", Math.round(state.weight)],
+          ["Hunger    ".padStart(10), Math.round(state.hunger)],
+          ["Happiness ".padStart(10), Math.round(state.happiness)],
+          ["Energy    ".padStart(10), Math.round(state.energy)],
+          ["Weight    ".padStart(10), Math.round(state.weight)],
           "separator",
           ...(needList.length
             ? needList.map((need) => ["Need", need])
             : ["Your pet is happy."])
         ]
       },
+      
       {
         title: "Status",
         lines: [
-          ["Str", Math.round(state.str)],
-          ["Agi", Math.round(state.agi)],
-          ["Int", Math.round(state.int)],
+          ["Str ".padStart(14), Math.round(state.str)],
+          ["Agi ".padStart(14), Math.round(state.agi)],
+          ["Int ".padStart(14), Math.round(state.int)],
         ]
       }
     ];
@@ -2252,7 +2253,7 @@ export default class UIScene extends Phaser.Scene {
             line === "separator"
               ? `<div class="status-separator" aria-hidden="true"></div>`
               : Array.isArray(line)
-                ? `<div class="status-line"><span class="status-name">${line[0]}:</span> <span class="status-value">${line[1]}</span></div>`
+                ? `<div class="status-line"><span class="status-name">${line[0].replace(/[" "]/g, "&nbsp;")}:</span> <span class="status-value">${line[1]}</span></div>`
                 : `<div class="status-line status-line-text">${line}</div>`
         )
         .join("")}<div class="status-separator" aria-hidden="true"></div><div class="status-line"></div></div>`;
