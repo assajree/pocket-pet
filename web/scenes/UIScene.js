@@ -48,7 +48,7 @@ import {
   sendLinkGameState,
   uploadLinkSnapshot
 } from "../helpers/linkTransport.js";
-import { createButtonAudio } from "../helpers/buttonAudio.js";
+import { createGameSynth } from "../helpers/gameSynth.js";
 import { ensurePetStageAssetsLoaded } from "../helpers/petAssets.js";
 import { resolveEffectStatus } from "../helpers/effectStatus.js";
 
@@ -137,7 +137,7 @@ export default class UIScene extends Phaser.Scene {
     this.mediaPreviewObjectUrl = "";
     this.isRestarting = false;
     this.platformCapabilities = getPlatformCapabilities();
-    this.buttonAudio = createButtonAudio();
+    this.gameSynth = createGameSynth();
   }
 
   create() {
@@ -198,7 +198,7 @@ export default class UIScene extends Phaser.Scene {
       return;
     }
 
-    this.buttonAudio.unlock();
+    this.gameSynth.unlock();
     this.hardwareLeft.addEventListener("click", () => this.handleDirectionalInput("left"));
     this.hardwareRight.addEventListener("click", () => this.handleDirectionalInput("right"));
     this.hardwareCancel.addEventListener("click", () => this.handleDirectionalInput("cancel"));
@@ -243,7 +243,7 @@ export default class UIScene extends Phaser.Scene {
   };
 
   handleDirectionalInput(button) {
-    this.buttonAudio.playButtonPress(button);
+    this.gameSynth.playButtonPress(button);
 
     if (this.view === "action-animation" && (button === "ok" || button === "cancel")) {
       this.skipActionAnimation();
@@ -1704,7 +1704,7 @@ export default class UIScene extends Phaser.Scene {
     this.gameScene.syncVisuals();
     saveState(this.state, "ui:sleep-boost");
     if (wokeUp) {
-      this.buttonAudio.playEvolutionCue("sleep");
+      this.gameSynth.playEvolutionCue("sleep");
       this.openMediaPreview({
         assetKey: "ui-reaction-happy",
         inputLockMs: -1,

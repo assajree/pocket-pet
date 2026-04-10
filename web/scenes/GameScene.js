@@ -1,5 +1,5 @@
 import { AUTO_SAVE_INTERVAL_SECONDS, saveState, tickState } from "../gameState.js";
-import { createButtonAudio } from "../helpers/buttonAudio.js";
+import { createGameSynth } from "../helpers/gameSynth.js";
 import {
   ensurePetStageAssetsLoaded,
   getPetDisplaySize,
@@ -54,7 +54,7 @@ export default class GameScene extends Phaser.Scene {
     this.isEvolutionTransitionActive = false;
     this.currentIdleMode = null;
     this.currentPetDisplaySize = null;
-    this.audio = createButtonAudio();
+    this.audio = createGameSynth();
   }
 
   create() {

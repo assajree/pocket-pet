@@ -9,6 +9,45 @@ const MASTER_GAIN = 0.035;
 const OSCILLATOR_TYPE = "square";
 const EVOLUTION_MASTER_GAIN = 0.028;
 const EVOLUTION_NOTE_GAP_SECONDS = 0.02;
+
+/** Reference tempo for NOTE_DURATION_MS (quarter note = one beat). */
+export const NOTE_REFERENCE_BPM = 120;
+
+/**
+ * Note lengths in quarter-note beats (4/4). Quarter = 1 beat.
+ * Dotted = 1.5× the base note value.
+ */
+export const NOTE_BEATS = Object.freeze({
+  whole: 4,
+  half: 2,
+  quarter: 1,
+  eighth: 1 / 2,
+  sixteenth: 1 / 4,
+  thirtySecond: 1 / 8,
+  dottedWhole: 6,
+  dottedHalf: 3,
+  dottedQuarter: 3 / 2,
+  dottedEighth: 3 / 4,
+  dottedSixteenth: 3 / 8
+});
+
+const _quarterNoteMsAtRef = 60000 / NOTE_REFERENCE_BPM;
+
+/** Note lengths in ms at NOTE_REFERENCE_BPM (for playSynthSequence `duration`). */
+export const NOTE_DURATION_MS = Object.freeze({
+  whole: _quarterNoteMsAtRef * NOTE_BEATS.whole,
+  half: _quarterNoteMsAtRef * NOTE_BEATS.half,
+  quarter: _quarterNoteMsAtRef * NOTE_BEATS.quarter,
+  eighth: _quarterNoteMsAtRef * NOTE_BEATS.eighth,
+  sixteenth: _quarterNoteMsAtRef * NOTE_BEATS.sixteenth,
+  thirtySecond: _quarterNoteMsAtRef * NOTE_BEATS.thirtySecond,
+  dottedWhole: _quarterNoteMsAtRef * NOTE_BEATS.dottedWhole,
+  dottedHalf: _quarterNoteMsAtRef * NOTE_BEATS.dottedHalf,
+  dottedQuarter: _quarterNoteMsAtRef * NOTE_BEATS.dottedQuarter,
+  dottedEighth: _quarterNoteMsAtRef * NOTE_BEATS.dottedEighth,
+  dottedSixteenth: _quarterNoteMsAtRef * NOTE_BEATS.dottedSixteenth
+});
+
 const EVOLUTION_STAGE_PATTERN = [
   { frequency: 523.25, durationMs: 80, detune: -2, gain: 0.75 },
   { frequency: 659.25, durationMs: 85, detune: 1, gain: 0.95 },
@@ -21,6 +60,8 @@ const HATCH_STAGE_PATTERN = [
 ];
 const AudioContextCtor =
   typeof window === "undefined" ? null : window.AudioContext || window.webkitAudioContext;
+
+const NOTE_LETTER_TO_PC = { c: 0, d: 2, e: 4, f: 5, g: 7, a: 9, b: 11 };
 
 const getButtonToneConfig = (button) => BUTTON_TONE_CONFIG[button] || BUTTON_TONE_CONFIG.ok;
 let audioContext = null;
@@ -37,7 +78,7 @@ const ensureContext = () => {
       audioContext = new AudioContextCtor();
     } catch (error) {
       supported = false;
-      console.warn("Button audio is unavailable.", error);
+      console.warn("Game synth audio is unavailable.", error);
       return null;
     }
   }
@@ -87,7 +128,45 @@ const playTone = (context, config, startTime, masterGain = MASTER_GAIN) => {
   oscillator.stop(endTime + 0.01);
 };
 
-export const createButtonAudio = () => {
+const clampOctave = (value) => {
+  const n = Number(value);
+  if (!Number.isFinite(n)) {
+    return 3;
+  }
+  return Math.min(5, Math.max(1, Math.round(n)));
+};
+
+const parseNoteToMidi = (noteStr, octave) => {
+  const raw = String(noteStr ?? "").trim().toLowerCase();
+  if (!raw || raw === "-") {
+    return null;
+  }
+
+  const letter = raw[0];
+  const accidentals = raw.slice(1);
+  const basePc = NOTE_LETTER_TO_PC[letter];
+  if (basePc === undefined) {
+    return null;
+  }
+
+  if (!/^[#b]*$/.test(accidentals)) {
+    return null;
+  }
+
+  let delta = 0;
+  for (const ch of accidentals) {
+    delta += ch === "#" ? 1 : -1;
+  }
+
+  const pitchClass = ((basePc + delta) % 12 + 12) % 12;
+  const o = clampOctave(octave);
+  return 12 * (o + 1) + pitchClass;
+};
+
+const midiToFrequency = (midi) => 440 * 2 ** ((midi - 69) / 12);
+
+/** See ../../documents/gameSynth.md for `playSynthSequence` and `NOTE_DURATION_MS`. */
+export const createGameSynth = () => {
   const unlock = () => {
     return unlockContext();
   };
@@ -141,9 +220,42 @@ export const createButtonAudio = () => {
     });
   };
 
+  const playSynthSequence = (notes) => {
+    if (!Array.isArray(notes) || notes.length === 0) {
+      return;
+    }
+
+    const context = ensureContext();
+    if (!context) {
+      return;
+    }
+
+    if (context.state === "suspended") {
+      unlock().then((didUnlock) => {
+        if (didUnlock) {
+          playSynthSequence(notes);
+        }
+      });
+      return;
+    }
+
+    let t = context.currentTime;
+    for (const entry of notes) {
+      const durationMs = entry.duration ?? 300;
+      const stepSec = durationMs / 1000;
+      const midi = parseNoteToMidi(entry.note, entry.octave);
+      if (midi != null) {
+        const frequency = midiToFrequency(midi);
+        playTone(context, { frequency, durationMs, detune: 0 }, t);
+      }
+      t += stepSec;
+    }
+  };
+
   return {
     unlock,
     playButtonPress,
-    playEvolutionCue
+    playEvolutionCue,
+    playSynthSequence
   };
 };
