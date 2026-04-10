@@ -16,6 +16,7 @@ import {
   saveState,
   getMoodList,
   validateExchangeSnapshot,
+  evolveToSpecies,
 } from "../gameState.js";
 import {
   applyMiniGameInput,
@@ -51,7 +52,7 @@ import {
 } from "../helpers/linkTransport.js";
 import { createGameSynth, NOTE_DURATION_MS } from "../helpers/gameSynth.js";
 import { createAudioService } from "../helpers/audioService.js";
-import { ensurePetStageAssetsLoaded } from "../helpers/petAssets.js";
+import { ensurePetStageAssetsLoaded, PET_CATALOG, DEFAULT_PET_ID } from "../helpers/petAssets.js";
 import { resolveEffectStatus } from "../helpers/effectStatus.js";
 
 const LINK_GAME_BET_OPTIONS = [0, 10, 20, 50, 100];
@@ -472,6 +473,25 @@ export default class UIScene extends Phaser.Scene {
   }
 
   runAction(item) {
+    if (String(item.key || "").startsWith("debug-evolve-to-")) {
+      const targetSpecies = String(item.key).replace("debug-evolve-to-", "");
+      const previousPetId = this.state.petId;
+      const previousStage = this.state.evolutionStage;
+      const result = evolveToSpecies(this.state, targetSpecies);
+      saveState(this.state, `ui:debug-evolve:${targetSpecies}`);
+
+      if (result.ok) {
+        this.gameScene.handlePetStateMutation({ previousPetId, previousStage });
+        this.view = "pet";
+        this.menuPath = [];
+        this.render(this.state);
+        return;
+      }
+
+      this.showMessage(result.message || "Evolution failed.", false);
+      return;
+    }
+
     if (item.key === "new-egg") {
       this.restartGame();
       return;
@@ -1897,6 +1917,15 @@ export default class UIScene extends Phaser.Scene {
   }
 
   getVisibleMenuItems(menuKey) {
+    if (menuKey === "debug-evolve-species") {
+      return Object.keys(PET_CATALOG).map((speciesId) => ({
+        key: `debug-evolve-to-${speciesId}`,
+        label: speciesId.toUpperCase(),
+        caption: `Force evolution to ${speciesId}.`,
+        icon: "debug-evolve"
+      }));
+    }
+
     const menu = MENUS[menuKey];
     const items = menu?.items;
     if (!items) {
@@ -1991,11 +2020,14 @@ export default class UIScene extends Phaser.Scene {
 
   getStatusPages(state) {
     const needList = getNeedList(state);
+    const petConfig = PET_CATALOG[state.petId] || PET_CATALOG[DEFAULT_PET_ID];
+    const specieName = petConfig.specieName || state.petId;
 
     return [
       {
         title: "Info",
         lines: [
+          ["Specie ".padStart(13), `${specieName}`],
           ["Age    ".padStart(13), `${state.ageMinutes}m`],
           ["Stage  ".padStart(13), state.evolutionStage],
           ["Health ".padStart(13), Math.round(state.health)],

@@ -9,8 +9,9 @@ const createClassicStage = (displaySize, variants = VARIANT_ORDER, options = {})
   assetStage: options.assetStage || null
 });
 
-const PET_CATALOG = {
+export const PET_CATALOG = {
   [DEFAULT_PET_ID]: {
+    specieName: "Classic",
     stages: {
       egg: createClassicStage(132, ["idle"]),
       baby: createClassicStage(148, VARIANT_ORDER, { assetStage: "child" }),
@@ -19,8 +20,14 @@ const PET_CATALOG = {
       adult: createClassicStage(170, VARIANT_ORDER, { assetStage: "child" })
     }
   },
-  specie1: createClassicStage(160, ["idle"]),
-  specie2: createClassicStage(160, ["idle"])
+  specie1: {
+    specieName: "Octopus",
+    ...createClassicStage(160, ["idle"])
+  },
+  specie2: {
+    specieName: "Robot",
+    ...createClassicStage(160, ["idle"])
+  }
 };
 
 const pendingBundleLoads = new Map();
@@ -120,7 +127,7 @@ const normalizeAssetStage = (petId, stage) => {
   const resolvedPetId = resolvePetId(petId);
   const normalizedStage = normalizeStageName(stage);
   const petConfig = getPetConfig(resolvedPetId);
-  
+
   if (!petConfig.stages) {
     return normalizedStage || FALLBACK_STAGE;
   }

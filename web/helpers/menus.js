@@ -97,7 +97,7 @@ export const MENUS = {
       { key: "debug-fill", label: "MAX ALL", caption: "Fill all core stats.", icon: "" },
       { key: "debug-drain", label: "LOW ALL", caption: "Lower core stats for testing.", icon: "" },
       { key: "debug-poop", label: "POOP +1", caption: "Force one poop for testing.", icon: "" },
-      { key: "debug-evolve", label: "EVOLVE +1", caption: "Advance to the next pet stage.", icon: "" },
+      { key: "debug-evolve", label: "EVOLVE", caption: "Select a species to evolve into.", icon: "", submenu: "debug-evolve-species" },
       { key: "debug-sick", label: "TOGGLE SICK", caption: "Toggle sickness on or off.", icon: "" },
       { key: "debug-dead", label: "DEAD", caption: "Mark the pet as dead immediately.", icon: "" },
       { key: "debug-reset-save", label: "RESET SAVE", caption: "Clear all save data and start again from an egg.", icon: "" },
@@ -117,6 +117,10 @@ export const MENUS = {
       },
       { key: "debug-preview-gif", label: "GIF", caption: "Preview the animated cat.gif asset.", icon: "" }
     ]
+  },
+  "debug-evolve-species": {
+    caption: "Select target species",
+    items: []
   },
   dead: {
     caption: "Pet is gone",
