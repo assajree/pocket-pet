@@ -1,5 +1,6 @@
 import { AUTO_SAVE_INTERVAL_SECONDS, saveState, tickState } from "../gameState.js";
 import { createGameSynth } from "../helpers/gameSynth.js";
+import { createAudioService } from "../helpers/audioService.js";
 import {
   ensurePetStageAssetsLoaded,
   getPetDisplaySize,
@@ -55,6 +56,7 @@ export default class GameScene extends Phaser.Scene {
     this.currentIdleMode = null;
     this.currentPetDisplaySize = null;
     this.audio = createGameSynth();
+    this.audioService = createAudioService(this, { masterVolume: 70 });
   }
 
   create() {
@@ -138,12 +140,7 @@ export default class GameScene extends Phaser.Scene {
     if (poopsCreated <= 0) {
       return;
     }
-
-    if (!this.sound || this.sound.lock || !this.cache.audio.exists(POOP_SOUND_KEY)) {
-      return;
-    }
-
-    this.sound.play(POOP_SOUND_KEY);
+    this.audioService.play(POOP_SOUND_KEY, { volume: 10 });
   }
 
   getSafeInitialTextureKey() {

@@ -49,6 +49,7 @@ import {
   uploadLinkSnapshot
 } from "../helpers/linkTransport.js";
 import { createGameSynth, NOTE_DURATION_MS } from "../helpers/gameSynth.js";
+import { createAudioService } from "../helpers/audioService.js";
 import { ensurePetStageAssetsLoaded } from "../helpers/petAssets.js";
 import { resolveEffectStatus } from "../helpers/effectStatus.js";
 
@@ -167,6 +168,7 @@ export default class UIScene extends Phaser.Scene {
     this.isRestarting = false;
     this.platformCapabilities = getPlatformCapabilities();
     this.gameSynth = createGameSynth();
+    this.audioService = createAudioService(this, { masterVolume: 70 });
   }
 
   create() {
@@ -568,26 +570,23 @@ export default class UIScene extends Phaser.Scene {
  
 
   playDebugSampleAudio() {
-    try {
-      this.sound.stopByKey("debug-sample-audio");
-      this.sound.play("debug-sample-audio", {
-        volume: 0.45
-      });
+    const didPlay = this.audioService.play("debug-sample-audio", { volume: 45 });
+    if (didPlay) {
       this.showMessage("Played sample audio from assets/audio/debug-sample.wav.", true, {
         returnState: {
           view: this.view,
           menuPath: this.menuPath.map((entry) => ({ ...entry }))
         }
       });
-    } catch (error) {
-      console.warn("Failed to play debug sample audio.", error);
-      this.showMessage("Sample audio could not play on this device.", false, {
-        returnState: {
-          view: this.view,
-          menuPath: this.menuPath.map((entry) => ({ ...entry }))
-        }
-      });
+      return;
     }
+
+    this.showMessage("Sample audio could not play on this device.", false, {
+      returnState: {
+        view: this.view,
+        menuPath: this.menuPath.map((entry) => ({ ...entry }))
+      }
+    });
   }
 
   buildMediaPreviewReturnState() {
