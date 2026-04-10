@@ -42,11 +42,31 @@ export {
   isShopItem
 };
 
-const STAGE_RULES = [
-  { stage: "egg", nextStage: "child" },
-  { stage: "child", minAgeMinutes: 1, requiredAverage: 0, nextStage: "teen" },
-  { stage: "teen", minAgeMinutes: 5, requiredAverage: 50, nextStage: "adult" },
-  { stage: "adult", minAgeMinutes: 9, requiredAverage: 65, nextStage: "adult" }
+const EVOLUTION_RULES = [
+  {
+    currentStage: "egg",
+    minAgeMinutes: 1,
+    nextSpecies: DEFAULT_PET_ID,
+    nextStage: "child"
+  },
+  {
+    currentStage: "child",
+    minAgeMinutes: 5,
+    statRanges: {
+      averageStats: { min: 50 }
+    },
+    nextSpecies: DEFAULT_PET_ID,
+    nextStage: "teen"
+  },
+  {
+    currentStage: "teen",
+    minAgeMinutes: 9,
+    statRanges: {
+      averageStats: { min: 65 }
+    },
+    nextSpecies: DEFAULT_PET_ID,
+    nextStage: "adult"
+  }
 ];
 
 const clamp = (value, min = 0, max = 100) => Math.min(max, Math.max(min, value));
@@ -219,9 +239,9 @@ const applyChildHatchState = (state) => {
   state.actionLockUntil = 0;
 };
 
-const getStageRule = (stage) => STAGE_RULES.find((rule) => rule.stage === stage) ?? null;
+const getStageRule = (stage) => EVOLUTION_RULES.find((rule) => rule.nextStage === stage) ?? null;
 
-const getDebugNextStage = (stage) => getStageRule(stage)?.nextStage ?? stage;
+const getDebugNextStageRule = (currentStage) => EVOLUTION_RULES.find((rule) => rule.currentStage === currentStage) ?? null;
 
 export const getEggHatchSecondsRemaining = (state, pendingSeconds = 0) => {
   if (state.evolutionStage !== "egg") {
@@ -256,70 +276,70 @@ export const accelerateEggHatch = (state, seconds = 1) => {
 };
 
 const updateEvolution = (state) => {
-  let nextStage = state.evolutionStage;
   const averageStats = getAverageStats(state);
   const ageMinutesPrecise = state.ageMinutes + ((state.timers?.ageTick ?? 0) / 60);
 
-  for (const rule of STAGE_RULES) {
-    if (typeof rule.minAgeMinutes !== "number") {
-      continue;
-    }
+  // Find the first rule that matches
+  const matchingRule = EVOLUTION_RULES.find(rule => {
+      if (rule.currentStage && rule.currentStage !== state.evolutionStage) return false;
+      if (rule.minAgeMinutes !== undefined && ageMinutesPrecise < rule.minAgeMinutes) return false;
+      if (rule.currentSpecies && !rule.currentSpecies.includes(state.petId)) return false;
+      
+      if (rule.statRanges) {
+          let passedStats = true;
+          for (const [statPath, range] of Object.entries(rule.statRanges)) {
+               const val = statPath === "averageStats" ? averageStats : state[statPath];
+               if (range.min !== undefined && val < range.min) { passedStats = false; break; }
+               if (range.max !== undefined && val > range.max) { passedStats = false; break; }
+          }
+          if (!passedStats) return false;
+      }
+      
+      return true;
+  });
 
-    if (ageMinutesPrecise >= rule.minAgeMinutes && averageStats >= rule.requiredAverage) {
-      nextStage = rule.stage;
-    }
-  }
+  if (matchingRule) {
+      if (matchingRule.nextStage !== state.evolutionStage || matchingRule.nextSpecies !== state.petId) {
+         const previousStage = state.evolutionStage;
+         state.evolutionStage = matchingRule.nextStage;
+         state.petId = matchingRule.nextSpecies || DEFAULT_PET_ID;
 
-  if (nextStage !== state.evolutionStage) {
-    const previousStage = state.evolutionStage;
-    state.evolutionStage = nextStage;
-    if (previousStage === "egg" && nextStage === "child") {
-      applyChildHatchState(state);
-    }
-    addLog(
-      state,
-      previousStage === "egg" && nextStage === "child"
-        ? "The egg hatched into a child."
-        : `Your pet evolved into a ${nextStage}.`
-    );
+         if (previousStage === "egg" && matchingRule.nextStage === "child") {
+           applyChildHatchState(state);
+         }
+         addLog(
+           state,
+           previousStage === "egg" && matchingRule.nextStage === "child"
+             ? "The egg hatched into a child."
+             : `Your pet evolved into a ${state.petId} (${state.evolutionStage})!`
+         );
+      }
   }
 };
 
 const evolveToNextStage = (state) => {
   applyDebugFill(state);
   const currentStage = state.evolutionStage;
-  const currentRule = getStageRule(currentStage);  
-  if (!currentRule) {
-    const correctedStage = STAGE_RULES[0].stage;
-    state.evolutionStage = correctedStage;
-    addLog(state, `Debug: stage corrected to ${correctedStage}.`);
-    return;
-  }
-
-  const nextStage = getDebugNextStage(currentStage);
-  const nextRule = getStageRule(nextStage);    
-
+  const nextRule = getDebugNextStageRule(currentStage);  
   
-  if(nextRule){
-    state.ageMinutes = nextRule.minAgeMinutes;
+  if (!nextRule) {
+    addLog(state, `Debug: ${currentStage} is already the highest stage.`);
+    return currentStage;
   }
 
-  state.evolutionStage = nextStage;
-  if (currentStage === "egg" && nextStage === "child") {
+  state.evolutionStage = nextRule.nextStage;
+  state.petId = nextRule.nextSpecies || DEFAULT_PET_ID;
+  state.ageMinutes = nextRule.minAgeMinutes || state.ageMinutes;
+
+  if (currentStage === "egg" && state.evolutionStage === "child") {
     applyChildHatchState(state);
   }
-  addLog(
-    state,
-    nextStage === currentStage
-      ? `Debug: ${nextStage} is already the highest stage.`
-      : `Debug: evolved pet to ${nextStage}.`
-  );
+  
+  addLog(state, `Debug: evolved pet to ${state.petId} (${state.evolutionStage}).`);
 
   console.log('evolveToNextStage', {'nextRule': nextRule, 'state.ageMinutes': state.ageMinutes});
-  // saveState(state, 'evolveToNextStage()');
-  // updateEvolution(state);
   tickState(state, 1);
-  return nextStage;
+  return state.evolutionStage;
 };
 
 const wakeIfFullyRested = (state) => {
