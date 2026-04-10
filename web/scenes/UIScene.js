@@ -48,13 +48,42 @@ import {
   sendLinkGameState,
   uploadLinkSnapshot
 } from "../helpers/linkTransport.js";
-import { createGameSynth } from "../helpers/gameSynth.js";
+import { createGameSynth, NOTE_DURATION_MS } from "../helpers/gameSynth.js";
 import { ensurePetStageAssetsLoaded } from "../helpers/petAssets.js";
 import { resolveEffectStatus } from "../helpers/effectStatus.js";
 
 const LINK_GAME_BET_OPTIONS = [0, 10, 20, 50, 100];
 const QUICK_MATCH_HIT_FLASH_MS = 150;
 const MEDIA_PREVIEW_VIEW = "media-preview";
+
+/** Demo tune for DEBUG > SAMPLE > SYNTH (`playSynthSequence` + `NOTE_DURATION_MS`). */
+const DEBUG_SAMPLE_HAPPY_BIRTHDAY_SEQUENCE = [
+  { note: "c", octave: 4, duration: NOTE_DURATION_MS.eighth },
+  { note: "c", octave: 4, duration: NOTE_DURATION_MS.eighth },
+  { note: "d", octave: 4, duration: NOTE_DURATION_MS.quarter },
+  { note: "c", octave: 4, duration: NOTE_DURATION_MS.quarter },
+  { note: "f", octave: 4, duration: NOTE_DURATION_MS.quarter },
+  { note: "e", octave: 4, duration: NOTE_DURATION_MS.half },
+  { note: "c", octave: 4, duration: NOTE_DURATION_MS.eighth },
+  { note: "c", octave: 4, duration: NOTE_DURATION_MS.eighth },
+  { note: "d", octave: 4, duration: NOTE_DURATION_MS.quarter },
+  { note: "c", octave: 4, duration: NOTE_DURATION_MS.quarter },
+  { note: "g", octave: 4, duration: NOTE_DURATION_MS.quarter },
+  { note: "f", octave: 4, duration: NOTE_DURATION_MS.half },
+  { note: "c", octave: 4, duration: NOTE_DURATION_MS.eighth },
+  { note: "c", octave: 4, duration: NOTE_DURATION_MS.eighth },
+  { note: "c", octave: 5, duration: NOTE_DURATION_MS.quarter },
+  { note: "a", octave: 4, duration: NOTE_DURATION_MS.quarter },
+  { note: "f", octave: 4, duration: NOTE_DURATION_MS.quarter },
+  { note: "e", octave: 4, duration: NOTE_DURATION_MS.quarter },
+  { note: "d", octave: 4, duration: NOTE_DURATION_MS.half },
+  { note: "bb", octave: 4, duration: NOTE_DURATION_MS.eighth },
+  { note: "bb", octave: 4, duration: NOTE_DURATION_MS.eighth },
+  { note: "a", octave: 4, duration: NOTE_DURATION_MS.quarter },
+  { note: "f", octave: 4, duration: NOTE_DURATION_MS.quarter },
+  { note: "g", octave: 4, duration: NOTE_DURATION_MS.quarter },
+  { note: "f", octave: 4, duration: NOTE_DURATION_MS.half }
+];
 
 const formatCountdown = (secondsRemaining) => {
   const minutes = Math.floor(secondsRemaining / 60);
@@ -442,6 +471,20 @@ export default class UIScene extends Phaser.Scene {
 
     if (item.key === "debug-play-audio") {
       this.playDebugSampleAudio();
+      return;
+    }
+
+    if (item.key === "debug-sample-synth") {
+      this.gameSynth.playSynthSequence(DEBUG_SAMPLE_HAPPY_BIRTHDAY_SEQUENCE, item.key);
+      this.showMessage("Played Happy Birthday via playSynthSequence (Web Audio synth).", true, {
+        returnState: {
+          view: this.view,
+          menuPath: this.menuPath.map((entry) => ({ ...entry })),
+          callback: ()=>{
+            this.gameSynth.stopSynthSequence(item.key);
+          }
+        }
+      });
       return;
     }
 
@@ -2035,6 +2078,16 @@ export default class UIScene extends Phaser.Scene {
     }
 
     if (this.view === "message" && this.messageReturnState) {
+
+      if (typeof this.messageReturnState.callback === "function") {
+        try {
+          this.messageReturnState.callback.call();
+        } catch (error) {
+          console.warn("Failed to resolve message returnState callback.", error);
+          resolvedReturnState = null;
+        }
+      }
+
       this.view = this.messageReturnState.view;
       this.menuPath = this.messageReturnState.menuPath.map((entry) => ({ ...entry }));
       this.messageReturnState = null;

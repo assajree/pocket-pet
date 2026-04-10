@@ -126,6 +126,7 @@ const playTone = (context, config, startTime, masterGain = MASTER_GAIN) => {
 
   oscillator.start(startTime);
   oscillator.stop(endTime + 0.01);
+  return oscillator;
 };
 
 const clampOctave = (value) => {
@@ -167,6 +168,41 @@ const midiToFrequency = (midi) => 440 * 2 ** ((midi - 69) / 12);
 
 /** See ../../documents/gameSynth.md for `playSynthSequence` and `NOTE_DURATION_MS`. */
 export const createGameSynth = () => {
+  /** @type {Map<string, OscillatorNode[]>} */
+  const sequenceOscillatorsByKey = new Map();
+
+  const stopSynthSequence = (key = "default") => {
+    const context = ensureContext();
+    const now = context ? context.currentTime : 0;
+    if (key == null) {
+      for (const oscillators of sequenceOscillatorsByKey.values()) {
+        for (const oscillator of oscillators) {
+          try {
+            oscillator.stop(now);
+          } catch {
+            // already stopped
+          }
+        }
+      }
+      sequenceOscillatorsByKey.clear();
+      return;
+    }
+
+    const keyStr = String(key);
+    const oscillators = sequenceOscillatorsByKey.get(keyStr);
+    if (!oscillators) {
+      return;
+    }
+    for (const oscillator of oscillators) {
+      try {
+        oscillator.stop(now);
+      } catch {
+        // already stopped
+      }
+    }
+    sequenceOscillatorsByKey.delete(keyStr);
+  };
+
   const unlock = () => {
     return unlockContext();
   };
@@ -220,7 +256,7 @@ export const createGameSynth = () => {
     });
   };
 
-  const playSynthSequence = (notes) => {
+  const playSynthSequence = (notes, key = "default") => {
     if (!Array.isArray(notes) || notes.length === 0) {
       return;
     }
@@ -233,11 +269,16 @@ export const createGameSynth = () => {
     if (context.state === "suspended") {
       unlock().then((didUnlock) => {
         if (didUnlock) {
-          playSynthSequence(notes);
+          playSynthSequence(notes, key);
         }
       });
       return;
     }
+
+    stopSynthSequence(key);
+    const keyStr = String(key);
+    const sequenceOscillators = [];
+    sequenceOscillatorsByKey.set(keyStr, sequenceOscillators);
 
     let t = context.currentTime;
     for (const entry of notes) {
@@ -246,7 +287,8 @@ export const createGameSynth = () => {
       const midi = parseNoteToMidi(entry.note, entry.octave);
       if (midi != null) {
         const frequency = midiToFrequency(midi);
-        playTone(context, { frequency, durationMs, detune: 0 }, t);
+        const oscillator = playTone(context, { frequency, durationMs, detune: 0 }, t);
+        sequenceOscillators.push(oscillator);
       }
       t += stepSec;
     }
@@ -256,6 +298,7 @@ export const createGameSynth = () => {
     unlock,
     playButtonPress,
     playEvolutionCue,
-    playSynthSequence
+    playSynthSequence,
+    stopSynthSequence
   };
 };
