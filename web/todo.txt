@@ -4,3 +4,5 @@
 - add log under screen
 - เพิ่ม stat นิสัยเช่น ความสะอาด
 - ระบบใช้ชีวิตเอง
+- key config
+- button label constant

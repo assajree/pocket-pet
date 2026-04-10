@@ -1,4 +1,5 @@
 import { SEQUENCE_MATCH_HIT_SCORE } from "./sequenceMatch.js";
+import { HARDWARE_BUTTON_LABELS } from "../helpers/uiConfig.js";
 
 const QUICK_MATCH_SEQUENCE_LENGTH = 5;
 
@@ -6,13 +7,13 @@ export const PLAY_MENU_ITEMS = [
   {
     key: "tap-sprint",
     label: "TAP SPRINT",
-    caption: "Press O fast for five seconds.",
+    caption: `Rapid press ${HARDWARE_BUTTON_LABELS.ok}.`,
     name: "TAP SPRINT",
     icon: "tap-sprint",
     minigame: {
       type: "tap-count",
       durationSeconds: 5,
-      inputPrompt: "O tap  X exit",
+      inputPrompt: `${HARDWARE_BUTTON_LABELS.ok} tap  ${HARDWARE_BUTTON_LABELS.cancel} exit`,
       scoreUnit: "taps",
       summaryTitle: "Result",
       getSummaryText: ({ score }) => `${score} taps`
@@ -31,13 +32,13 @@ export const PLAY_MENU_ITEMS = [
   {
     key: "cheer-burst",
     label: "CHEER BURST",
-    caption: "Mash O for a quick cheer boost.",
+    caption: `Mash ${HARDWARE_BUTTON_LABELS.ok} \nfor a quick cheer boost.`,
     name: "CHEER BURST",
     icon: "play",
     minigame: {
       type: "tap-count",
       durationSeconds: 3,
-      inputPrompt: "O cheer  X exit",
+      inputPrompt: `${HARDWARE_BUTTON_LABELS.ok} cheer  ${HARDWARE_BUTTON_LABELS.cancel} exit`,
       scoreUnit: "cheers",
       summaryTitle: "Cheer",
       getSummaryText: ({ score }) => `${score} cheers\nMood boosted.`
@@ -55,7 +56,7 @@ export const PLAY_MENU_ITEMS = [
   {
     key: "quick-match",
     label: "QUICK MATCH",
-    caption: `Press the buttons before time runs out.`,
+    caption: `Press shown buttons before time runs out.`,
     name: "QUICK MATCH",
     icon: "play",
     minigame: {

@@ -21,20 +21,20 @@ export const MENUS = {
   main: {
     caption: "",
     items: [
-      { key: "feed", label: "FEED", caption: "Open the feeding menu.", submenu: "feed" },
-      { key: "play", label: "PLAY", caption: "Open the mini game list.", submenu: "play" },
+      { key: "feed", label: "FEED", caption: "Feed pet.", submenu: "feed" },
+      { key: "play", label: "PLAY", caption: "Increase pet stat.", submenu: "play" },
       {
         key: "link",
         label: "LINK",
-        caption: "Exchange pet status with another device.",
+        caption: "Interact with another pet.",
         submenu: "link",
         visibleWhen: () => getPlatformCapabilities().supportsLink
       },
       { key: "shop", label: "SHOP", caption: "Buy item.", submenu: "shop" },
-      { key: "sleep", label: "SLEEP", caption: "Turn the lights off for sleep." },
-      { key: "clean", label: "CLEAN", caption: "Clean the room and the mess." },
-      { key: "medicine", label: "HEAL", caption: "Treat your pet when it feels sick." },
-      { key: "debug", label: "DEBUG", caption: "Open debug tools.", submenu: "debug" }
+      { key: "sleep", label: "SLEEP", caption: "Restore pet enegy." },
+      { key: "clean", label: "CLEAN", caption: "Clean poops." },
+      { key: "medicine", label: "Medicine", caption: "Cure sick." },
+      { key: "debug", label: "DEBUG", caption: "DEV tools.", submenu: "debug" }
     ]
   },
   feed: {

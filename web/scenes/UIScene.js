@@ -35,7 +35,8 @@ import {
   LINK_GAME_RESULT_DURATION_MS,
   MINI_GAME_SUMMARY_DURATION_MS,
   MINI_GAME_SUMMARY_INPUT_LOCK_MS,
-  SLEEP_OK_ENERGY_BOOST
+  SLEEP_OK_ENERGY_BOOST,
+  HARDWARE_BUTTON_LABELS
 } from "../helpers/uiConfig.js";
 import { getPlatformCapabilities } from "../helpers/platform.js";
 import {
@@ -229,6 +230,11 @@ export default class UIScene extends Phaser.Scene {
       return;
     }
 
+    this.hardwareLeft.innerText = HARDWARE_BUTTON_LABELS.left;
+    this.hardwareRight.innerText = HARDWARE_BUTTON_LABELS.right;
+    this.hardwareCancel.innerText = HARDWARE_BUTTON_LABELS.cancel;
+    this.hardwareOk.innerText = HARDWARE_BUTTON_LABELS.ok;
+
     this.gameSynth.unlock();
     this.hardwareLeft.addEventListener("click", () => this.handleDirectionalInput("left"));
     this.hardwareRight.addEventListener("click", () => this.handleDirectionalInput("right"));
@@ -244,7 +250,7 @@ export default class UIScene extends Phaser.Scene {
     }
 
     const key = event.key.toLowerCase();
-    if (event.key.startsWith("Arrow") || key === "a" || key === "d" || key === "x" || key === "o") {
+    if (event.key.startsWith("Arrow") || key === "a" || key === "d" || key === "x" || key === "o" || key === "escape" || key === "backspace") {
       event.preventDefault();
     }
 
@@ -258,7 +264,7 @@ export default class UIScene extends Phaser.Scene {
       return;
     }
 
-    if (key === "cancel" || key === "backspace" || key === "x") {
+    if (key === "cancel" || key === "backspace" || key === "x" || key === "escape") {
       this.handleDirectionalInput("cancel");
       return;
     }
@@ -321,7 +327,7 @@ export default class UIScene extends Phaser.Scene {
         return;
       }
 
-      
+
 
       if (!this.state.isAlive) {
         this.openDeadMenu();
@@ -407,7 +413,7 @@ export default class UIScene extends Phaser.Scene {
 
     if (this.view === "message") {
       if (button === "cancel" || button === "ok") {
-        this.closeMenu();       
+        this.closeMenu();
       }
       return;
     }
@@ -459,7 +465,7 @@ export default class UIScene extends Phaser.Scene {
     this.runAction(item);
   }
 
-  getParentMenuKey(){
+  getParentMenuKey() {
     const parentMenuKey = this.menuPath[this.menuPath.length - 1]?.key || "main";
     // console.log('getParentMenuKey()', parentMenuKey);
     return parentMenuKey;
@@ -482,7 +488,7 @@ export default class UIScene extends Phaser.Scene {
         returnState: {
           view: this.view,
           menuPath: this.menuPath.map((entry) => ({ ...entry })),
-          callback: ()=>{
+          callback: () => {
             this.gameSynth.stopSynthSequence(item.key);
           }
         }
@@ -567,7 +573,7 @@ export default class UIScene extends Phaser.Scene {
     this.showMessage(result.message || this.getSuccessMessage(item.key), false);
   }
 
- 
+
 
   playDebugSampleAudio() {
     const didPlay = this.audioService.play("debug-sample-audio", { volume: 45 });
@@ -786,7 +792,7 @@ export default class UIScene extends Phaser.Scene {
   triggerQuickMatchHitFlash() {
     this.clearQuickMatchHitFlash();
     this.quickMatchHitFlashActive = true;
-    this.inputLockedUntil = Math.max(this.inputLockedUntil, this.time.now + QUICK_MATCH_HIT_FLASH_MS);
+    // this.inputLockedUntil = Math.max(this.inputLockedUntil, this.time.now + QUICK_MATCH_HIT_FLASH_MS);
     this.quickMatchHitFlashTimer = this.time.delayedCall(QUICK_MATCH_HIT_FLASH_MS, () => {
       this.quickMatchHitFlashTimer = null;
       this.quickMatchHitFlashActive = false;
@@ -1852,10 +1858,10 @@ export default class UIScene extends Phaser.Scene {
 
     return `
       <div class="mini-game-play mini-game-play-sequence-match">
-        <div class="mini-game-play-prompt">${inputPrompt}</div>
-        <div class="${nextButtonClasses}">${nextButton}</div>
-        <div class="mini-game-play-meta">${progressText}</div>
-        <div class="mini-game-play-timer">${this.getMiniGameTimeLeftText()}</div>
+      <div class="${nextButtonClasses}">${nextButton}</div>
+      <div class="mini-game-play-meta">${progressText}</div>
+      <div class="mini-game-play-timer">${this.getMiniGameTimeLeftText()}</div>
+      <div class="mini-game-play-prompt">${inputPrompt}</div>
       </div>
     `;
   }
@@ -1866,10 +1872,10 @@ export default class UIScene extends Phaser.Scene {
 
     return `
       <div class="mini-game-play mini-game-play-tap-count">
-        <div class="mini-game-play-prompt">${inputPrompt}</div>
-        <div class="mini-game-play-count">${this.miniGame.score}</div>
-        <div class="mini-game-play-meta">${scoreUnit}</div>
-        <div class="mini-game-play-timer">${this.getMiniGameTimeLeftText()}</div>
+      <div class="mini-game-play-count">${this.miniGame.score}</div>
+      <div class="mini-game-play-meta">${scoreUnit}</div>
+      <div class="mini-game-play-timer">${this.getMiniGameTimeLeftText()}</div>
+      <div class="mini-game-play-prompt">${inputPrompt}</div>
       </div>
     `;
   }
@@ -1955,10 +1961,10 @@ export default class UIScene extends Phaser.Scene {
       return;
     }
 
-    if(text=="SHOP"){
+    if (text == "SHOP") {
       text = `MONEY : ${this.state.money}G`;
     }
-    
+
     this.screenMenuParent.textContent = text;
     this.screenMenuParent.classList.toggle("hidden", !text);
   }
@@ -2010,7 +2016,7 @@ export default class UIScene extends Phaser.Scene {
             : ["Your pet is happy."])
         ]
       },
-      
+
       {
         title: "Status",
         lines: [
@@ -2222,19 +2228,19 @@ export default class UIScene extends Phaser.Scene {
       this.screenMenuTitle.textContent = this.getMenuItemTitle(item);
 
       const parentMenuKey = this.getParentMenuKey();
-      if(parentMenuKey == "shop"){
+      if (parentMenuKey == "shop") {
         this.screenMenuStatus.textContent = getShopExtraCaption(item, state) + getMenuCaption(menu, item, state, {
           scene: this,
           remoteEncounterSnapshot: this.remoteEncounterSnapshot
         });
       }
-      else{
+      else {
         this.screenMenuStatus.textContent = getMenuCaption(menu, item, state, {
           scene: this,
           remoteEncounterSnapshot: this.remoteEncounterSnapshot
         });
       }
-      
+
       this.setMenuIndicator(items.length, this.menuIndexes[this.view]);
       return;
     }
@@ -2261,7 +2267,7 @@ export default class UIScene extends Phaser.Scene {
       return;
     }
 
-    if (this.view === "message") {     
+    if (this.view === "message") {
       this.setMenuParent("");
       this.setMenuIcon("message");
       this.screenMenuTitle.textContent = this.messageSuccess ? "Done" : "Notice";

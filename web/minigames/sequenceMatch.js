@@ -1,4 +1,5 @@
 import { createMiniGameState } from "./types.js";
+import { HARDWARE_BUTTON_LABELS } from "../helpers/uiConfig.js";
 
 export const SEQUENCE_MATCH_HIT_SCORE = 1;
 
@@ -10,10 +11,10 @@ const buildBaseSession = (item) => ({
 
 export const getSequenceMatchButtonLabel = (button) => {
   const labels = {
-    left: "<",
-    right: ">",
-    ok: "O",
-    cancel: "X"
+    left: HARDWARE_BUTTON_LABELS.left,
+    right: HARDWARE_BUTTON_LABELS.right,
+    ok: HARDWARE_BUTTON_LABELS.ok,
+    cancel: HARDWARE_BUTTON_LABELS.cancel
   };
 
   return labels[button] || button.toUpperCase();
@@ -49,7 +50,7 @@ const finalizeSequenceMatchState = (miniGame, success, failureReason = null) => 
     failureReason,
     timeBonus: remainingMs,
     remainingMs,
-    score: miniGame.score + (remainingMs/10000.0)
+    score: miniGame.score + (remainingMs / 10000.0)
   };
 };
 

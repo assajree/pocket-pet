@@ -364,6 +364,7 @@ body {
   font-size: 0.72rem;
   line-height: 1.35;
   letter-spacing: 0.1em;
+  margin-top: 16px;
 }
 
 .quick-match-next-button {
@@ -450,7 +451,7 @@ body {
   gap: 18px;
 }
 
-.hardware-okutton {
+.hardware-button {
   width: 48px;
   height: 48px;
   min-height: 48px;
@@ -472,21 +473,21 @@ body {
   touch-action: manipulation;
 }
 
-.hardware-okutton:hover,
-.hardware-okutton:focus-visible {
+.hardware-button:hover,
+.hardware-button:focus-visible {
   filter: brightness(1.03);
 }
 
-.hardware-okutton:active {
+.hardware-button:active {
   transform: translateY(3px);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.8),
     0 2px 0 var(--button-shadow);
 }
 
-.hardware-okutton:disabled {
+.hardware-button:disabled {
   cursor: default;
-  opacity: 0.45;
+  /* opacity: 0.45; */
   transform: none;
 }
 
@@ -544,7 +545,7 @@ body {
     gap: 12px;
   }
 
-  .hardware-okutton {
+  .hardware-button {
     width: 44px;
     height: 44px;
     min-height: 44px;
@@ -637,7 +638,7 @@ body {
     height: 6px;
   }
 
-  .hardware-okutton {
+  .hardware-button {
     width: 44px;
     height: 44px;
     min-height: 44px;
@@ -669,14 +670,13 @@ body {
     top: 18px;
   }
 
-  .hardware-row {
-  }
+  .hardware-row {}
 
   .hardware-group {
     gap: 10px;
   }
 
-  .hardware-okutton {
+  .hardware-button {
     width: 42px;
     height: 42px;
     min-height: 42px;
