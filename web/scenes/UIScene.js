@@ -2027,24 +2027,24 @@ export default class UIScene extends Phaser.Scene {
       {
         title: "Info",
         lines: [
-          ["Specie ".padStart(13), `${specieName}`],
-          ["Age    ".padStart(13), `${state.ageMinutes}m`],
-          ["Stage  ".padStart(13), state.evolutionStage],
-          ["Health ".padStart(13), Math.round(state.health)],
-          ["Love   ".padStart(13), Math.round(state.love ?? 0)],
-          ["Money  ".padStart(13), `${Math.round(state.money)}G`]
+          ["Specie ".padStart(14), `${specieName}`],
+          ["Age    ".padStart(14), `${state.ageMinutes}m`],
+          ["Stage  ".padStart(14), state.evolutionStage],
+          ["Health ".padStart(14), Math.round(state.health)],
+          ["Love   ".padStart(14), Math.round(state.love ?? 0)],
+          ["Money  ".padStart(14), `${Math.round(state.money)}G`]
         ]
       },
       {
         title: "Needs",
         lines: [
-          ["Hunger    ".padStart(10), Math.round(state.hunger)],
-          ["Happiness ".padStart(10), Math.round(state.happiness)],
-          ["Energy    ".padStart(10), Math.round(state.energy)],
-          ["Weight    ".padStart(10), Math.round(state.weight)],
+          ["Hunger    ".padStart(16), Math.round(state.hunger)],
+          ["Happiness ".padStart(16), Math.round(state.happiness)],
+          ["Energy    ".padStart(16), Math.round(state.energy)],
+          ["Weight    ".padStart(16), Math.round(state.weight)],
           "separator",
           ...(needList.length
-            ? needList.map((need) => ["Need", need])
+            ? [`Your pet need(s) \n${needList.join("\n")}`]
             : ["Your pet is happy."])
         ]
       },
