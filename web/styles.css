@@ -157,7 +157,6 @@ body {
   align-items: center;
   gap: 4px;
   flex-wrap: wrap;
-  max-width: 88px;
 }
 
 .pet-mood.pet-mood-icon .pet-mood-icon-item {
