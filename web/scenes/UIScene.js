@@ -2044,7 +2044,7 @@ export default class UIScene extends Phaser.Scene {
           ["Weight    ".padStart(16), Math.round(state.weight)],
           "separator",
           ...(needList.length
-            ? [`Your pet need(s) \n${needList.join("\n")}`]
+            ? [`Your pet need(s) \n${needList.join(", ")}`]
             : ["Your pet is happy."])
         ]
       },
