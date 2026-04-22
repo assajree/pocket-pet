@@ -30,6 +30,7 @@ import {
   initializeMiniGameSession
 } from "../minigames/index.js";
 import { MENUS, isMenuView } from "../helpers/menus.js";
+import { getAdventureStageConfig, getAdventureStageMenuItems, getAdventureStageUnlockState } from "../helpers/adventure.js";
 import { getMenuCaption, buildInventoryItemName, getShopExtraCaption } from "../helpers/menuFormatters.js";
 import { formatPetElementLabel, getPetCombatElements } from "../helpers/petAssets.js";
 import {
@@ -173,6 +174,7 @@ export default class UIScene extends Phaser.Scene {
     this.platformCapabilities = getPlatformCapabilities();
     this.gameSynth = createGameSynth();
     this.audioService = createAudioService(this, { masterVolume: 70 });
+    this.adventureFlowActive = false;
   }
 
   create() {
@@ -283,6 +285,28 @@ export default class UIScene extends Phaser.Scene {
   };
 
   handleDirectionalInput(button) {
+    if (this.adventureFlowActive) {
+      const rewardScene = this.scene.get("RewardScene");
+      if (rewardScene?.scene?.isActive()) {
+        rewardScene.handleAdventureInput?.(button);
+        return;
+      }
+
+      const fightScene = this.scene.get("FightScene");
+      if (fightScene?.scene?.isActive()) {
+        fightScene.handleAdventureInput?.(button);
+        return;
+      }
+
+      const adventureScene = this.scene.get("AdventureScene");
+      if (adventureScene?.scene?.isActive()) {
+        adventureScene.handleAdventureInput?.(button);
+        return;
+      }
+
+      return;
+    }
+
     this.gameSynth.playButtonPress(button);
 
     if (this.view === "action-animation" && (button === "ok" || button === "cancel")) {
@@ -446,6 +470,11 @@ export default class UIScene extends Phaser.Scene {
 
     if (String(item.key || "").startsWith("link-game-select-")) {
       this.pendingLinkGameItem = this.getLinkGameItemByKey(String(item.key).replace("link-game-select-", ""));
+    }
+
+    if (String(item.key || "").startsWith("adventure-stage-")) {
+      this.handleAdventureStageSelection(item);
+      return;
     }
 
     if (item.submenu) {
@@ -1928,6 +1957,10 @@ export default class UIScene extends Phaser.Scene {
       }));
     }
 
+    if (menuKey === "adventure-stage") {
+      return getAdventureStageMenuItems(this.state);
+    }
+
     const menu = MENUS[menuKey];
     const items = menu?.items;
     if (!items) {
@@ -2096,6 +2129,78 @@ export default class UIScene extends Phaser.Scene {
     this.render(this.state);
   }
 
+  handleAdventureStageSelection(item) {
+    const stageId = String(item?.stageId || "").trim();
+    const stageConfig = getAdventureStageConfig(stageId);
+    if (!stageConfig) {
+      this.showMessage("That adventure stage is unavailable.", false);
+      return;
+    }
+
+    const unlockState = getAdventureStageUnlockState(this.state, stageConfig);
+    if (!unlockState.unlocked) {
+      this.showMessage(unlockState.reason || "That stage is locked.", false, {
+        returnState: {
+          view: this.view,
+          menuPath: this.menuPath.map((entry) => ({ ...entry }))
+        }
+      });
+      return;
+    }
+
+    this.startAdventureFlow(stageConfig);
+  }
+
+  startAdventureFlow(stageConfig) {
+    if (this.adventureFlowActive) {
+      return;
+    }
+
+    this.adventureFlowActive = true;
+    this.menuPath = [];
+    this.statusPageIndex = 0;
+    this.view = "pet";
+    this.render(this.state);
+    if (this.gameScene?.scene?.isActive()) {
+      this.scene.pause("GameScene");
+    }
+    const seed = `${stageConfig.id}:${Date.now()}:${this.state.petId}:${this.state.ageMinutes}`;
+    this.scene.launch("AdventureScene", {
+      stageId: stageConfig.id,
+      seed,
+      autoCloseSummary: true
+    });
+  }
+
+  setAdventureFlowActive(isActive) {
+    this.adventureFlowActive = !!isActive;
+  }
+
+  onAdventureFlowComplete(result = {}) {
+    this.adventureFlowActive = false;
+    this.state = this.registry.get("petState");
+    this.scene.resume("GameScene");
+    this.gameScene = this.scene.get("GameScene");
+
+    if (this.gameScene?.syncVisuals) {
+      this.gameScene.syncVisuals();
+    }
+
+    this.menuPath = [];
+    this.statusPageIndex = 0;
+    this.view = "pet";
+    this.render(this.state);
+
+    if (!result?.success) {
+      this.showMessage("Adventure failed. Your pet became sick.", false, {
+        returnState: {
+          view: "pet",
+          menuPath: []
+        }
+      });
+    }
+  }
+
   closeMenu() {
     if (this.view === "minigame") {
       this.finishMiniGame(true);
@@ -2174,6 +2279,7 @@ export default class UIScene extends Phaser.Scene {
     this.messageReturnState = null;
     this.clearMediaPreviewRuntime();
     this.resetExchangeRuntime();
+    this.adventureFlowActive = false;
     saveState(freshState, "ui:restart-game");
     this.render(freshState);
     this.scene.stop("GameScene");

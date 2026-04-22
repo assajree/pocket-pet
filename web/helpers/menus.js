@@ -23,6 +23,7 @@ export const MENUS = {
     items: [
       { key: "feed", label: "FEED", caption: "Feed pet.", submenu: "feed" },
       { key: "play", label: "PLAY", caption: "Increase pet stat.", submenu: "play" },
+      { key: "adventure", label: "ADVENTURE", caption: "Choose a stage to explore.", submenu: "adventure-stage" },
       {
         key: "link",
         label: "LINK",
@@ -36,6 +37,10 @@ export const MENUS = {
       { key: "medicine", label: "Medicine", caption: "Cure sick." },
       { key: "debug", label: "DEBUG", caption: "DEV tools.", submenu: "debug" }
     ]
+  },
+  "adventure-stage": {
+    caption: "Choose a stage to explore.",
+    items: []
   },
   feed: {
     caption: "",

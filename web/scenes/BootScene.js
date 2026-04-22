@@ -28,6 +28,7 @@ export default class BootScene extends Phaser.Scene {
 
     const uiAssets = [
       "default-menu",
+      "adventure",
       "feed",
       "play",
       "sleep",

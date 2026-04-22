@@ -1,0 +1,6 @@
+<svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Adventure menu icon">
+  <rect width="32" height="32" rx="6" fill="#f4f7f0"/>
+  <circle cx="16" cy="16" r="11" fill="#d8e7c5" stroke="#44514b" stroke-width="2"/>
+  <path d="M10 22l4-10 10-4-4 10-10 4z" fill="#b57c3f" stroke="#5b3615" stroke-width="1.2" />
+  <circle cx="16" cy="16" r="2.2" fill="#44514b"/>
+</svg>

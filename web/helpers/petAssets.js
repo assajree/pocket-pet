@@ -25,6 +25,7 @@ export const PET_CATALOG = {
     specieName: "Egg",
     defenseElement: "neutral",
     attackElement: "neutral",
+    battleBulletVariant: "idle",
     baseStats: createBaseStats(),
     ...createClassicStage(132, ["idle"])
   },
@@ -32,6 +33,7 @@ export const PET_CATALOG = {
     specieName: "Classic",
     defenseElement: "neutral",
     attackElement: "neutral",
+    battleBulletVariant: "attack",
     baseStats: createBaseStats({
       str: 5,
       agi: 5,
@@ -45,6 +47,7 @@ export const PET_CATALOG = {
     specieName: "Octopus",
     defenseElement: "water",
     attackElement: "water",
+    battleBulletVariant: "attack",
     baseStats: createBaseStats({
       str: 6,
       agi: 5,
@@ -58,6 +61,7 @@ export const PET_CATALOG = {
     specieName: "Robot",
     defenseElement: "shadow",
     attackElement: "shadow",
+    battleBulletVariant: "attack",
     baseStats: createBaseStats({
       str: 7,
       agi: 6,
@@ -269,6 +273,13 @@ export const PET_ELEMENTS = PET_ELEMENT_ORDER;
 
 export const getPetTextureKey = ({ petId, stage, variant = "idle" }) =>
   getTextureDescriptor(resolvePetId(petId), normalizeAssetStage(petId, stage), variant).key;
+
+export const getPetBattleBulletTextureKey = ({ petId, stage }) => {
+  const resolvedPetId = resolvePetId(petId);
+  const petConfig = getPetConfig(resolvedPetId);
+  const variant = petConfig.battleBulletVariant || "attack";
+  return getPetTextureKey({ petId: resolvedPetId, stage, variant });
+};
 
 export const getPetStageAssetBundle = (petId, stage) => {
   const resolvedPetId = resolvePetId(petId);

@@ -285,8 +285,28 @@ const normalizeInventory = (inventory) => {
   });
 };
 
+const createAdventureState = (entries = {}) => ({
+  clearedStageIds: [],
+  ...entries
+});
+
+const normalizeAdventureState = (adventure) => {
+  if (!adventure || typeof adventure !== "object" || Array.isArray(adventure)) {
+    return createAdventureState();
+  }
+
+  const clearedStageIds = Array.isArray(adventure.clearedStageIds)
+    ? adventure.clearedStageIds.map((stageId) => String(stageId || "").trim()).filter(Boolean)
+    : [];
+
+  return createAdventureState({
+    ...adventure,
+    clearedStageIds: Array.from(new Set(clearedStageIds))
+  });
+};
+
 export const createNewState = () => ({
-  version: 2,
+  version: 3,
   createdAt: Date.now(),
   lastUpdatedAt: Date.now(),
   petId: "egg",
@@ -312,6 +332,7 @@ export const createNewState = () => ({
   attackElement: null,
   attackElementExpiresAt: 0,
   poopCount: 0,
+  adventure: createAdventureState(),
   inventory: createInventoryState({
     meal: 1,
     snack: 1,
@@ -410,7 +431,7 @@ export const loadState = () => {
     return {
       ...createNewState(),
       ...rest,
-      version: 2,
+      version: 3,
       petId: resolvedPetId,
       timers: {
         ...baseState.timers,
@@ -418,6 +439,7 @@ export const loadState = () => {
       },
       statBonus: migrateRpgStatState(parsed, resolvedPetId, resolvedStage),
       inventory: normalizeInventory(parsed.inventory),
+      adventure: normalizeAdventureState(parsed.adventure),
       logs: Array.isArray(parsed.logs) && parsed.logs.length ? parsed.logs : createNewState().logs
     };
   } catch (error) {
@@ -1133,6 +1155,20 @@ const setInventoryCount = (state, itemKey, nextCount) => {
 
 const adjustInventoryCount = (state, itemKey, delta) =>
   setInventoryCount(state, itemKey, getInventoryCount(state, itemKey) + delta);
+
+export const grantInventoryItem = (state, itemKey, quantity = 1) => {
+  if (!itemKey || quantity <= 0) {
+    return 0;
+  }
+
+  const currentCount = getInventoryCount(state, itemKey);
+  const maxQty = getMaxQty(itemKey);
+  const nextCount = maxQty
+    ? Math.min(maxQty, currentCount + Math.max(0, Math.round(quantity)))
+    : currentCount + Math.max(0, Math.round(quantity));
+  setInventoryCount(state, itemKey, nextCount);
+  return nextCount - currentCount;
+};
 
 const useInventoryItem = (state, itemKey) => {
   if (!isConsumableItem(itemKey)) {

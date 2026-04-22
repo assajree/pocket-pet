@@ -1,6 +1,9 @@
 import "./build-meta.js";
 import BootScene from "./scenes/BootScene.js";
+import AdventureScene from "./scenes/AdventureScene.js";
+import FightScene from "./scenes/FightScene.js";
 import GameScene from "./scenes/GameScene.js";
+import RewardScene from "./scenes/RewardScene.js";
 import UIScene from "./scenes/UIScene.js";
 import { isAndroidAppRuntime } from "./helpers/platform.js";
 
@@ -31,7 +34,7 @@ const bootGame = () => {
       pixelArt: true,
       antialias: false
     },
-    scene: [BootScene, GameScene, UIScene]
+    scene: [BootScene, GameScene, UIScene, AdventureScene, FightScene, RewardScene]
   };
 
   window.pocketPetGame = new Phaser.Game(config);
