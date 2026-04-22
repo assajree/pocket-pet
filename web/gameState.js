@@ -1,11 +1,20 @@
 import {
+  getItemDef,
   getItemLabel,
   getMaxQty,
   getShopPrice,
   isConsumableItem,
   isShopItem
 } from "./helpers/items.js";
-import { DEFAULT_PET_ID } from "./helpers/petAssets.js";
+import {
+  DEFAULT_PET_ID,
+  PET_ELEMENTS,
+  formatPetElementLabel,
+  getPetAttackElementRemainingSeconds,
+  getPetCombatElements,
+  getPetDefenseElement,
+  getPetDefaultAttackElement
+} from "./helpers/petAssets.js";
 import { resolveEffectStatus } from "./helpers/effectStatus.js";
 
 const SAVE_KEY = "pocket-pet-save-v2";
@@ -25,7 +34,8 @@ const SICK_UNTREATED_LOVE_DELAY_SECONDS = 600;
 const SICK_UNTREATED_LOVE_LOSS = 10;
 const SICK_UNTREATED_HEALTH_TICK_SECONDS = 20;
 const SICK_UNTREATED_HEALTH_LOSS = 6;
-const EXCHANGE_SNAPSHOT_VERSION = 1;
+const ATTACK_ELEMENT_BUFF_SECONDS = 600;
+const EXCHANGE_SNAPSHOT_VERSION = 3;
 const EXCHANGE_STAGE_ORDER = ["egg", "child", "teen", "adult"];
 const EXCHANGE_STAGE_BONUS = {
   egg: 0,
@@ -33,6 +43,130 @@ const EXCHANGE_STAGE_BONUS = {
   teen: 12,
   adult: 18
 };
+const EXCHANGE_ELEMENT_ORDER = PET_ELEMENTS;
+const EXCHANGE_ELEMENT_TABLE_LEVEL_1 = {
+  neutral: {
+    neutral: 100,
+    water: 100,
+    earth: 100,
+    fire: 100,
+    wind: 100,
+    poison: 100,
+    holy: 100,
+    shadow: 100,
+    ghost: 25,
+    undead: 100
+  },
+  water: {
+    neutral: 100,
+    water: 25,
+    earth: 100,
+    fire: 150,
+    wind: 50,
+    poison: 100,
+    holy: 75,
+    shadow: 100,
+    ghost: 100,
+    undead: 100
+  },
+  earth: {
+    neutral: 100,
+    water: 100,
+    earth: 100,
+    fire: 50,
+    wind: 150,
+    poison: 100,
+    holy: 75,
+    shadow: 100,
+    ghost: 100,
+    undead: 100
+  },
+  fire: {
+    neutral: 100,
+    water: 50,
+    earth: 150,
+    fire: 25,
+    wind: 100,
+    poison: 100,
+    holy: 75,
+    shadow: 100,
+    ghost: 100,
+    undead: 125
+  },
+  wind: {
+    neutral: 100,
+    water: 175,
+    earth: 50,
+    fire: 100,
+    wind: 25,
+    poison: 100,
+    holy: 75,
+    shadow: 100,
+    ghost: 100,
+    undead: 100
+  },
+  poison: {
+    neutral: 100,
+    water: 100,
+    earth: 125,
+    fire: 125,
+    wind: 125,
+    poison: 0,
+    holy: 75,
+    shadow: 50,
+    ghost: 100,
+    undead: -25
+  },
+  holy: {
+    neutral: 100,
+    water: 100,
+    earth: 100,
+    fire: 100,
+    wind: 100,
+    poison: 100,
+    holy: 0,
+    shadow: 125,
+    ghost: 100,
+    undead: 150
+  },
+  shadow: {
+    neutral: 100,
+    water: 100,
+    earth: 100,
+    fire: 100,
+    wind: 100,
+    poison: 50,
+    holy: 125,
+    shadow: 0,
+    ghost: 100,
+    undead: -25
+  },
+  ghost: {
+    neutral: 25,
+    water: 100,
+    earth: 100,
+    fire: 100,
+    wind: 100,
+    poison: 100,
+    holy: 75,
+    shadow: 75,
+    ghost: 125,
+    undead: 100
+  },
+  undead: {
+    neutral: 100,
+    water: 100,
+    earth: 100,
+    fire: 100,
+    wind: 100,
+    poison: 50,
+    holy: 100,
+    shadow: 0,
+    ghost: 100,
+    undead: 0
+  }
+};
+const EXCHANGE_ELEMENT_LEGACY_PENALTY_MULTIPLIER = 0.5;
 
 export {
   isConsumableItem,
@@ -114,6 +248,8 @@ export const createNewState = () => ({
   isAlive: true,
   isSleeping: false,
   isSick: false,
+  attackElement: null,
+  attackElementExpiresAt: 0,
   poopCount: 0,
   inventory: createInventoryState({
     meal: 1,
@@ -495,6 +631,8 @@ const sanitizeExchangePayload = (snapshot) => ({
   petName: snapshot.petName || "",
   createdAt: snapshot.createdAt,
   evolutionStage: snapshot.evolutionStage,
+  attackElement: snapshot.attackElement,
+  defenseElement: snapshot.defenseElement,
   hunger: snapshot.hunger,
   happiness: snapshot.happiness,
   energy: snapshot.energy,
@@ -560,12 +698,58 @@ const formatEncounterEffects = (effects = {}) => {
 
 const buildOutcomeSummary = (summaryText) => summaryText;
 
+const clearAttackElementBuff = (state) => {
+  state.attackElement = null;
+  state.attackElementExpiresAt = 0;
+};
+
+const syncAttackElementBuff = (state, now = Date.now()) => {
+  if (!state) {
+    return false;
+  }
+
+  if (!getPetAttackElementRemainingSeconds(state, now)) {
+    clearAttackElementBuff(state);
+    return false;
+  }
+
+  return true;
+};
+
+const setAttackElementBuff = (state, attackElement, durationSeconds = ATTACK_ELEMENT_BUFF_SECONDS) => {
+  const defaultAttackElement = getPetDefaultAttackElement(state?.petId);
+  const normalizedAttackElement = normalizeElement(attackElement);
+  const resolvedAttackElement = normalizedAttackElement === "neutral" ? defaultAttackElement : normalizedAttackElement;
+
+  state.attackElement = resolvedAttackElement;
+  state.attackElementExpiresAt = Date.now() + Math.max(1, Math.round(durationSeconds)) * 1000;
+  return state.attackElement;
+};
+
+const normalizeElement = (element) =>
+  EXCHANGE_ELEMENT_ORDER.includes(element) ? element : "neutral";
+
+const resolveElementTableValue = (attackerElement, defenderElement) =>
+  EXCHANGE_ELEMENT_TABLE_LEVEL_1[normalizeElement(attackerElement)]?.[normalizeElement(defenderElement)] ?? 100;
+
+const resolveElementMultiplier = (attackerElement, defenderElement) => {
+  const tableValue = resolveElementTableValue(attackerElement, defenderElement);
+  if (tableValue <= 0) {
+    return EXCHANGE_ELEMENT_LEGACY_PENALTY_MULTIPLIER;
+  }
+
+  return tableValue / 100;
+};
+
 export const createExchangeSnapshot = (state) => {
+  const combatElements = getPetCombatElements(state);
   const snapshot = {
     version: EXCHANGE_SNAPSHOT_VERSION,
     petName: state.petName || "",
     createdAt: Date.now(),
     evolutionStage: state.evolutionStage,
+    attackElement: combatElements.attackElement,
+    defenseElement: combatElements.defenseElement,
     hunger: Math.round(state.hunger),
     happiness: Math.round(state.happiness),
     energy: Math.round(state.energy),
@@ -632,6 +816,13 @@ export const validateExchangeSnapshot = (snapshot) => {
     }
   }
 
+  const requiredElementFields = ["attackElement", "defenseElement"];
+  for (const field of requiredElementFields) {
+    if (typeof snapshot[field] !== "string" || !EXCHANGE_ELEMENT_ORDER.includes(snapshot[field])) {
+      return { ok: false, message: `Snapshot field ${field} is invalid.` };
+    }
+  }
+
   if (!EXCHANGE_STAGE_ORDER.includes(snapshot.evolutionStage)) {
     return { ok: false, message: "Snapshot stage is invalid." };
   }
@@ -655,6 +846,8 @@ export const createMatchSeed = (localChecksum, remoteChecksum, mode) =>
 
 const buildCombatParticipant = (snapshot) => ({
   label: getSnapshotLabel(snapshot),
+  attackElement: normalizeElement(snapshot.attackElement),
+  defenseElement: normalizeElement(snapshot.defenseElement),
   power: snapshot.str * 1.2 + snapshot.agi * 0.8 + snapshot.int * 0.5 + getExchangeStageBonus(snapshot.evolutionStage),
   guard: snapshot.health * 0.25 + snapshot.cleanliness * 0.08 + snapshot.energy * 0.1,
   stamina: snapshot.energy * 0.2,
@@ -684,8 +877,10 @@ export const runCombatEncounter = (localSnapshot, remoteSnapshot, seed) => {
   const rounds = [];
 
   for (let round = 1; round <= 3; round += 1) {
-    const alphaAttack = alpha.power + alpha.stamina + (rng() * 12) - alpha.sickPenalty - alpha.sleepPenalty;
-    const betaAttack = beta.power + beta.stamina + (rng() * 12) - beta.sickPenalty - beta.sleepPenalty;
+    const alphaElementMultiplier = resolveElementMultiplier(alpha.attackElement, beta.defenseElement);
+    const betaElementMultiplier = resolveElementMultiplier(beta.attackElement, alpha.defenseElement);
+    const alphaAttack = ((alpha.power + alpha.stamina) * alphaElementMultiplier) + (rng() * 12) - alpha.sickPenalty - alpha.sleepPenalty;
+    const betaAttack = ((beta.power + beta.stamina) * betaElementMultiplier) + (rng() * 12) - beta.sickPenalty - beta.sleepPenalty;
     const alphaTotal = alphaAttack + alpha.guard * 0.35;
     const betaTotal = betaAttack + beta.guard * 0.35;
 
@@ -895,6 +1090,7 @@ export const applyDebugFill = (state) => {
   state.love = 100;
   state.isSick = false;
   resetSicknessEpisode(state);
+  clearAttackElementBuff(state);
   state.poopCount = 0;
   state.isSleeping = false;
   state.actionLockUntil = 0;
@@ -908,6 +1104,21 @@ export const applyAction = (state, action, effectStatus = null, context = {}, re
   }
 
   const actionEffects = resolvedEffects || resolveEffectStatus(effectStatus, context);
+  const actionDef = getItemDef(action);
+
+  if (actionDef?.attackElement) {
+    if (!useInventoryItem(state, action)) {
+      return { ok: false, message: "No item left. Visit the shop." };
+    }
+
+    const buffSeconds = actionDef.attackElementDurationSeconds ?? ATTACK_ELEMENT_BUFF_SECONDS;
+    const attackElement = setAttackElementBuff(state, actionDef.attackElement, buffSeconds);
+    addLog(
+      state,
+      `Attack element shifted to ${formatPetElementLabel(attackElement)} for ${Math.round(buffSeconds / 60)}m.`
+    );
+    return { ok: true };
+  }
 
   switch (action) {
     case "feed":
@@ -1079,6 +1290,7 @@ export const tickState = (state, deltaSeconds) => {
 
   const delta = Math.max(deltaSeconds, 0);
   state.lastUpdatedAt = Date.now();
+  syncAttackElementBuff(state);
 
   if (state.evolutionStage === "egg") {
     lockEggState(state);

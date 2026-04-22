@@ -30,6 +30,7 @@ import {
 } from "../minigames/index.js";
 import { MENUS, isMenuView } from "../helpers/menus.js";
 import { getMenuCaption, buildInventoryItemName, getShopExtraCaption } from "../helpers/menuFormatters.js";
+import { formatPetElementLabel, getPetCombatElements } from "../helpers/petAssets.js";
 import {
   ACTION_ANIMATION_CONFIG,
   LINK_GAME_COUNTDOWN_MS,
@@ -2022,12 +2023,18 @@ export default class UIScene extends Phaser.Scene {
     const needList = getNeedList(state);
     const petConfig = PET_CATALOG[state.petId] || PET_CATALOG[DEFAULT_PET_ID];
     const specieName = petConfig.specieName || state.petId;
+    const combatElements = getPetCombatElements(state);
 
     return [
       {
         title: "Info",
         lines: [
           ["Specie ".padStart(14), `${specieName}`],
+          ["Attack Element".padStart(18), formatPetElementLabel(combatElements.attackElement)],
+          ["Defense Element".padStart(18), formatPetElementLabel(combatElements.defenseElement)],
+          ...(combatElements.attackElementRemainingSeconds
+            ? [["Buff Remaining".padStart(18), `${Math.floor(combatElements.attackElementRemainingSeconds / 60)}:${String(combatElements.attackElementRemainingSeconds % 60).padStart(2, "0")}`]]
+            : []),
           ["Age    ".padStart(14), `${state.ageMinutes}m`],
           ["Stage  ".padStart(14), state.evolutionStage],
           ["Health ".padStart(14), Math.round(state.health)],

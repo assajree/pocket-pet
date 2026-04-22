@@ -2,6 +2,11 @@ export const DEFAULT_PET_ID = "classic";
 
 const FALLBACK_STAGE = "child";
 const VARIANT_ORDER = ["idle", "attack", "sick", "angry", "dead"];
+const PET_ELEMENT_ORDER = ["neutral", "water", "earth", "fire", "wind", "poison", "holy", "shadow", "ghost", "undead"];
+const PET_ELEMENT_LABELS = Object.fromEntries(
+  PET_ELEMENT_ORDER.map((element) => [element, element.charAt(0).toUpperCase() + element.slice(1)])
+);
+const DEFAULT_PET_ELEMENT = "neutral";
 
 const createClassicStage = (displaySize, variants = VARIANT_ORDER, options = {}) => ({
   displaySize,
@@ -12,18 +17,26 @@ const createClassicStage = (displaySize, variants = VARIANT_ORDER, options = {})
 export const PET_CATALOG = {
   egg: {
     specieName: "Egg",
+    defenseElement: "neutral",
+    attackElement: "neutral",
     ...createClassicStage(132, ["idle"])
   },
   [DEFAULT_PET_ID]: {
     specieName: "Classic",
+    defenseElement: "neutral",
+    attackElement: "neutral",
     ...createClassicStage(160, VARIANT_ORDER)
   },
   specie1: {
     specieName: "Octopus",
+    defenseElement: "water",
+    attackElement: "water",
     ...createClassicStage(160, ["idle"])
   },
   specie2: {
     specieName: "Robot",
+    defenseElement: "shadow",
+    attackElement: "shadow",
     ...createClassicStage(160, ["idle"])
   }
 };
@@ -33,6 +46,8 @@ const pendingBundleLoads = new Map();
 const getPetConfig = (petId) => PET_CATALOG[petId] || PET_CATALOG[DEFAULT_PET_ID];
 
 const normalizeStageName = (stage) => String(stage || "").trim().toLowerCase();
+const isValidPetElement = (element) => PET_ELEMENT_ORDER.includes(element);
+const normalizePetElement = (element) => (isValidPetElement(element) ? element : DEFAULT_PET_ELEMENT);
 
 const getStageCatalog = (petId, stage) => {
   const petConfig = getPetConfig(petId);
@@ -171,6 +186,53 @@ const loadAssets = (scene, assets) => new Promise((resolve, reject) => {
 export const resolvePetId = (petId) => (PET_CATALOG[petId] ? petId : DEFAULT_PET_ID);
 
 export const getPetDisplaySize = (petId, stage) => getStageCatalog(resolvePetId(petId), normalizeAssetStage(petId, stage)).displaySize;
+
+export const getPetDefenseElement = (petId) =>
+  normalizePetElement(getPetConfig(resolvePetId(petId)).defenseElement);
+
+export const getPetDefaultAttackElement = (petId) => {
+  const petConfig = getPetConfig(resolvePetId(petId));
+  return normalizePetElement(petConfig.attackElement || petConfig.defenseElement);
+};
+
+const getAttackElementExpiry = (state) =>
+  typeof state?.attackElementExpiresAt === "number" && Number.isFinite(state.attackElementExpiresAt)
+    ? state.attackElementExpiresAt
+    : 0;
+
+export const getPetAttackElement = (state, now = Date.now()) => {
+  const defaultAttackElement = getPetDefaultAttackElement(state?.petId);
+  const activeElement = isValidPetElement(state?.attackElement) ? state.attackElement : "";
+  const expiresAt = getAttackElementExpiry(state);
+
+  if (!activeElement || !expiresAt || expiresAt <= now) {
+    return defaultAttackElement;
+  }
+
+  return activeElement;
+};
+
+export const getPetAttackElementRemainingSeconds = (state, now = Date.now()) => {
+  const expiresAt = getAttackElementExpiry(state);
+  if (!expiresAt || expiresAt <= now || !isValidPetElement(state?.attackElement)) {
+    return 0;
+  }
+
+  return Math.max(0, Math.ceil((expiresAt - now) / 1000));
+};
+
+export const getPetCombatElements = (state, now = Date.now()) => ({
+  attackElement: getPetAttackElement(state, now),
+  defenseElement: getPetDefenseElement(state?.petId),
+  defaultAttackElement: getPetDefaultAttackElement(state?.petId),
+  attackElementRemainingSeconds: getPetAttackElementRemainingSeconds(state, now)
+});
+
+export const getPetElement = (petId) => getPetDefenseElement(petId);
+
+export const formatPetElementLabel = (element) => PET_ELEMENT_LABELS[element] || PET_ELEMENT_LABELS.neutral;
+
+export const PET_ELEMENTS = PET_ELEMENT_ORDER;
 
 export const getPetTextureKey = ({ petId, stage, variant = "idle" }) =>
   getTextureDescriptor(resolvePetId(petId), normalizeAssetStage(petId, stage), variant).key;

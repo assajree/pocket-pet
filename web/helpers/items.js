@@ -1,3 +1,19 @@
+import { PET_ELEMENTS, formatPetElementLabel } from "./petAssets.js";
+
+const ATTACK_ELEMENT_DURATION_SECONDS = 600;
+
+const ATTACK_ELEMENT_ITEM_LIST = PET_ELEMENTS.filter((element) => element !== "neutral").map((element) => ({
+  key: `element-${element}`,
+  label: `${formatPetElementLabel(element)} Orb`,
+  caption: `Temporarily shift attack element to ${formatPetElementLabel(element)}.`,
+  icon: "",
+  consumable: true,
+  shopPrice: 12,
+  maxQty: 99,
+  attackElement: element,
+  attackElementDurationSeconds: ATTACK_ELEMENT_DURATION_SECONDS
+}));
+
 export const ITEM_LIST = [
   {
     key: "meal",
@@ -27,7 +43,8 @@ export const ITEM_LIST = [
     shopPrice: 10,
     maxQty: 99,
     effectStatus: { health: 5, love: -1 }
-  }
+  },
+  ...ATTACK_ELEMENT_ITEM_LIST
 ];
 
 const ITEM_MAP = Object.fromEntries(ITEM_LIST.map((item) => [item.key, item]));
