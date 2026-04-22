@@ -10,6 +10,7 @@ import {
   createNewState,
   getEggHatchSecondsRemaining,
   getNeedList,
+  getRpgStatStatusLines,
   purchaseItem,
   runCombatEncounter,
   runDatingEncounter,
@@ -2058,11 +2059,7 @@ export default class UIScene extends Phaser.Scene {
 
       {
         title: "Status",
-        lines: [
-          ["Str ".padStart(14), Math.round(state.str)],
-          ["Agi ".padStart(14), Math.round(state.agi)],
-          ["Int ".padStart(14), Math.round(state.int)],
-        ]
+        lines: getRpgStatStatusLines(state)
       }
     ];
   }

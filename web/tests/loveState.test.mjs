@@ -58,6 +58,31 @@ test("loadState backfills love and untreated sickness timers for legacy saves", 
   );
 });
 
+test("loadState migrates legacy RPG stats into stat bonuses and drops int", async () => {
+  await withMockLocalStorage(
+    JSON.stringify({
+      petId: "classic",
+      evolutionStage: "child",
+      str: 11,
+      agi: 9,
+      int: 77
+    }),
+    async () => {
+      const state = loadState();
+
+      assert.equal(state.version, 2);
+      assert.equal(state.statBonus.str, 6);
+      assert.equal(state.statBonus.agi, 4);
+      assert.equal(state.statBonus.vit, 0);
+      assert.equal(state.statBonus.dex, 0);
+      assert.equal(state.statBonus.luck, 0);
+      assert.equal(state.int, undefined);
+      assert.equal(state.str, undefined);
+      assert.equal(state.agi, undefined);
+    }
+  );
+});
+
 test("healing a sick pet increases love and clears sickness tracking", () => {
   const state = createNewState();
   state.evolutionStage = "child";

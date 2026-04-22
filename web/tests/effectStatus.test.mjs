@@ -1,7 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { createNewState, addMiniGameReward } from "../gameState.js";
+import { createNewState, addMiniGameReward, getRpgStatTotal } from "../gameState.js";
+import { getPetBaseStats } from "../helpers/petAssets.js";
 import { resolveEffectStatus, resolveEffectValue } from "../helpers/effectStatus.js";
 import { SEQUENCE_MATCH_HIT_SCORE } from "../minigames/sequenceMatch.js";
 import {
@@ -81,7 +82,9 @@ test("addMiniGameReward applies pre-resolved effects without recalculating confi
     state,
     {
       happiness: 12,
-      energy: -4
+      energy: -4,
+      str: 3,
+      luck: 2
     },
     { score: 6, taps: 6, success: true }
   );
@@ -89,6 +92,9 @@ test("addMiniGameReward applies pre-resolved effects without recalculating confi
   assert.equal(result.ok, true);
   assert.equal(state.happiness, 52);
   assert.equal(state.energy, 46);
+  assert.equal(state.statBonus.str, 3);
+  assert.equal(state.statBonus.luck, 2);
+  assert.equal(getRpgStatTotal(state, "str"), getPetBaseStats(state.petId).str + 3);
 });
 
 test("minigame summary reuses resolved effects and appends formatted status lines", () => {

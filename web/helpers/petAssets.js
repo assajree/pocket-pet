@@ -1,4 +1,5 @@
 export const DEFAULT_PET_ID = "classic";
+export const PET_RPG_STAT_KEYS = ["str", "agi", "vit", "dex", "luck"];
 
 const FALLBACK_STAGE = "child";
 const VARIANT_ORDER = ["idle", "attack", "sick", "angry", "dead"];
@@ -14,29 +15,56 @@ const createClassicStage = (displaySize, variants = VARIANT_ORDER, options = {})
   assetStage: options.assetStage || null
 });
 
+const createBaseStats = (stats = {}) =>
+  Object.fromEntries(
+    PET_RPG_STAT_KEYS.map((stat) => [stat, Number.isFinite(stats?.[stat]) ? stats[stat] : 0])
+  );
+
 export const PET_CATALOG = {
   egg: {
     specieName: "Egg",
     defenseElement: "neutral",
     attackElement: "neutral",
+    baseStats: createBaseStats(),
     ...createClassicStage(132, ["idle"])
   },
   [DEFAULT_PET_ID]: {
     specieName: "Classic",
     defenseElement: "neutral",
     attackElement: "neutral",
+    baseStats: createBaseStats({
+      str: 5,
+      agi: 5,
+      vit: 5,
+      dex: 5,
+      luck: 5
+    }),
     ...createClassicStage(160, VARIANT_ORDER)
   },
   specie1: {
     specieName: "Octopus",
     defenseElement: "water",
     attackElement: "water",
+    baseStats: createBaseStats({
+      str: 6,
+      agi: 5,
+      vit: 5,
+      dex: 7,
+      luck: 6
+    }),
     ...createClassicStage(160, ["idle"])
   },
   specie2: {
     specieName: "Robot",
     defenseElement: "shadow",
     attackElement: "shadow",
+    baseStats: createBaseStats({
+      str: 7,
+      agi: 6,
+      vit: 7,
+      dex: 5,
+      luck: 5
+    }),
     ...createClassicStage(160, ["idle"])
   }
 };
@@ -193,6 +221,11 @@ export const getPetDefenseElement = (petId) =>
 export const getPetDefaultAttackElement = (petId) => {
   const petConfig = getPetConfig(resolvePetId(petId));
   return normalizePetElement(petConfig.attackElement || petConfig.defenseElement);
+};
+
+export const getPetBaseStats = (petId) => {
+  const petConfig = getPetConfig(resolvePetId(petId));
+  return createBaseStats(petConfig.baseStats);
 };
 
 const getAttackElementExpiry = (state) =>

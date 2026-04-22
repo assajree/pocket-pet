@@ -9,6 +9,8 @@ import {
 import {
   DEFAULT_PET_ID,
   PET_ELEMENTS,
+  PET_RPG_STAT_KEYS,
+  getPetBaseStats,
   formatPetElementLabel,
   getPetAttackElementRemainingSeconds,
   getPetCombatElements,
@@ -27,7 +29,6 @@ const MAX_COMBAT_STAT = 999;
 const MAX_MONEY = 9999;
 const EGG_HATCH_SECONDS = 60;
 const CHILD_HATCH_CORE_STAT = 20;
-const CHILD_HATCH_COMBAT_STAT = 5;
 const MEDICINE_LOVE_GAIN_ON_SICK_HEAL = 8;
 const MEDICINE_LOVE_LOSS_ON_UNNEEDED_USE = 6;
 const SICK_UNTREATED_LOVE_DELAY_SECONDS = 600;
@@ -35,7 +36,7 @@ const SICK_UNTREATED_LOVE_LOSS = 10;
 const SICK_UNTREATED_HEALTH_TICK_SECONDS = 20;
 const SICK_UNTREATED_HEALTH_LOSS = 6;
 const ATTACK_ELEMENT_BUFF_SECONDS = 600;
-const EXCHANGE_SNAPSHOT_VERSION = 3;
+const EXCHANGE_SNAPSHOT_VERSION = 4;
 const EXCHANGE_STAGE_ORDER = ["egg", "child", "teen", "adult"];
 const EXCHANGE_STAGE_BONUS = {
   egg: 0,
@@ -167,6 +168,13 @@ const EXCHANGE_ELEMENT_TABLE_LEVEL_1 = {
   }
 };
 const EXCHANGE_ELEMENT_LEGACY_PENALTY_MULTIPLIER = 0.5;
+const RPG_STAT_LABELS = {
+  str: "Str",
+  agi: "Agi",
+  vit: "Vit",
+  dex: "Dex",
+  luck: "Luck"
+};
 
 export {
   isConsumableItem,
@@ -211,6 +219,61 @@ const createLogId = () =>
 
 const createInventoryState = (entries = {}) => ({ ...entries });
 
+const createRpgStatState = () => Object.fromEntries(PET_RPG_STAT_KEYS.map((stat) => [stat, 0]));
+
+const normalizeRpgStatState = (source = {}) => {
+  const normalized = createRpgStatState();
+
+  if (!source || typeof source !== "object" || Array.isArray(source)) {
+    return normalized;
+  }
+
+  PET_RPG_STAT_KEYS.forEach((stat) => {
+    if (typeof source[stat] === "number" && Number.isFinite(source[stat])) {
+      normalized[stat] = Math.round(source[stat]);
+    }
+  });
+
+  return normalized;
+};
+
+const isRpgStatKey = (stat) => PET_RPG_STAT_KEYS.includes(stat);
+
+const getRpgStatBase = (state, stat) => {
+  if (!isRpgStatKey(stat)) {
+    return 0;
+  }
+
+  const baseStats = getPetBaseStats(state?.petId);
+  return baseStats[stat] ?? 0;
+};
+
+const clampRpgStatBonus = (state, stat, value) => {
+  const baseValue = getRpgStatBase(state, stat);
+  return clamp(Math.round(value), -baseValue, MAX_COMBAT_STAT - baseValue);
+};
+
+const migrateRpgStatState = (parsed = {}, petId = DEFAULT_PET_ID, evolutionStage = "egg") => {
+  if (parsed?.statBonus && typeof parsed.statBonus === "object" && !Array.isArray(parsed.statBonus)) {
+    return normalizeRpgStatState(parsed.statBonus);
+  }
+
+  const migrated = createRpgStatState();
+  if (evolutionStage === "egg") {
+    return migrated;
+  }
+
+  PET_RPG_STAT_KEYS.forEach((stat) => {
+    if (typeof parsed?.[stat] !== "number" || !Number.isFinite(parsed[stat])) {
+      return;
+    }
+
+    migrated[stat] = clampRpgStatBonus({ petId }, stat, parsed[stat] - getRpgStatBase({ petId }, stat));
+  });
+
+  return migrated;
+};
+
 const normalizeInventory = (inventory) => {
   if (!inventory || typeof inventory !== "object" || Array.isArray(inventory)) {
     return createInventoryState(baseState?.inventory ?? {});
@@ -223,7 +286,7 @@ const normalizeInventory = (inventory) => {
 };
 
 export const createNewState = () => ({
-  version: 1,
+  version: 2,
   createdAt: Date.now(),
   lastUpdatedAt: Date.now(),
   petId: "egg",
@@ -238,10 +301,8 @@ export const createNewState = () => ({
   love: 0,
   money: 24,
 
-  // rpg status increase by plaing mini game
-  str: 12,
-  agi: 11,
-  int: 10,
+  // rpg status bonus increase by training or mini games
+  statBonus: createRpgStatState(),
 
   ageMinutes: 0,
   evolutionStage: "egg",
@@ -323,14 +384,39 @@ export const loadState = () => {
       parsed.petId = "egg";
     }
 
+    const {
+      str: legacyStr,
+      agi: legacyAgi,
+      vit: legacyVit,
+      dex: legacyDex,
+      luck: legacyLuck,
+      int: legacyInt,
+      statBonus: legacyStatBonus,
+      ...rest
+    } = parsed;
+    void legacyStr;
+    void legacyAgi;
+    void legacyVit;
+    void legacyDex;
+    void legacyLuck;
+    void legacyInt;
+    void legacyStatBonus;
+
+    const resolvedPetId = typeof rest.petId === "string" && rest.petId.trim() ? rest.petId : baseState.petId;
+    const resolvedStage = typeof rest.evolutionStage === "string" && rest.evolutionStage.trim()
+      ? rest.evolutionStage
+      : "egg";
+
     return {
       ...createNewState(),
-      ...parsed,
-      petId: typeof parsed.petId === "string" && parsed.petId.trim() ? parsed.petId : baseState.petId,
+      ...rest,
+      version: 2,
+      petId: resolvedPetId,
       timers: {
         ...baseState.timers,
         ...parsed.timers
       },
+      statBonus: migrateRpgStatState(parsed, resolvedPetId, resolvedStage),
       inventory: normalizeInventory(parsed.inventory),
       logs: Array.isArray(parsed.logs) && parsed.logs.length ? parsed.logs : createNewState().logs
     };
@@ -353,6 +439,24 @@ export const clearState = () => {
 const getAverageStats = (state) =>
   (state.hunger + state.happiness + state.energy + state.health + state.cleanliness) / 5;
 
+export const getRpgStatTotal = (state, stat) => {
+  if (!isRpgStatKey(stat)) {
+    return 0;
+  }
+
+  const baseValue = getRpgStatBase(state, stat);
+  const bonusValue = typeof state?.statBonus?.[stat] === "number" && Number.isFinite(state.statBonus[stat])
+    ? state.statBonus[stat]
+    : 0;
+  return clampStatValue(stat, baseValue + bonusValue);
+};
+
+export const getRpgStatStatusLines = (state) =>
+  PET_RPG_STAT_KEYS.map((stat) => [
+    RPG_STAT_LABELS[stat].padStart(14),
+    Math.round(getRpgStatTotal(state, stat))
+  ]);
+
 const lockEggState = (state) => {
   state.hunger = 100;
   state.happiness = 100;
@@ -372,9 +476,7 @@ const applyChildHatchState = (state) => {
   state.energy = CHILD_HATCH_CORE_STAT;
   state.health = CHILD_HATCH_CORE_STAT;
   state.cleanliness = CHILD_HATCH_CORE_STAT;
-  state.str = CHILD_HATCH_COMBAT_STAT;
-  state.agi = CHILD_HATCH_COMBAT_STAT;
-  state.int = CHILD_HATCH_COMBAT_STAT;
+  state.statBonus = createRpgStatState();
   state.isSick = false;
   resetSicknessEpisode(state);
   state.isSleeping = false;
@@ -642,7 +744,9 @@ const sanitizeExchangePayload = (snapshot) => ({
   money: snapshot.money,
   str: snapshot.str,
   agi: snapshot.agi,
-  int: snapshot.int,
+  vit: snapshot.vit,
+  dex: snapshot.dex,
+  luck: snapshot.luck,
   isAlive: snapshot.isAlive,
   isSleeping: snapshot.isSleeping,
   isSick: snapshot.isSick
@@ -757,9 +861,11 @@ export const createExchangeSnapshot = (state) => {
     cleanliness: Math.round(state.cleanliness),
     weight: Math.round(state.weight),
     money: Math.round(state.money),
-    str: Math.round(state.str),
-    agi: Math.round(state.agi),
-    int: Math.round(state.int),
+    str: Math.round(getRpgStatTotal(state, "str")),
+    agi: Math.round(getRpgStatTotal(state, "agi")),
+    vit: Math.round(getRpgStatTotal(state, "vit")),
+    dex: Math.round(getRpgStatTotal(state, "dex")),
+    luck: Math.round(getRpgStatTotal(state, "luck")),
     isAlive: !!state.isAlive,
     isSleeping: !!state.isSleeping,
     isSick: !!state.isSick
@@ -801,7 +907,9 @@ export const validateExchangeSnapshot = (snapshot) => {
     "money",
     "str",
     "agi",
-    "int"
+    "vit",
+    "dex",
+    "luck"
   ];
   for (const field of requiredNumericFields) {
     if (typeof snapshot[field] !== "number" || Number.isNaN(snapshot[field])) {
@@ -848,7 +956,8 @@ const buildCombatParticipant = (snapshot) => ({
   label: getSnapshotLabel(snapshot),
   attackElement: normalizeElement(snapshot.attackElement),
   defenseElement: normalizeElement(snapshot.defenseElement),
-  power: snapshot.str * 1.2 + snapshot.agi * 0.8 + snapshot.int * 0.5 + getExchangeStageBonus(snapshot.evolutionStage),
+  // vit/dex/luck are tracked in the snapshot but are not part of combat power yet.
+  power: snapshot.str * 1.2 + snapshot.agi * 0.8 + getExchangeStageBonus(snapshot.evolutionStage),
   guard: snapshot.health * 0.25 + snapshot.cleanliness * 0.08 + snapshot.energy * 0.1,
   stamina: snapshot.energy * 0.2,
   sickPenalty: snapshot.isSick ? 9 : 0,
@@ -998,7 +1107,7 @@ const clampStatValue = (stat, value) => {
     return clamp(value, 0, MAX_COMBAT_STAT);
   }
 
-  if (stat === "str" || stat === "agi" || stat === "int") {
+  if (isRpgStatKey(stat)) {
     return clamp(value, 0, MAX_COMBAT_STAT);
   }
 
@@ -1071,7 +1180,21 @@ const applyEffectStatus = (state, resolvedEffects) => {
   }
 
   Object.entries(resolvedEffects).forEach(([stat, effectValue]) => {
-    if (!effectValue || typeof state[stat] !== "number") {
+    if (!effectValue) {
+      return;
+    }
+
+    if (isRpgStatKey(stat)) {
+      const currentBonus = typeof state.statBonus?.[stat] === "number" && Number.isFinite(state.statBonus[stat])
+        ? state.statBonus[stat]
+        : 0;
+      const nextBonus = clampRpgStatBonus(state, stat, currentBonus + effectValue);
+      state.statBonus = normalizeRpgStatState(state.statBonus);
+      state.statBonus[stat] = nextBonus;
+      return;
+    }
+
+    if (typeof state[stat] !== "number") {
       return;
     }
 
