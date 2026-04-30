@@ -246,6 +246,10 @@ export default class AdventureScene extends Phaser.Scene {
     this.walkTimer = null;
     this.autoAdvanceTimer?.remove(false);
     this.autoAdvanceTimer = null;
+    this.fightIntroExitTween?.stop();
+    this.fightIntroExitTween = null;
+    this.fightIntroJumpTween?.stop();
+    this.fightIntroJumpTween = null;
   }
 
   getPetTexture(variant = "idle") {
@@ -311,14 +315,15 @@ export default class AdventureScene extends Phaser.Scene {
   }
 
   showToast(message, durationMs = 900) {
-    this.toastText.setText(message);
-    this.toastText.setAlpha(1);
-    this.tweens.add({
-      targets: this.toastText,
-      alpha: 0,
-      duration: Math.max(200, durationMs),
-      delay: 20
-    });
+    console.log('TOAST:', message);
+    // this.toastText.setText(message);
+    // this.toastText.setAlpha(1);
+    // this.tweens.add({
+    //   targets: this.toastText,
+    //   alpha: 0,
+    //   duration: Math.max(200, durationMs),
+    //   delay: 20
+    // });
   }
 
   openTreasureChest() {
@@ -358,6 +363,14 @@ export default class AdventureScene extends Phaser.Scene {
 
     this.currentEncounterSprite.destroy(true);
     this.currentEncounterSprite = null;
+  }
+
+  destroyFightIntroSprite() {
+    if (!this.fightIntroSprite) {
+      return;
+    }
+    this.fightIntroSprite.destroy(true);
+    this.fightIntroSprite = null;
   }
 
   destroySummaryOverlay() {
@@ -426,6 +439,7 @@ export default class AdventureScene extends Phaser.Scene {
     this.closeExitConfirm();
     this.clearTimers();
     this.destroyEncounterSprite();
+    this.destroyFightIntroSprite();
     this.destroyChestMenu();
     this.stopAdventureChildScenes();
     this.uiScene?.onAdventureFlowComplete?.({
@@ -484,8 +498,10 @@ export default class AdventureScene extends Phaser.Scene {
       return;
     }
 
-    this.phase = "fight";
+    this.phase = "fight-intro";
+    this.clearTimers();
     this.destroyEncounterSprite();
+    this.destroyFightIntroSprite();
     this.destroyChestMenu();
     this.titleText.setText(this.stageConfig.name.toUpperCase());
     this.titleText.setPosition(18, 14).setOrigin(0);
@@ -493,7 +509,61 @@ export default class AdventureScene extends Phaser.Scene {
     this.promptText.setText("Battle starting...");
     this.refreshInfo(`Facing ${monster.name}.`);
 
-    this.scene.launch("FightScene", {
+    this.playFightIntro(monster);
+  }
+
+  playFightIntro(monster) {
+    if (this.isEnding || this.exitConfirmActive || this.phase !== "fight-intro") {
+      return;
+    }
+
+    this.petSprite.setVisible(false);
+    this.fightIntroSprite = this.buildMonsterSprite(monster);
+    this.fightIntroSprite.setDepth(12);
+    const centerX = this.scale.width * 0.5;
+    const centerY = this.scale.height * 0.58;
+    this.fightIntroSprite.setPosition(centerX, centerY);
+
+    const jumpUpY = centerY - ADVENTURE_BATTLE_CONSTANTS.ENEMY_INTRO_JUMP_HEIGHT_PX;
+    const singleJumpMs = ADVENTURE_BATTLE_CONSTANTS.ENEMY_INTRO_JUMP_DURATION_MS;
+    const jumpCount = Math.max(1, ADVENTURE_BATTLE_CONSTANTS.ENEMY_INTRO_JUMP_COUNT);
+
+    this.fightIntroJumpTween = this.tweens.add({
+      targets: this.fightIntroSprite,
+      y: jumpUpY,
+      duration: singleJumpMs,
+      ease: "Sine.easeOut",
+      yoyo: true,
+      repeat: jumpCount - 1,
+      onComplete: () => {
+        this.fightIntroJumpTween = null;
+        this.startFightIntroExit(monster);
+      }
+    });
+  }
+
+  startFightIntroExit(monster) {
+    if (!this.fightIntroSprite || this.isEnding || this.phase !== "fight-intro") {
+      return;
+    }
+    const offscreenX = this.scale.width + ADVENTURE_BATTLE_CONSTANTS.ENEMY_INTRO_EXIT_OFFSCREEN_PADDING;
+    const distance = Math.max(1, offscreenX - this.fightIntroSprite.x);
+    const durationMs = Math.max(1, Math.round(distance / ADVENTURE_BATTLE_CONSTANTS.ENEMY_INTRO_EXIT_SPEED_PX_PER_MS));
+
+    this.fightIntroExitTween = this.tweens.add({
+      targets: this.fightIntroSprite,
+      x: offscreenX,
+      duration: durationMs,
+      ease: "Linear",
+      onComplete: () => {
+        this.fightIntroExitTween = null;
+        this.destroyFightIntroSprite();
+        if (this.isEnding || this.exitConfirmActive || this.phase !== "fight-intro") {
+          return;
+        }
+        this.petSprite.setVisible(true);
+        this.phase = "fight";
+        this.scene.launch("FightScene", {
       stageId: this.stageConfig.id,
       stageIndex: this.stageIndex,
       seed: `${this.seed}:${this.currentMonsterIndex}:${monster.name}`,
@@ -502,6 +572,8 @@ export default class AdventureScene extends Phaser.Scene {
       autoCloseSummary: this.autoCloseSummary,
       summaryDurationMs: ADVENTURE_BATTLE_CONSTANTS.SUMMARY_DURATION_MS,
       resultFlashMs: ADVENTURE_BATTLE_CONSTANTS.RESULT_FLASH_MS
+    });
+      }
     });
   }
 
@@ -540,6 +612,8 @@ export default class AdventureScene extends Phaser.Scene {
   finishAdventureFailure(result = null) {
     this.isEnding = true;
     this.destroyEncounterSprite();
+    this.destroyFightIntroSprite();
+    this.petSprite?.setVisible(true);
     this.destroyChestMenu();
     this.stopAdventureChildScenes();
     this.titleText.setText(this.stageConfig.name.toUpperCase());
@@ -562,6 +636,8 @@ export default class AdventureScene extends Phaser.Scene {
 
     this.isEnding = true;
     this.destroyEncounterSprite();
+    this.destroyFightIntroSprite();
+    this.petSprite?.setVisible(true);
     this.destroyChestMenu();
     this.titleText.setText(this.stageConfig.name.toUpperCase());
     this.titleText.setPosition(18, 14).setOrigin(0);
