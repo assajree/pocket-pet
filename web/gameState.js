@@ -592,9 +592,10 @@ export const evolveToSpecies = (state, targetSpecies) => {
 
   clearState();
   const freshEgg = createNewState();
-  freshEgg.evolutionStage = "child";
   Object.assign(state, freshEgg);
   applyDebugFill(state);
+  state.petId = matchingRule.nextSpecies || DEFAULT_PET_ID;
+  state.evolutionStage = matchingRule.nextStage || "child";
 
   if (matchingRule.minAgeMinutes !== undefined) {
     state.ageMinutes = Math.max(state.ageMinutes, matchingRule.minAgeMinutes);
@@ -611,7 +612,10 @@ export const evolveToSpecies = (state, targetSpecies) => {
     }
   }
 
-  tickState(state, 0);
+  if (state.evolutionStage === "child") {
+    applyChildHatchState(state);
+  }
+
   return { ok: true };
 };
 

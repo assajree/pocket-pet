@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { applyAction, createNewState, loadState, tickState } from "../gameState.js";
+import { applyAction, createNewState, evolveToSpecies, loadState, tickState } from "../gameState.js";
 
 const withMockLocalStorage = async (storedValue, callback) => {
   const originalLocalStorage = globalThis.localStorage;
@@ -34,6 +34,31 @@ test("new saves start with love at 0", () => {
   const state = createNewState();
 
   assert.equal(state.love, 0);
+});
+
+test("debug evolve to classic produces a classic child, not an egg sprite state", () => {
+  return withMockLocalStorage(undefined, () => {
+    const state = createNewState();
+
+    const result = evolveToSpecies(state, "classic");
+
+    assert.equal(result.ok, true);
+    assert.equal(state.petId, "classic");
+    assert.equal(state.evolutionStage, "child");
+    assert.equal(state.isAlive, true);
+  });
+});
+
+test("debug evolve to later species directly applies the target species and stage", () => {
+  return withMockLocalStorage(undefined, () => {
+    const state = createNewState();
+
+    const result = evolveToSpecies(state, "specie1");
+
+    assert.equal(result.ok, true);
+    assert.equal(state.petId, "specie1");
+    assert.equal(state.evolutionStage, "teen");
+  });
 });
 
 test("loadState backfills love and untreated sickness timers for legacy saves", async () => {
@@ -70,7 +95,7 @@ test("loadState migrates legacy RPG stats into stat bonuses and drops int", asyn
     async () => {
       const state = loadState();
 
-      assert.equal(state.version, 2);
+      assert.equal(state.version, 3);
       assert.equal(state.statBonus.str, 6);
       assert.equal(state.statBonus.agi, 4);
       assert.equal(state.statBonus.vit, 0);

@@ -2009,12 +2009,14 @@ export default class UIScene extends Phaser.Scene {
 
   getVisibleMenuItems(menuKey) {
     if (menuKey === "debug-evolve-species") {
-      return Object.entries(PET_CATALOG).map(([speciesId, petData]) => ({
-        key: `debug-evolve-to-${speciesId}`,
-        label: petData.specieName.toUpperCase(),
-        caption: `Force evolution to ${petData.specieName}.`,
-        icon: ""
-      }));
+      return Object.entries(PET_CATALOG)
+        .filter(([speciesId]) => speciesId !== "egg")
+        .map(([speciesId, petData]) => ({
+          key: `debug-evolve-to-${speciesId}`,
+          label: petData.specieName.toUpperCase(),
+          caption: `Force evolution to ${petData.specieName}.`,
+          icon: ""
+        }));
     }
 
     if (menuKey === "adventure-stage") {
