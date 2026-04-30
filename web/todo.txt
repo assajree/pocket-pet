@@ -31,6 +31,7 @@ damage type แยก sprite
 
 - adventure status item random level
 - fight scene regen and show regen amount
-
+- adventure mode auto collect item after 30s
+- flip sprite when player dodge
 
 

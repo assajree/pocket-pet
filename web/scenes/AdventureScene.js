@@ -10,6 +10,7 @@ import {
 } from "../helpers/adventure.js";
 import { ADVENTURE_BATTLE_CONSTANTS, createBattleSeededRng } from "../helpers/adventureBattle.js";
 import { ensurePetStageAssetsLoaded, getPetTextureKey } from "../helpers/petAssets.js";
+import { UI_COLORS } from "../helpers/uiConfig.js";
 
 const ADVENTURE_SCROLL_SPEED = 0.16;
 const ADVENTURE_TRAVEL_SEGMENT_MS = 2200;
@@ -17,8 +18,8 @@ const ADVENTURE_PET_TOGGLE_MS = 260;
 const ADVENTURE_ARRIVAL_THRESHOLD = 118;
 const ADVENTURE_FAILURE_LOW_STAT = 20;
 const ADVENTURE_FAILURE_HEALTH = 10;
-const ADVENTURE_MENU_BACKGROUND = 0xb7c7b5;
-const ADVENTURE_MENU_TEXT = "#44514b";
+const ADVENTURE_MENU_BACKGROUND = UI_COLORS.screenBackground.value;
+const ADVENTURE_MENU_TEXT = UI_COLORS.screenInk.hex;
 
 const createAdventureStatBuff = () => ({ str: 0, agi: 0, vit: 0, dex: 0, luck: 0 });
 
@@ -112,8 +113,8 @@ export default class AdventureScene extends Phaser.Scene {
     this.loadingText = this.add.text(this.scale.width / 2, this.scale.height / 2, "Preparing adventure...", {
       fontFamily: "Courier New",
       fontSize: "24px",
-      color: "#2f3e2e",
-      stroke: "#f4f7f0",
+      color: UI_COLORS.screenInkStrong.hex,
+      stroke: UI_COLORS.screenHighlight.hex,
       strokeThickness: 4,
       align: "center"
     }).setOrigin(0.5);
@@ -129,7 +130,7 @@ export default class AdventureScene extends Phaser.Scene {
     } catch (error) {
       console.warn("Failed to prepare adventure scene.", error);
       this.loadingText?.setText("Adventure assets failed to load.");
-      this.loadingText?.setColor("#7d2f2f");
+      this.loadingText?.setColor(UI_COLORS.dangerText.hex);
       this.phase = "error";
     }
 
@@ -150,12 +151,12 @@ export default class AdventureScene extends Phaser.Scene {
   }
 
   buildScene() {
-    this.cameras.main.setBackgroundColor("#dfe9cf");
+    this.cameras.main.setBackgroundColor(UI_COLORS.adventureSky.hex);
     if (!this.textures.exists("adventure-bg")) {
       const bgGraphics = this.make.graphics({ x: 0, y: 0, add: false });
-      bgGraphics.fillStyle(0xe8f1dd, 1);
+      bgGraphics.fillStyle(UI_COLORS.adventureTileLight.value, 1);
       bgGraphics.fillRect(0, 0, 64, 64);
-      bgGraphics.fillStyle(0xd8e7c5, 1);
+      bgGraphics.fillStyle(UI_COLORS.adventureTileShade.value, 1);
       bgGraphics.fillRect(0, 0, 12, 64);
       bgGraphics.fillRect(24, 0, 12, 64);
       bgGraphics.fillRect(48, 0, 12, 64);
@@ -167,8 +168,8 @@ export default class AdventureScene extends Phaser.Scene {
       .setOrigin(0)
       .setAlpha(0.18);
 
-    this.add.rectangle(0, this.scale.height * 0.72, this.scale.width, this.scale.height * 0.28, 0xb8c79f).setOrigin(0);
-    this.add.rectangle(0, this.scale.height * 0.76, this.scale.width, 8, 0x8aa26d).setOrigin(0);
+    this.add.rectangle(0, this.scale.height * 0.72, this.scale.width, this.scale.height * 0.28, UI_COLORS.adventureGround.value).setOrigin(0);
+    this.add.rectangle(0, this.scale.height * 0.76, this.scale.width, 8, UI_COLORS.adventureGroundLine.value).setOrigin(0);
 
     this.petSprite = this.add.image(92, this.scale.height * 0.67, this.getPetTexture("idle"));
     this.petSprite.setDisplaySize(150, 150);
@@ -190,9 +191,9 @@ export default class AdventureScene extends Phaser.Scene {
     this.infoText = this.add.text(18, 40, "", {
       fontFamily: "Courier New",
       fontSize: "14px",
-      color: "#44514b",
-      stroke: "#f4f7f0",
-      strokeThickness: 3,
+      color: UI_COLORS.screenInk.hex,
+      // stroke: UI_COLORS.screenHighlight.hex,
+      // strokeThickness: 3,
       lineSpacing: 4
     }).setDepth(21);
 
@@ -218,14 +219,14 @@ export default class AdventureScene extends Phaser.Scene {
     this.promptText = this.add.text(this.scale.width / 2, this.scale.height - 20, "", {
       fontFamily: "Courier New",
       fontSize: "14px",
-      color: "#2f3e2e"
+      color: UI_COLORS.screenInkStrong.hex
     }).setOrigin(0.5).setDepth(21);
 
     this.toastText = this.add.text(this.scale.width / 2, this.scale.height * 0.18, "", {
       fontFamily: "Courier New",
       fontSize: "16px",
-      color: "#2f3e2e",
-      stroke: "#f4f7f0",
+      color: UI_COLORS.screenInkStrong.hex,
+      stroke: UI_COLORS.screenHighlight.hex,
       strokeThickness: 4,
       align: "center"
     }).setOrigin(0.5).setDepth(25).setAlpha(0);
@@ -270,7 +271,7 @@ export default class AdventureScene extends Phaser.Scene {
 
   refreshInfo() {
     this.infoText.setVisible(true);
-    this.infoText.setText(`Monster ${formatAdventureMonsterProgress(this.currentMonsterIndex, this.stageConfig.monsters.length)}`);
+    this.infoText.setText(`Stage ${formatAdventureMonsterProgress(this.currentMonsterIndex, this.stageConfig.monsters.length)}`);
   }
 
   beginTravel(nextEncounterType) {
@@ -304,8 +305,8 @@ export default class AdventureScene extends Phaser.Scene {
     const label = this.add.text(0, 0, "CHEST", {
       fontFamily: "Courier New",
       fontSize: "16px",
-      color: "#2f3e2e",
-      stroke: "#f4f7f0",
+      color: UI_COLORS.screenInkStrong.hex,
+      stroke: UI_COLORS.screenHighlight.hex,
       strokeThickness: 3
     }).setOrigin(0.5);
     container.add([body, lid, label]);
@@ -348,7 +349,8 @@ export default class AdventureScene extends Phaser.Scene {
     this.destroyEncounterSprite();
     this.chestChoices = pickUniqueOffers(3, this.rng);
     this.menuIndex = 0;
-    this.titleText.setText(formatChestHeader(this.stageConfig.name, this.currentMonsterIndex, this.stageConfig.monsters.length));
+    // this.titleText.setText(formatChestHeader(this.stageConfig.name, this.currentMonsterIndex, this.stageConfig.monsters.length));
+    this.titleText.setText("");
     this.titleText.setPosition(this.scale.width / 2, 32).setOrigin(0.5);
     this.infoText.setVisible(false);
     this.chestBackdrop.setVisible(true);

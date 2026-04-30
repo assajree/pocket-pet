@@ -1,16 +1,21 @@
 :root {
-  --bg-top: #f5f2ef;
-  --bg-bottom: #e7e4df;
-  --shell-face: #fbfaf8;
-  --shell-edge: #d4d1cb;
+  --ui-app-background-top: #f5f2ef;
+  --ui-app-background-bottom: #e7e4df;
+  --ui-shell-face: #fbfaf8;
+  --ui-shell-face-bottom: #efede9;
+  --ui-shell-edge: #d4d1cb;
   --shell-shadow: rgba(92, 88, 84, 0.18);
-  --screen-frame: #d3d1d1;
-  --screen-bezel: #bdb8b8;
-  --button-face: #d8d8d8;
-  --button-shadow: #b3b3b3;
-  --button-text: #6a6782;
-  --ink-main: #2c2a2a;
-  --ink-soft: #656161;
+  --ui-screen-frame: #d3d1d1;
+  --ui-screen-bezel: #bdb8b8;
+  --ui-screen-background: #b7c7b5;
+  --ui-screen-ink: #44514b;
+  --ui-screen-highlight: #f4f7f0;
+  --ui-button-face-top: #dfdfdf;
+  --ui-button-face: #d8d8d8;
+  --ui-button-shadow: #b3b3b3;
+  --ui-button-text: #6a6782;
+  --ui-ink-main: #2c2a2a;
+  --ui-ink-soft: #656161;
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   --viewport-height: 100vh;
@@ -24,8 +29,8 @@ html,
 body {
   margin: 0;
   min-height: 100%;
-  background: linear-gradient(180deg, var(--bg-top), var(--bg-bottom));
-  color: var(--ink-main);
+  background: linear-gradient(180deg, var(--ui-app-background-top), var(--ui-app-background-bottom));
+  color: var(--ui-ink-main);
   font-family: "Courier New", "Lucida Console", monospace;
   image-rendering: pixelated;
   touch-action: manipulation;
@@ -51,7 +56,7 @@ body {
   flex-direction: column;
   padding: 20px 20px 26px;
   border-radius: 26px;
-  background: linear-gradient(180deg, var(--shell-face), #efede9);
+  background: linear-gradient(180deg, var(--ui-shell-face), var(--ui-shell-face-bottom));
   border: 1px solid rgba(180, 176, 171, 0.7);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.72),
@@ -64,7 +69,7 @@ body {
   align-items: center;
   margin-bottom: 16px;
   font-size: 0.76rem;
-  color: var(--ink-soft);
+  color: var(--ui-ink-soft);
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
@@ -88,7 +93,7 @@ body {
   width: 100%;
   aspect-ratio: 1 / 1;
   border-radius: 18px;
-  background: linear-gradient(180deg, var(--screen-bezel), var(--screen-frame));
+  background: linear-gradient(180deg, var(--ui-screen-bezel), var(--ui-screen-frame));
   padding: 14px;
   box-shadow:
     inset 0 2px 0 rgba(255, 255, 255, 0.3),
@@ -104,7 +109,7 @@ body {
 #game-container {
   border-radius: 12px;
   overflow: hidden;
-  background: #b7c7b5;
+  background: var(--ui-screen-background);
   box-shadow: inset 0 0 0 1px rgba(78, 74, 74, 0.16);
   touch-action: manipulation;
 }
@@ -139,7 +144,7 @@ body {
   left: 22px;
   top: 22px;
   padding: 4px 8px;
-  color: #44514b;
+  color: var(--ui-screen-ink);
   font-size: 0.62rem;
   line-height: 1;
   letter-spacing: 0.06em;
@@ -171,7 +176,7 @@ body {
   width: 26px;
   height: 26px;
   display: block;
-  stroke: #44514b;
+  stroke: var(--ui-screen-ink);
 }
 
 .screen-menu {
@@ -181,7 +186,7 @@ body {
   border: 1px solid rgba(68, 81, 75, 0.16);
   border-radius: 12px;
   background: rgba(183, 199, 181, 0.98);
-  color: #44514b;
+  color: var(--ui-screen-ink);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -233,7 +238,7 @@ body {
 .screen-menu-icon svg {
   width: 34px;
   height: 34px;
-  stroke: #44514b;
+  stroke: var(--ui-screen-ink);
   fill: none;
   stroke-width: 2.2;
   stroke-linecap: round;
@@ -274,7 +279,7 @@ body {
   display: block;
   font-size: 0.64rem;
   letter-spacing: 0.1em;
-  color: #44514b;
+  color: var(--ui-screen-ink);
   margin-top: 14px;
   margin-bottom: auto;
 }
@@ -309,7 +314,7 @@ body {
 }
 
 .screen-menu-dot.active {
-  background: #44514b;
+  background: var(--ui-screen-ink);
 }
 
 .screen-menu.status-view {
@@ -456,8 +461,8 @@ body {
   min-height: 48px;
   border: none;
   border-radius: 999px;
-  background: linear-gradient(180deg, #dfdfdf, var(--button-face));
-  color: var(--button-text);
+  background: linear-gradient(180deg, var(--ui-button-face-top), var(--ui-button-face));
+  color: var(--ui-button-text);
   font: inherit;
   font-size: 1.5rem;
   line-height: 1;
@@ -467,7 +472,7 @@ body {
   cursor: pointer;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.8),
-    0 5px 0 var(--button-shadow);
+    0 5px 0 var(--ui-button-shadow);
   transition: transform 100ms ease, box-shadow 100ms ease, filter 100ms ease;
   touch-action: manipulation;
 }
@@ -481,7 +486,7 @@ body {
   transform: translateY(3px);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.8),
-    0 2px 0 var(--button-shadow);
+    0 2px 0 var(--ui-button-shadow);
 }
 
 .hardware-button:disabled {

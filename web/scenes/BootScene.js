@@ -1,5 +1,6 @@
 import { applyOfflineProgress, loadState, saveState } from "../gameState.js";
 import { getPetStageAssetBundle } from "../helpers/petAssets.js";
+import { UI_COLORS } from "../helpers/uiConfig.js";
 
 const BOOT_SCREEN_DURATION_MS = 3000;
 
@@ -15,7 +16,7 @@ export default class BootScene extends Phaser.Scene {
       .text(width * 0.5, height * 0.5, "Booting...", {
         fontFamily: '"Trebuchet MS", sans-serif',
         fontSize: "24px",
-        color: "#2f3e2e"
+        color: UI_COLORS.screenInkStrong.hex
       })
       .setOrigin(0.5);
 

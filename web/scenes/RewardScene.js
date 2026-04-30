@@ -1,4 +1,5 @@
 import { getItemLabel } from "../gameState.js";
+import { UI_COLORS } from "../helpers/uiConfig.js";
 
 const REWARD_AUTO_CLOSE_DEFAULT_MS = 3000;
 
@@ -22,22 +23,22 @@ export default class RewardScene extends Phaser.Scene {
     this.autoCloseMs = Number.isFinite(data.autoCloseMs) ? data.autoCloseMs : REWARD_AUTO_CLOSE_DEFAULT_MS;
     this.adventureScene = this.scene.get("AdventureScene");
 
-    this.add.rectangle(0, 0, this.scale.width, this.scale.height, 0xf3f7ee, 0.96).setOrigin(0);
-    this.add.rectangle(this.scale.width / 2, this.scale.height / 2, Math.min(420, this.scale.width - 36), Math.min(320, this.scale.height - 48), 0xfafcf7, 1)
-      .setStrokeStyle(3, 0x44514b);
+    this.add.rectangle(0, 0, this.scale.width, this.scale.height, UI_COLORS.rewardOverlay.value, 0.96).setOrigin(0);
+    this.add.rectangle(this.scale.width / 2, this.scale.height / 2, Math.min(420, this.scale.width - 36), Math.min(320, this.scale.height - 48), UI_COLORS.rewardPanel.value, 1)
+      .setStrokeStyle(3, UI_COLORS.screenInk.value);
 
     this.titleText = this.add.text(this.scale.width / 2, 66, `${this.stageName.toUpperCase()} REWARD`, {
       fontFamily: "Courier New",
       fontSize: "24px",
-      color: "#2f3e2e",
-      stroke: "#f4f7f0",
+      color: UI_COLORS.screenInkStrong.hex,
+      stroke: UI_COLORS.screenHighlight.hex,
       strokeThickness: 4
     }).setOrigin(0.5);
 
     this.rewardText = this.add.text(this.scale.width / 2, 126, formatRewardLines(this.rewards).join("\n"), {
       fontFamily: "Courier New",
       fontSize: "18px",
-      color: "#44514b",
+      color: UI_COLORS.screenInk.hex,
       align: "center",
       lineSpacing: 10
     }).setOrigin(0.5, 0);
@@ -45,7 +46,7 @@ export default class RewardScene extends Phaser.Scene {
     this.promptText = this.add.text(this.scale.width / 2, this.scale.height - 56, this.autoCloseMs >= 0 ? "Closing automatically..." : "Press O or X to close.", {
       fontFamily: "Courier New",
       fontSize: "14px",
-      color: "#44514b"
+      color: UI_COLORS.screenInk.hex
     }).setOrigin(0.5);
 
     if (this.autoCloseMs >= 0) {

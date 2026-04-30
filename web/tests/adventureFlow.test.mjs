@@ -472,6 +472,67 @@ test("fight summary overlay shows LOST without drop preview", async () => {
   assert.deepEqual(dropUpdates, ["", "alpha:0"]);
 });
 
+test("fight regen text floats above pet only for restored HP", async () => {
+  globalThis.Phaser = {
+    Scene: class {
+      constructor(key) {
+        this.sceneKey = key;
+      }
+    }
+  };
+
+  const { default: FightScene } = await import("../scenes/FightScene.js");
+  const scene = new FightScene();
+  const createdTexts = [];
+  const tweenConfigs = [];
+
+  scene.scale = { width: 320, height: 240 };
+  scene.playerSprite = { x: 64, y: 172, displayHeight: 150 };
+  scene.add = {
+    text: (x, y, text, style) => {
+      const label = {
+        x,
+        y,
+        text,
+        style,
+        destroyed: false,
+        setOrigin(value) {
+          this.origin = value;
+          return this;
+        },
+        setDepth(value) {
+          this.depth = value;
+          return this;
+        },
+        destroy() {
+          this.destroyed = true;
+        }
+      };
+      createdTexts.push(label);
+      return label;
+    }
+  };
+  scene.tweens = {
+    add: (config) => {
+      tweenConfigs.push(config);
+      config.onComplete();
+    }
+  };
+
+  scene.showRegenText(5);
+  scene.showRegenText(0);
+
+  assert.equal(createdTexts.length, 1);
+  assert.equal(createdTexts[0].text, "+5");
+  assert.equal(createdTexts[0].x, 64);
+  assert.equal(createdTexts[0].y, 89.5);
+  assert.equal(createdTexts[0].style.color, "#2f6b2f");
+  assert.equal(tweenConfigs.length, 1);
+  assert.equal(tweenConfigs[0].targets, createdTexts[0]);
+  assert.equal(tweenConfigs[0].y, 55.5);
+  assert.equal(createdTexts[0].destroyed, true);
+});
+
 test("adventure loss leaves pet sick with low stats instead of dead", async () => {
   globalThis.Phaser = {
     Scene: class {

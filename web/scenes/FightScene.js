@@ -16,6 +16,7 @@ import {
   getBattleStageBonus,
   getBattleBulletScale
 } from "../helpers/adventureBattle.js";
+import { UI_COLORS } from "../helpers/uiConfig.js";
 
 const BATTLE_LANE_Y_RATIOS = [0.58, 0.66, 0.74];
 const BATTLE_PLAYER_Y = 0.72;
@@ -122,8 +123,8 @@ export default class FightScene extends Phaser.Scene {
     this.loadingText = this.add.text(this.scale.width / 2, this.scale.height / 2, "Preparing battle...", {
       fontFamily: "Courier New",
       fontSize: "24px",
-      color: "#2f3e2e",
-      stroke: "#f4f7f0",
+      color: UI_COLORS.screenInkStrong.hex,
+      stroke: UI_COLORS.screenHighlight.hex,
       strokeThickness: 4
     }).setOrigin(0.5);
 
@@ -142,7 +143,7 @@ export default class FightScene extends Phaser.Scene {
     } catch (error) {
       console.warn("Failed to prepare fight scene.", error);
       this.loadingText?.setText("Battle assets failed to load.");
-      this.loadingText?.setColor("#7d2f2f");
+      this.loadingText?.setColor(UI_COLORS.dangerText.hex);
     }
 
     this.events.on("shutdown", () => {
@@ -152,18 +153,18 @@ export default class FightScene extends Phaser.Scene {
   }
 
   buildScene() {
-    this.cameras.main.setBackgroundColor("#dae2cf");
-    this.add.rectangle(0, 0, this.scale.width, this.scale.height, 0xdde8d1).setOrigin(0);
-    this.add.rectangle(0, this.scale.height * 0.78, this.scale.width, this.scale.height * 0.22, 0xb6c59b).setOrigin(0);
-    this.add.rectangle(0, this.scale.height * 0.84, this.scale.width, 8, 0x8ba06c).setOrigin(0);
+    this.cameras.main.setBackgroundColor(UI_COLORS.battleSky.hex);
+    this.add.rectangle(0, 0, this.scale.width, this.scale.height, UI_COLORS.battleBackground.value).setOrigin(0);
+    this.add.rectangle(0, this.scale.height * 0.78, this.scale.width, this.scale.height * 0.22, UI_COLORS.battleGround.value).setOrigin(0);
+    this.add.rectangle(0, this.scale.height * 0.84, this.scale.width, 8, UI_COLORS.battleGroundLine.value).setOrigin(0);
 
     BATTLE_LANE_Y_RATIOS.forEach((ratio, index) => {
       const laneY = this.scale.height * ratio;
-      this.add.line(0, laneY, 0, laneY, this.scale.width, laneY, 0xa4b590, 0.55).setOrigin(0);
+      this.add.line(0, laneY, 0, laneY, this.scale.width, laneY, UI_COLORS.battleLane.value, 0.55).setOrigin(0);
       this.add.text(14, laneY - 16, `${index + 1}`, {
         fontFamily: "Courier New",
         fontSize: "12px",
-        color: "#6b7c67"
+        color: UI_COLORS.screenInkSoft.hex
       });
     });
 
@@ -189,37 +190,43 @@ export default class FightScene extends Phaser.Scene {
     this.timerText = this.add.text(this.scale.width / 2, 16, "", {
       fontFamily: "Courier New",
       fontSize: "18px",
-      color: "#2f3e2e",
-      stroke: "#f4f7f0",
+      color: UI_COLORS.screenInkStrong.hex,
+      stroke: UI_COLORS.screenHighlight.hex,
       strokeThickness: 4
     }).setOrigin(0.5, 0);
 
-    this.hudText = this.add.text(18, 44, "", {
+    const hpHudTextStyle = {
       fontFamily: "Courier New",
       fontSize: "14px",
-      color: "#44514b",
-      stroke: "#f4f7f0",
+      color: UI_COLORS.screenInk.hex,
+      stroke: UI_COLORS.screenHighlight.hex,
       strokeThickness: 3,
       lineSpacing: 4
-    });
+    };
 
-    this.resultBanner = this.add.text(this.scale.width / 2, this.scale.height / 2 - 34, "", {
+    this.playerHpText = this.add.text(18, 44, "", hpHudTextStyle).setOrigin(0, 0);
+    this.enemyHpText = this.add.text(this.scale.width - 18, 44, "", {
+      ...hpHudTextStyle,
+      align: "right"
+    }).setOrigin(1, 0);
+
+    this.resultBanner = this.add.text(this.scale.width / 2, this.scale.height / 2 - 30, "", {
       fontFamily: "Courier New",
       fontSize: "34px",
-      color: "#2f3e2e",
-      stroke: "#f4f7f0",
+      color: UI_COLORS.screenInkStrong.hex,
+      stroke: UI_COLORS.screenHighlight.hex,
       strokeThickness: 6
     }).setOrigin(0.5).setDepth(20).setAlpha(0);
 
-    this.summaryBackdrop = this.add.rectangle(0, 0, this.scale.width, this.scale.height, 0xb7c7b5, 1)
+    this.summaryBackdrop = this.add.rectangle(0, 0, this.scale.width, this.scale.height, UI_COLORS.screenBackground.value, 1)
       .setOrigin(0)
       .setDepth(30)
       .setVisible(false);
 
-    this.summaryText = this.add.text(this.scale.width / 2, this.scale.height / 2 , "", {
+    this.summaryText = this.add.text(this.scale.width / 2, this.scale.height / 2 - 40 , "", {
       fontFamily: "Courier New",
       fontSize: "24px",
-      color: "#2f3e2e",
+      color: UI_COLORS.screenInkStrong.hex,
       align: "center",
       lineSpacing: 10,
       // stroke: "#f4f7f0",
@@ -229,7 +236,7 @@ export default class FightScene extends Phaser.Scene {
     this.summaryDropText = this.add.text(this.scale.width / 2, this.scale.height / 2 , "", {
       fontFamily: "Courier New",
       fontSize: "16px",
-      color: "#44514b",
+      color: UI_COLORS.screenInk.hex,
       align: "center"
     }).setOrigin(0.5).setDepth(31).setAlpha(0);
 
@@ -322,12 +329,12 @@ export default class FightScene extends Phaser.Scene {
     this.resultBanner.setAlpha(1);
     this.summaryText.setAlpha(0);
     // this.hintText.setText("O button summary | timer 30s");
-    this.flashResultBanner("FIGHT!", 800, 0x2f3e2e);
+    this.flashResultBanner("FIGHT!", 800, UI_COLORS.screenInkStrong.value);
   }
 
   flashResultBanner(text, durationMs, color) {
     this.resultBanner.setText(text);
-    this.resultBanner.setColor(color ? `#${color.toString(16).padStart(6, "0")}` : "#2f3e2e");
+    this.resultBanner.setColor(color ? `#${color.toString(16).padStart(6, "0")}` : UI_COLORS.screenInkStrong.hex);
     this.resultBanner.setAlpha(1);
     this.resultTimer?.remove(false);
     this.resultTimer = this.time.delayedCall(durationMs, () => {
@@ -348,8 +355,13 @@ export default class FightScene extends Phaser.Scene {
       if (time >= this.regenNextAt) {
         this.regenNextAt = time + ADVENTURE_BATTLE_CONSTANTS.BATTLE_REGEN_INTERVAL_MS;
         const regenAmount = getBattleRegenAmount(this.playerStats.vit);
+        const previousPlayerHp = this.playerHp;
         this.playerHp = Math.min(this.playerMaxHp, this.playerHp + regenAmount);
-        this.state.health = Math.min(100, Math.round(this.state.health + regenAmount));
+        const restored = Math.max(0, Math.round(this.playerHp - previousPlayerHp));
+        if (restored > 0) {
+          this.showRegenText(restored);
+        }
+        this.state.health = Math.min(100, Math.round(this.playerHp));
         saveState(this.state, "fight:regen");
       }
 
@@ -374,12 +386,8 @@ export default class FightScene extends Phaser.Scene {
   updateHud() {
     const remainingSeconds = Math.max(0, Math.ceil((this.battleEndsAt - this.time.now) / 1000));
     this.timerText.setText(`TIME ${remainingSeconds}`);
-    this.hudText.setText([
-      `PLAYER HP ${Math.max(0, Math.round(this.playerHp))}/${this.playerMaxHp}`,
-      `ENEMY HP ${Math.max(0, Math.round(this.enemyHp))}/${this.enemyMaxHp}`,
-      // `DAMAGE ${Math.round(this.playerDamage)} / ${Math.round(this.enemyDamage)}`,
-      // `ATK ${this.playerAttackCount} / ${this.enemyAttackCount}`
-    ].join("\n"));
+    this.playerHpText.setText(`PLAYER HP\n${Math.max(0, Math.round(this.playerHp))}/${this.playerMaxHp}`);
+    this.enemyHpText.setText(`ENEMY HP\n${Math.max(0, Math.round(this.enemyHp))}/${this.enemyMaxHp}`);
   }
 
   spawnBullet(side) {
@@ -563,7 +571,7 @@ export default class FightScene extends Phaser.Scene {
     });
     this.showHitText({
       bullet,
-      text: `${damage}${bullet.isCritical ? "!!" : ""}`,
+      text: `${damage*-1}${bullet.isCritical ? "!!" : ""}`,
       isCritical: bullet.isCritical
     });
 
@@ -629,8 +637,8 @@ export default class FightScene extends Phaser.Scene {
     const label = this.add.text(x, y, text, {
       fontFamily: "Courier New",
       fontSize: isCritical ? "24px" : "20px",
-      color: isMiss ? "#5f6f75" : isCritical ? "#8d2f2f" : "#2f3e2e",
-      stroke: "#f4f7f0",
+      color: isMiss ? UI_COLORS.missText.hex : isCritical ? UI_COLORS.danger.hex : UI_COLORS.screenInkStrong.hex,
+      stroke: UI_COLORS.screenHighlight.hex,
       strokeThickness: 5
     }).setOrigin(0.5).setDepth(18);
 
@@ -639,6 +647,37 @@ export default class FightScene extends Phaser.Scene {
       y: y - BATTLE_HIT_TEXT_RISE_PX,
       alpha: 0,
       scale: isCritical ? 1.18 : 1,
+      duration: BATTLE_HIT_TEXT_DURATION_MS,
+      ease: "Cubic.easeOut",
+      onComplete: () => label.destroy()
+    });
+  }
+
+  showRegenText(amount) {
+    const restored = Math.max(0, Math.round(Number.isFinite(amount) ? amount : 0));
+    if (restored <= 0 || !this.playerSprite) {
+      return;
+    }
+
+    const x = clamp(this.playerSprite.x, 28, this.scale.width - 28);
+    const y = clamp(
+      this.playerSprite.y - this.playerSprite.displayHeight * 0.55,
+      42,
+      this.scale.height - 42
+    );
+    const label = this.add.text(x, y, `+${restored}`, {
+      fontFamily: "Courier New",
+      fontSize: "20px",
+      color: UI_COLORS.success?.hex || UI_COLORS.screenInkStrong.hex,
+      stroke: UI_COLORS.screenHighlight.hex,
+      strokeThickness: 5
+    }).setOrigin(0.5).setDepth(18);
+
+    this.tweens.add({
+      targets: label,
+      y: y - BATTLE_HIT_TEXT_RISE_PX,
+      alpha: 0,
+      scale: 1,
       duration: BATTLE_HIT_TEXT_DURATION_MS,
       ease: "Cubic.easeOut",
       onComplete: () => label.destroy()
@@ -655,7 +694,7 @@ export default class FightScene extends Phaser.Scene {
     this.enemyNextShotAt = Number.POSITIVE_INFINITY;
     this.regenNextAt = Number.POSITIVE_INFINITY;
     this.summaryReadyAt = this.time.now + this.resultFlashMs;
-    this.flashResultBanner(this.playerDamage > this.enemyDamage ? "WIN" : "LOST", this.resultFlashMs, this.playerDamage > this.enemyDamage ? 0x2f6b2f : 0x8d2f2f);
+    this.flashResultBanner(this.playerDamage > this.enemyDamage ? "WIN" : "LOST", this.resultFlashMs, this.playerDamage > this.enemyDamage ? UI_COLORS.success.value : UI_COLORS.danger.value);
   }
 
   showSummary() {
@@ -678,7 +717,7 @@ export default class FightScene extends Phaser.Scene {
       this.summaryDropText?.setText("");
       this.summaryDropText?.setAlpha(0);
     }
-    // this.hintText.setText(this.autoCloseSummary ? "Closing summary automatically..." : "Press O or X to close.");
+    this.hintText?.setText(this.autoCloseSummary ? "Closing summary automatically..." : "Press O or X to close.");
     // this.summaryText.setText([
     //   `RESULT ${outcomeText}`,
     //   `DMG DEALT ${Math.round(this.playerDamage)}`,

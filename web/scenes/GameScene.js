@@ -7,6 +7,7 @@ import {
   getPetTextureKey,
   resolvePetId
 } from "../helpers/petAssets.js";
+import { UI_COLORS } from "../helpers/uiConfig.js";
 
 const PET_MOVE_BLOCK_SIZE = 16;
 const PET_MOVE_BLOCK_RANGE = 1;
@@ -78,8 +79,8 @@ export default class GameScene extends Phaser.Scene {
     this.sickIcon = this.add.text(this.pet.x + 72, this.pet.y - 72, "!", {
       fontFamily: "Courier New",
       fontSize: "30px",
-      color: "#44514b",
-      stroke: "#dce7d9",
+      color: UI_COLORS.screenInk.hex,
+      stroke: UI_COLORS.screenStrokeSoft.hex,
       strokeThickness: 5
     });
     this.sickIcon.setVisible(false);
@@ -87,19 +88,19 @@ export default class GameScene extends Phaser.Scene {
     this.sleepText = this.add.text(this.pet.x + 86, this.pet.y - 28, "Zz", {
       fontFamily: "Courier New",
       fontSize: "24px",
-      color: "#44514b",
-      stroke: "#dce7d9",
+      color: UI_COLORS.screenInk.hex,
+      stroke: UI_COLORS.screenStrokeSoft.hex,
       strokeThickness: 4
     });
     this.sleepText.setOrigin(0.5, 1);
     this.sleepText.setVisible(false);
 
-    this.evolutionBackdrop = this.add.rectangle(0, 0, this.scale.width, this.scale.height, 0x44514b, 0);
+    this.evolutionBackdrop = this.add.rectangle(0, 0, this.scale.width, this.scale.height, UI_COLORS.screenInk.value, 0);
     this.evolutionBackdrop.setOrigin(0);
     this.evolutionBackdrop.setDepth(50);
     this.evolutionBackdrop.setVisible(false);
 
-    this.evolutionFlash = this.add.rectangle(0, 0, this.scale.width, this.scale.height, 0xf4f7f0, 0);
+    this.evolutionFlash = this.add.rectangle(0, 0, this.scale.width, this.scale.height, UI_COLORS.screenHighlight.value, 0);
     this.evolutionFlash.setOrigin(0);
     this.evolutionFlash.setDepth(51);
     this.evolutionFlash.setVisible(false);
@@ -107,8 +108,8 @@ export default class GameScene extends Phaser.Scene {
     this.evolutionText = this.add.text(this.scale.width / 2, this.scale.height / 2, EVOLUTION_OVERLAY_TEXT, {
       fontFamily: "Courier New",
       fontSize: "30px",
-      color: "#f4f7f0",
-      stroke: "#44514b",
+      color: UI_COLORS.screenHighlight.hex,
+      stroke: UI_COLORS.screenInk.hex,
       strokeThickness: 6,
       align: "center"
     });
@@ -249,7 +250,7 @@ export default class GameScene extends Phaser.Scene {
 
     this.applyPetDisplaySize();
     this.updateOverlayPositions();
-    this.pet.setTint(this.state.isAlive ? (this.state.isSick ? 0x8c9890 : 0x44514b) : 0x7f8b85);
+    this.pet.setTint(this.state.isAlive ? (this.state.isSick ? UI_COLORS.petSickTint.value : UI_COLORS.screenInk.value) : UI_COLORS.petDeadTint.value);
     this.pet.setAlpha(this.state.isAlive ? 1 : 0.55);
     this.sleepText.setVisible(this.state.isSleeping && this.state.isAlive && !this.menuVisible);
     this.sickIcon.setVisible(this.state.isSick && this.state.isAlive && !this.menuVisible);
@@ -439,7 +440,7 @@ export default class GameScene extends Phaser.Scene {
       this.snapPetToGrid();
       this.pet.setAlpha(1);
       this.pet.setScale(1, 1);
-      this.pet.setTint(0x44514b);
+      this.pet.setTint(UI_COLORS.screenInk.value);
       this.updateOverlayPositions();
       this.setEvolutionTransitionActive(true);
       this.showEvolutionOverlay();

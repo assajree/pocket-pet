@@ -6,6 +6,7 @@ import GameScene from "./scenes/GameScene.js";
 import RewardScene from "./scenes/RewardScene.js";
 import UIScene from "./scenes/UIScene.js";
 import { isAndroidAppRuntime } from "./helpers/platform.js";
+import { UI_COLORS } from "./helpers/uiConfig.js";
 
 const buildMeta = self.__POCKET_PET_BUILD__ || {
   id: "unknown",
@@ -25,7 +26,7 @@ const bootGame = () => {
     height: clientHeight,
     // width: Math.max(clientWidth, 360),
     // height: Math.max(clientHeight, 640),
-    backgroundColor: "#b7c7b5",
+    backgroundColor: UI_COLORS.screenBackground.hex,
     scale: {
       mode: Phaser.Scale.RESIZE,
       autoCenter: Phaser.Scale.CENTER_BOTH
