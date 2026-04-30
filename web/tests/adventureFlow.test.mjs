@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { createNewState } from "../gameState.js";
+import { createNewState, getInventoryCount, grantInventoryItem } from "../gameState.js";
 import {
   ADVENTURE_STAGE_CONFIGS,
   getAdventureStageUnlockState,
@@ -115,6 +115,22 @@ test("battle rng is deterministic for the same seed", () => {
   assert.notDeepEqual(valuesA, valuesC);
 });
 
+test("grantInventoryItem returns earned quantity while storing no more than max qty", () => {
+  const nearlyFullState = createNewState();
+  nearlyFullState.inventory.snack = 98;
+
+  assert.equal(grantInventoryItem(nearlyFullState, "snack", 2), 2);
+  assert.equal(getInventoryCount(nearlyFullState, "snack"), 99);
+
+  const fullState = createNewState();
+  fullState.inventory.snack = 99;
+
+  assert.equal(grantInventoryItem(fullState, "snack", 2), 2);
+  assert.equal(getInventoryCount(fullState, "snack"), 99);
+  assert.equal(grantInventoryItem(fullState, "", 2), 0);
+  assert.equal(grantInventoryItem(fullState, "snack", 0), 0);
+});
+
 test("adventure completion stops child scenes before returning to pet UI", async () => {
   globalThis.Phaser = {
     Scene: class {
@@ -217,6 +233,55 @@ test("adventure success returns reward payload directly to pet UI summary", asyn
   assert.equal(payload.stageId, "test-stage");
   assert.equal(payload.stageName, "Test Grove");
   assert.deepEqual(payload.rewards, [{ itemId: "meal", qty: 2 }, { itemId: "snack", qty: 1 }]);
+});
+
+test("adventure success summary shows earned rewards while inventory stays capped", async () => {
+  globalThis.Phaser = {
+    Scene: class {
+      constructor(key) {
+        this.sceneKey = key;
+      }
+    }
+  };
+  globalThis.localStorage = {
+    setItem: () => {},
+    getItem: () => null,
+    removeItem: () => {}
+  };
+
+  const { default: AdventureScene } = await import("../scenes/AdventureScene.js");
+  const scene = new AdventureScene();
+  const events = [];
+
+  scene.scene = {
+    get: () => null,
+    stop: () => events.push("stop:adventure")
+  };
+  scene.uiScene = {
+    onAdventureFlowComplete: (payload) => events.push(payload)
+  };
+  scene.stageConfig = ADVENTURE_STAGE_CONFIGS.find((stage) => stage.id === "mossy-path");
+  scene.currentEncounterSprite = null;
+  scene.menuPanel = null;
+  scene.menuTitle = null;
+  scene.menuBody = null;
+  scene.promptText = { setText: () => {} };
+  scene.infoText = { setVisible: () => {}, setText: () => {} };
+  scene.titleText = { setText: () => {}, setPosition: () => ({ setOrigin: () => {} }) };
+  scene.petSprite = { setVisible: () => {} };
+  scene.state = createNewState();
+  scene.state.inventory.snack = 99;
+  scene.collectedDrops = [];
+
+  scene.finishAdventureSuccess();
+
+  const payload = events.find((entry) => typeof entry === "object");
+  assert.deepEqual(payload.rewards, [
+    { itemId: "snack", qty: 2 },
+    { itemId: "meal", qty: 1 }
+  ]);
+  assert.equal(getInventoryCount(scene.state, "snack"), 99);
+  assert.equal(getInventoryCount(scene.state, "meal"), 2);
 });
 
 test("adventure loss leaves pet sick with low stats instead of dead", async () => {

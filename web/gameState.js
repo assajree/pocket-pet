@@ -1157,17 +1157,18 @@ const adjustInventoryCount = (state, itemKey, delta) =>
   setInventoryCount(state, itemKey, getInventoryCount(state, itemKey) + delta);
 
 export const grantInventoryItem = (state, itemKey, quantity = 1) => {
-  if (!itemKey || quantity <= 0) {
+  const requestedQty = Math.max(0, Math.round(quantity));
+  if (!itemKey || requestedQty <= 0) {
     return 0;
   }
 
   const currentCount = getInventoryCount(state, itemKey);
   const maxQty = getMaxQty(itemKey);
   const nextCount = maxQty
-    ? Math.min(maxQty, currentCount + Math.max(0, Math.round(quantity)))
-    : currentCount + Math.max(0, Math.round(quantity));
+    ? Math.min(maxQty, currentCount + requestedQty)
+    : currentCount + requestedQty;
   setInventoryCount(state, itemKey, nextCount);
-  return nextCount - currentCount;
+  return requestedQty;
 };
 
 const useInventoryItem = (state, itemKey) => {
