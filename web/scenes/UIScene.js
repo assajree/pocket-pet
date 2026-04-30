@@ -61,6 +61,35 @@ import { resolveEffectStatus } from "../helpers/effectStatus.js";
 const LINK_GAME_BET_OPTIONS = [0, 10, 20, 50, 100];
 const QUICK_MATCH_HIT_FLASH_MS = 150;
 const MEDIA_PREVIEW_VIEW = "media-preview";
+const KEY_TO_BUTTON = new Map([
+  ["arrowleft", "left"],
+  ["a", "left"],
+  ["up", "left"],
+  ["w", "left"],
+  ["arrowright", "right"],
+  ["d", "right"],
+  ["down", "right"],
+  ["s", "right"],
+  ["cancel", "cancel"],
+  ["backspace", "cancel"],
+  ["x", "cancel"],
+  ["escape", "cancel"],
+  ["ok", "ok"],
+  ["enter", "ok"],
+  ["o", "ok"]
+]);
+const PREVENT_DEFAULT_KEYS = new Set([
+  "arrowleft",
+  "arrowright",
+  "arrowup",
+  "arrowdown",
+  "a",
+  "d",
+  "x",
+  "o",
+  "escape",
+  "backspace"
+]);
 
 /** Demo tune for DEBUG > SAMPLE > SYNTH (`playSynthSequence` + `NOTE_DURATION_MS`). */
 const DEBUG_SAMPLE_HAPPY_BIRTHDAY_SEQUENCE = [
@@ -254,32 +283,18 @@ export default class UIScene extends Phaser.Scene {
       return;
     }
 
-    const key = event.key.toLowerCase();
-    if (event.key.startsWith("Arrow") || key === "a" || key === "d" || key === "x" || key === "o" || key === "escape" || key === "backspace") {
+    const normalizedKey = String(event.key || "").toLowerCase();
+    if (PREVENT_DEFAULT_KEYS.has(normalizedKey)) {
       event.preventDefault();
     }
 
-    if (event.key === "ArrowLeft" || key === "a") {
-      this.handleDirectionalInput("left");
+    const button = KEY_TO_BUTTON.get(normalizedKey);
+    if (button) {
+      this.handleDirectionalInput(button);
       return;
     }
 
-    if (event.key === "ArrowRight" || key === "d") {
-      this.handleDirectionalInput("right");
-      return;
-    }
-
-    if (key === "cancel" || key === "backspace" || key === "x" || key === "escape") {
-      this.handleDirectionalInput("cancel");
-      return;
-    }
-
-    if (key === "ok" || key === "enter" || key === "o") {
-      this.handleDirectionalInput("ok");
-      return;
-    }
-
-    if (key === "r" && !this.state.isAlive) {
+    if (normalizedKey === "r" && !this.state.isAlive) {
       this.restartGame();
     }
   };
