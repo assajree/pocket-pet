@@ -17,7 +17,7 @@ import {
   getBattleBulletScale
 } from "../helpers/adventureBattle.js";
 
-const BATTLE_LANE_Y_RATIOS = [0.40, 0.54, 0.68];
+const BATTLE_LANE_Y_RATIOS = [0.58, 0.66, 0.74];
 const BATTLE_PLAYER_Y = 0.72;
 const BATTLE_ENEMY_ANCHOR_X_RATIO = 1;
 const BATTLE_PLAYER_X_RATIO = 0.24;
@@ -134,13 +134,13 @@ export default class FightScene extends Phaser.Scene {
     })).setDepth(10);
     this.playerSprite.setDisplaySize(160, 160);
 
-    this.headerText = this.add.text(18, 14, `${this.monster?.name || "ENEMY"}`.toUpperCase(), {
-      fontFamily: "Courier New",
-      fontSize: "20px",
-      color: "#2f3e2e",
-      stroke: "#f4f7f0",
-      strokeThickness: 4
-    });
+    // this.headerText = this.add.text(18, 14, `${this.monster?.name || "ENEMY"}`.toUpperCase(), {
+    //   fontFamily: "Courier New",
+    //   fontSize: "20px",
+    //   color: "#2f3e2e",
+    //   stroke: "#f4f7f0",
+    //   strokeThickness: 4
+    // });
 
     this.timerText = this.add.text(this.scale.width / 2, 16, "", {
       fontFamily: "Courier New",
@@ -321,8 +321,8 @@ export default class FightScene extends Phaser.Scene {
     this.hudText.setText([
       `PLAYER HP ${Math.max(0, Math.round(this.playerHp))}/${this.playerMaxHp}`,
       `ENEMY HP ${Math.max(0, Math.round(this.enemyHp))}/${this.enemyMaxHp}`,
-      `DAMAGE ${Math.round(this.playerDamage)} / ${Math.round(this.enemyDamage)}`,
-      `ATK ${this.playerAttackCount} / ${this.enemyAttackCount}`
+      // `DAMAGE ${Math.round(this.playerDamage)} / ${Math.round(this.enemyDamage)}`,
+      // `ATK ${this.playerAttackCount} / ${this.enemyAttackCount}`
     ].join("\n"));
   }
 

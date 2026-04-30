@@ -63,10 +63,12 @@ const QUICK_MATCH_HIT_FLASH_MS = 150;
 const MEDIA_PREVIEW_VIEW = "media-preview";
 const KEY_TO_BUTTON = new Map([
   ["arrowleft", "left"],
+  ["arrowup", "left"],
   ["a", "left"],
   ["up", "left"],
   ["w", "left"],
   ["arrowright", "right"],
+  ["arrowdown", "right"],
   ["d", "right"],
   ["down", "right"],
   ["s", "right"],
