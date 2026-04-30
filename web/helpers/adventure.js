@@ -56,14 +56,14 @@ const adventureStages = [
         species: "classic",
         element: "water",
         drops: ["snack", "meal", "element-water"],
-        stats: { str: 6, agi: 4, vit: 5, wit: 3, dex: 4, luck: 3 }
+        stats: { str: 1, agi: 0, vit: 0, wit: 0, dex: 0, luck: 0 }
       },
       {
         name: "Moss Moth",
         species: "specie1",
         element: "wind",
         drops: ["snack", "element-wind", "medicine-food"],
-        stats: { str: 7, agi: 6, vit: 5, wit: 4, dex: 6, luck: 5 }
+        stats: { str: 1, agi: 1, vit: 0, wit: 0, dex: 0, luck: 0 }
       }
     ]
   },

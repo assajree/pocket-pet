@@ -64,6 +64,9 @@ export default class AdventureScene extends Phaser.Scene {
     this.collectedDrops = [];
     this.exitConfirmActive = false;
     this.phaseBeforeExitConfirm = null;
+    this.pausedTravelRemainingMs = null;
+    this.travelSegmentStartedAt = 0;
+    this.travelSegmentDurationMs = ADVENTURE_TRAVEL_SEGMENT_MS;
   }
 
   async create(data = {}) {
@@ -87,6 +90,9 @@ export default class AdventureScene extends Phaser.Scene {
     this.isEnding = false;
     this.exitConfirmActive = false;
     this.phaseBeforeExitConfirm = null;
+    this.pausedTravelRemainingMs = null;
+    this.travelSegmentStartedAt = 0;
+    this.travelSegmentDurationMs = ADVENTURE_TRAVEL_SEGMENT_MS;
     this.rng = createBattleSeededRng(this.seed);
     this.uiScene = this.scene.get("UIScene");
     this.uiScene?.setAdventureFlowActive?.(true);
@@ -261,14 +267,7 @@ export default class AdventureScene extends Phaser.Scene {
     this.phase = "travel";
     this.currentEncounterType = nextEncounterType;
     this.walkToggleAt = this.time.now + ADVENTURE_PET_TOGGLE_MS;
-    this.travelTimer = this.time.delayedCall(ADVENTURE_TRAVEL_SEGMENT_MS, () => {
-      this.travelTimer = null;
-      if (this.currentEncounterType === "chest") {
-        this.openTreasureChest();
-      } else {
-        this.startFightEncounter();
-      }
-    });
+    this.scheduleTravelTimer(ADVENTURE_TRAVEL_SEGMENT_MS);
 
     const monster = this.stageConfig.monsters[this.currentMonsterIndex];
     this.currentEncounterSprite = this.currentEncounterType === "chest"
@@ -323,6 +322,9 @@ export default class AdventureScene extends Phaser.Scene {
   }
 
   openTreasureChest() {
+    if (this.isEnding || this.exitConfirmActive || this.phase !== "travel") {
+      return;
+    }
     this.phase = "chest";
     this.destroyEncounterSprite();
     this.chestChoices = pickUniqueOffers(3, this.rng);
@@ -374,6 +376,9 @@ export default class AdventureScene extends Phaser.Scene {
     this.phaseBeforeExitConfirm = this.phase;
     this.exitConfirmActive = true;
     this.phase = "confirm-exit";
+    if (this.phaseBeforeExitConfirm === "travel") {
+      this.pauseTravelTimerForConfirm();
+    }
     this.exitConfirmBackdrop?.setVisible(true);
     this.exitConfirmTitle?.setVisible(true);
     this.exitConfirmBody?.setVisible(true);
@@ -390,6 +395,9 @@ export default class AdventureScene extends Phaser.Scene {
     this.exitConfirmBody?.setVisible(false);
     this.phase = this.phaseBeforeExitConfirm || "travel";
     this.phaseBeforeExitConfirm = null;
+    if (this.phase === "travel") {
+      this.resumeTravelTimerAfterConfirm();
+    }
     if (this.phase === "travel") {
       this.promptText?.setText("Traveling...");
     } else if (this.phase === "chest") {
@@ -428,7 +436,48 @@ export default class AdventureScene extends Phaser.Scene {
     this.scene.stop();
   }
 
+  scheduleTravelTimer(delayMs) {
+    const safeDelay = Math.max(1, Math.round(Number.isFinite(delayMs) ? delayMs : ADVENTURE_TRAVEL_SEGMENT_MS));
+    this.travelSegmentStartedAt = this.time.now;
+    this.travelSegmentDurationMs = safeDelay;
+    this.pausedTravelRemainingMs = null;
+    this.travelTimer = this.time.delayedCall(safeDelay, () => {
+      this.travelTimer = null;
+      if (this.isEnding || this.exitConfirmActive || this.phase !== "travel") {
+        return;
+      }
+      if (this.currentEncounterType === "chest") {
+        this.openTreasureChest();
+      } else {
+        this.startFightEncounter();
+      }
+    });
+  }
+
+  pauseTravelTimerForConfirm() {
+    if (!this.travelTimer) {
+      this.pausedTravelRemainingMs = ADVENTURE_TRAVEL_SEGMENT_MS;
+      return;
+    }
+    const elapsed = Math.max(0, this.time.now - this.travelSegmentStartedAt);
+    const remaining = Math.max(1, Math.round(this.travelSegmentDurationMs - elapsed));
+    this.pausedTravelRemainingMs = remaining;
+    this.travelTimer.remove(false);
+    this.travelTimer = null;
+  }
+
+  resumeTravelTimerAfterConfirm() {
+    if (this.travelTimer || this.phase !== "travel") {
+      return;
+    }
+    const nextDelay = Math.max(1, Math.round(this.pausedTravelRemainingMs ?? ADVENTURE_TRAVEL_SEGMENT_MS));
+    this.scheduleTravelTimer(nextDelay);
+  }
+
   startFightEncounter() {
+    if (this.isEnding || this.exitConfirmActive || this.phase !== "travel") {
+      return;
+    }
     const monster = this.stageConfig.monsters[this.currentMonsterIndex];
     if (!monster) {
       this.finishAdventureSuccess();
@@ -600,6 +649,9 @@ export default class AdventureScene extends Phaser.Scene {
 
   update(time, delta) {
     if (this.phase !== "travel" || !this.currentEncounterSprite) {
+      return;
+    }
+    if (this.exitConfirmActive) {
       return;
     }
 
