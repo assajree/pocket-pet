@@ -38,6 +38,24 @@ test("adventure stages unlock in sequence and respect extra requirements", () =>
   assert.equal(isAdventureStageUnlocked(state, stage3), true);
 });
 
+test("adventure monster progress uses current monster and stage monster total", async () => {
+  globalThis.Phaser = {
+    Scene: class {
+      constructor(key) {
+        this.sceneKey = key;
+      }
+    }
+  };
+
+  const { formatAdventureMonsterProgress } = await import("../scenes/AdventureScene.js");
+
+  assert.equal(formatAdventureMonsterProgress(0, 4), "1/4");
+  assert.equal(formatAdventureMonsterProgress(1, 4), "2/4");
+  assert.equal(formatAdventureMonsterProgress(3, 4), "4/4");
+  assert.equal(formatAdventureMonsterProgress(99, 4), "4/4");
+  assert.equal(formatAdventureMonsterProgress(0, 0), "0/0");
+});
+
 test("battle damage helpers clamp crit and dodge while keeping faster agi on shorter intervals", () => {
   const slowInterval = getBattleAttackIntervalMs(5);
   const fastInterval = getBattleAttackIntervalMs(55);

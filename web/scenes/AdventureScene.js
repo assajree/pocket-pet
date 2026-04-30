@@ -35,8 +35,18 @@ const applyAdventureFailurePenalty = (state, result = null) => {
   state.cleanliness = Math.min(state.cleanliness, ADVENTURE_FAILURE_LOW_STAT);
 };
 
-const formatChestHeader = (stageName, stageIndex, totalStages) =>
-  `${stageName} ${stageIndex + 1}/${totalStages}`;
+export const formatAdventureMonsterProgress = (currentMonsterIndex = 0, totalMonsters = 0) => {
+  const safeTotal = Math.max(0, Math.round(Number.isFinite(totalMonsters) ? totalMonsters : 0));
+  if (safeTotal <= 0) {
+    return "0/0";
+  }
+
+  const safeCurrent = Math.round(Number.isFinite(currentMonsterIndex) ? currentMonsterIndex : 0);
+  return `${Math.min(safeTotal, Math.max(0, safeCurrent) + 1)}/${safeTotal}`;
+};
+
+const formatChestHeader = (stageName, currentMonsterIndex, totalMonsters) =>
+  `${stageName} ${formatAdventureMonsterProgress(currentMonsterIndex, totalMonsters)}`;
 
 const formatChestChoiceLines = (choices = [], activeIndex = 0) =>
   choices.map((choice, index) => `${index === activeIndex ? ">" : " "} ${choice.label}`);
@@ -258,7 +268,7 @@ export default class AdventureScene extends Phaser.Scene {
 
   refreshInfo() {
     this.infoText.setVisible(true);
-    this.infoText.setText(`Stage ${this.stageIndex + 1}/${ADVENTURE_STAGE_CONFIGS.length}`);
+    this.infoText.setText(`Monster ${formatAdventureMonsterProgress(this.currentMonsterIndex, this.stageConfig.monsters.length)}`);
   }
 
   beginTravel(nextEncounterType) {
@@ -336,7 +346,7 @@ export default class AdventureScene extends Phaser.Scene {
     this.destroyEncounterSprite();
     this.chestChoices = pickUniqueOffers(3, this.rng);
     this.menuIndex = 0;
-    this.titleText.setText(formatChestHeader(this.stageConfig.name, this.stageIndex, ADVENTURE_STAGE_CONFIGS.length));
+    this.titleText.setText(formatChestHeader(this.stageConfig.name, this.currentMonsterIndex, this.stageConfig.monsters.length));
     this.titleText.setPosition(this.scale.width / 2, 32).setOrigin(0.5);
     this.infoText.setVisible(false);
     this.chestBackdrop.setVisible(true);
