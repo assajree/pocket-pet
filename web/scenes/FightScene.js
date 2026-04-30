@@ -108,7 +108,6 @@ export default class FightScene extends Phaser.Scene {
     this.runBuffs = data.runBuffs || {};
     this.autoCloseSummary = data.autoCloseSummary !== false;
     this.summaryDurationMs = Number.isFinite(data.summaryDurationMs) ? data.summaryDurationMs : ADVENTURE_BATTLE_CONSTANTS.SUMMARY_DURATION_MS;
-    this.resultFlashMs = Number.isFinite(data.resultFlashMs) ? data.resultFlashMs : ADVENTURE_BATTLE_CONSTANTS.RESULT_FLASH_MS;
     this.seed = data.seed || `${this.stageId}:${Date.now()}`;
     this.rng = createBattleSeededRng(this.seed);
     this.uiScene = this.scene.get("UIScene");
@@ -273,9 +272,9 @@ export default class FightScene extends Phaser.Scene {
     stageBonus: this.enemyStageBonus,
     buffs: this.monster?.buffs || {}
   });
-    this.playerMaxHp = Math.max(1, Math.round(this.state.health));
+    this.playerMaxHp = 100;
     this.enemyMaxHp = Math.max(18, Math.round(28 + this.enemyStats.vit * 4 + this.enemyStats.str * 1.5));
-    this.playerHp = this.playerMaxHp;
+    this.playerHp = Math.max(1, Math.round(this.state.health));
     this.enemyHp = this.enemyMaxHp;
 
     this.playerAttackIntervalMs = getBattleAttackIntervalMs(this.playerStats.agi);
@@ -296,7 +295,6 @@ export default class FightScene extends Phaser.Scene {
     this.battleStopped = false;
     this.summaryVisible = false;
     this.resultResolved = false;
-    this.summaryReadyAt = 0;
   }
 
   clearTimers() {
@@ -386,8 +384,9 @@ export default class FightScene extends Phaser.Scene {
   updateHud() {
     const remainingSeconds = Math.max(0, Math.ceil((this.battleEndsAt - this.time.now) / 1000));
     this.timerText.setText(`TIME ${remainingSeconds}`);
-    this.playerHpText.setText(`PLAYER HP\n${Math.max(0, Math.round(this.playerHp))}/${this.playerMaxHp}`);
-    this.enemyHpText.setText(`ENEMY HP\n${Math.max(0, Math.round(this.enemyHp))}/${this.enemyMaxHp}`);
+    // this.playerHpText.setText(`PLAYER \nHP ${Math.max(0, Math.round(this.playerHp))}/${this.playerMaxHp}`);
+    this.playerHpText.setText(`PLAYER\nHP ${Math.max(0, Math.round(this.playerHp))}`);
+    this.enemyHpText.setText(`ENEMY\nHP ${Math.max(0, Math.round(this.enemyHp))}`);
   }
 
   spawnBullet(side) {
@@ -693,8 +692,6 @@ export default class FightScene extends Phaser.Scene {
     this.playerNextShotAt = Number.POSITIVE_INFINITY;
     this.enemyNextShotAt = Number.POSITIVE_INFINITY;
     this.regenNextAt = Number.POSITIVE_INFINITY;
-    this.summaryReadyAt = this.time.now + this.resultFlashMs;
-    this.flashResultBanner(this.playerDamage > this.enemyDamage ? "WIN" : "LOST", this.resultFlashMs, this.playerDamage > this.enemyDamage ? UI_COLORS.success.value : UI_COLORS.danger.value);
   }
 
   showSummary() {
@@ -774,7 +771,7 @@ export default class FightScene extends Phaser.Scene {
   }
 
   checkForResolution(time) {
-    if (this.battleStopped && !this.summaryVisible && !this.activeBullets.length && time >= this.summaryReadyAt) {
+    if (this.battleStopped && !this.summaryVisible && !this.activeBullets.length) {
       this.showSummary();
     }
   }

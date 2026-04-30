@@ -520,11 +520,13 @@ export default class AdventureScene extends Phaser.Scene {
     this.destroyEncounterSprite();
     this.destroyFightIntroSprite();
     this.destroyChestMenu();
-    this.titleText.setText(this.stageConfig.name.toUpperCase());
+    // this.titleText.setText(this.stageConfig.name.toUpperCase());
+    this.titleText.setText(monster.name.toUpperCase());
     this.titleText.setPosition(18, 14).setOrigin(0);
+    this.infoText.setText(`Want to fight.`);
     this.infoText.setVisible(true);
-    this.promptText.setText(`${monster.name} want to fight.`);
-    this.refreshInfo(`Facing ${monster.name}.`);
+    this.promptText.setText('');
+    // this.refreshInfo(`Facing ${monster.name}.`);
 
     this.playFightIntro(monster);
   }
@@ -597,7 +599,6 @@ export default class AdventureScene extends Phaser.Scene {
           runBuffs: { ...this.runBuffs },
           autoCloseSummary: this.autoCloseSummary,
           summaryDurationMs: ADVENTURE_BATTLE_CONSTANTS.SUMMARY_DURATION_MS,
-          resultFlashMs: ADVENTURE_BATTLE_CONSTANTS.RESULT_FLASH_MS
         });
       }
     });
