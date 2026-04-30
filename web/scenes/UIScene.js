@@ -10,6 +10,7 @@ import {
   createNewState,
   getEggHatchSecondsRemaining,
   getNeedList,
+  getItemLabel,
   getRpgStatStatusLines,
   purchaseItem,
   runCombatEncounter,
@@ -168,6 +169,9 @@ export default class UIScene extends Phaser.Scene {
     this.inputLockedUntil = 0;
     this.isEvolutionAnimationActive = false;
     this.summaryTimer = null;
+    this.activeSummaryTitle = "";
+    this.activeSummaryText = "";
+    this.activeSummaryReturnView = "pet";
     this.actionAnimationTimer = null;
     this.quickMatchHitFlashTimer = null;
     this.quickMatchHitFlashActive = false;
@@ -335,7 +339,7 @@ export default class UIScene extends Phaser.Scene {
       if (this.time.now < this.inputLockedUntil) {
         return;
       }
-      this.closeMiniGameSummary();
+      this.closeSummary();
       return;
     }
 
@@ -1773,23 +1777,62 @@ export default class UIScene extends Phaser.Scene {
     return buildMiniGameSummaryText(this.miniGame, this.activeMiniGameItem);
   }
 
-  closeMiniGameSummary() {
+  closeSummary() {
     this.summaryTimer?.remove(false);
     this.summaryTimer = null;
     this.inputLockedUntil = 0;
-    this.view = "pet";
+    this.view = this.activeSummaryReturnView || "pet";
+    this.activeSummaryTitle = "";
+    this.activeSummaryText = "";
+    this.activeSummaryReturnView = "pet";
     this.activeMiniGameItem = null;
     this.render(this.state);
   }
 
-  showMiniGameSummary() {
+  showSummary({ title = "Result", text = "", returnView = "pet" } = {}) {
     this.summaryTimer?.remove(false);
     this.summaryTimer = null;
+    this.activeSummaryTitle = title;
+    this.activeSummaryText = text;
+    this.activeSummaryReturnView = returnView;
     this.view = "summary";
     this.inputLockedUntil = this.time.now + MINI_GAME_SUMMARY_INPUT_LOCK_MS;
     this.render(this.state);
     this.summaryTimer = this.time.delayedCall(MINI_GAME_SUMMARY_DURATION_MS, () => {
-      this.closeMiniGameSummary();
+      this.closeSummary();
+    });
+  }
+
+  showMiniGameSummary() {
+    this.showSummary({
+      title: this.getMiniGameConfig().summaryTitle || "Result",
+      text: this.getMiniGameSummaryText()
+    });
+  }
+
+  formatAdventureRewardSummary(rewards = []) {
+    if (!Array.isArray(rewards) || !rewards.length) {
+      return "No reward items were added.";
+    }
+
+    return "Reward(s)\n" + rewards
+      .map((reward) => `${getItemLabel(reward.itemId)} x${Math.max(1, Math.round(reward.qty ?? 1))}`)
+      .join("\n");
+  }
+
+  showAdventureSummary(result = {}) {
+    if (result?.success) {
+      const stageName = result.stageName || "Adventure";
+      this.showSummary({
+        title: "Adventure Clear",
+        text: `${stageName} cleared!\n${this.formatAdventureRewardSummary(result.rewards)}`
+      });
+      return;
+    }
+
+    this.showSummary({
+      title: "Adventure Failed",
+      text: "Adventure failed. \nYour pet became sick."
     });
   }
 
@@ -2205,17 +2248,14 @@ export default class UIScene extends Phaser.Scene {
 
     this.menuPath = [];
     this.statusPageIndex = 0;
-    this.view = "pet";
-    this.render(this.state);
 
-    if (!result?.success && !result?.aborted) {
-      this.showMessage("Adventure failed. Your pet became sick.", false, {
-        returnState: {
-          view: "pet",
-          menuPath: []
-        }
-      });
+    if (result?.aborted) {
+      this.view = "pet";
+      this.render(this.state);
+      return;
     }
+
+    this.showAdventureSummary(result);
   }
 
   closeMenu() {
@@ -2560,8 +2600,8 @@ export default class UIScene extends Phaser.Scene {
     if (this.view === "summary") {
       this.setMenuParent(this.getMenuParentText());
       this.setMenuIcon("summary");
-      this.screenMenuTitle.textContent = this.getMiniGameConfig().summaryTitle || "Result";
-      this.screenMenuStatus.textContent = this.getMiniGameSummaryText() + "\n\nPress any key to continue.";
+      this.screenMenuTitle.textContent = this.activeSummaryTitle || "Result";
+      this.screenMenuStatus.textContent = `${this.activeSummaryText || ""}\n\nPress any key to continue.`;
       this.setMenuIndicator(0, 0);
       return;
     }

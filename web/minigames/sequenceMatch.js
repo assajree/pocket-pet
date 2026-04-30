@@ -1,7 +1,7 @@
 import { createMiniGameState } from "./types.js";
 import { HARDWARE_BUTTON_LABELS } from "../helpers/uiConfig.js";
 
-export const SEQUENCE_MATCH_HIT_SCORE = 1;
+export const SEQUENCE_MATCH_HIT_SCORE = 10000;
 
 const buildBaseSession = (item) => ({
   ...createMiniGameState(),
@@ -50,7 +50,7 @@ const finalizeSequenceMatchState = (miniGame, success, failureReason = null) => 
     failureReason,
     timeBonus: remainingMs,
     remainingMs,
-    score: miniGame.score + (remainingMs / 10000.0)
+    score: miniGame.score + remainingMs
   };
 };
 

@@ -68,16 +68,15 @@ export const PLAY_MENU_ITEMS = [
       buttonPool: ["left", "right", "ok"],
       summaryTitle: "Match",
       getSummaryText: ({ score, success, progress, targetCount, timeBonus, failureReason }) => {
-        // if (success) {
-        //   return `${score} points\nSequence cleared. +${timeBonus} time bonus.`;
-        // }
+        if (success) {
+          return `${score} points\nSequence cleared. +${timeBonus} time bonus.`;
+        }
 
-        // if (failureReason === "mistake") {
-        //   return `${score} points\nMissed input at ${progress}/${targetCount}. Reward kept.`;
-        // }
+        if (failureReason === "mistake") {
+          return `${score} points\nMissed input at ${progress}/${targetCount}. Reward kept.`;
+        }
 
-        // return `${score} points\n${progress}/${targetCount} matched. Time ran out.`;
-        return `${score} points`
+        return `${score} points\n${progress}/${targetCount} matched. Time ran out.`;
       }
     },
     currentStatus: ({ happiness, energy }) => ({

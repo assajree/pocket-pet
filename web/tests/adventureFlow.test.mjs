@@ -129,7 +129,7 @@ test("adventure completion stops child scenes before returning to pet UI", async
   scene.uiScene = {
     onAdventureFlowComplete: () => events.push("complete")
   };
-  scene.stageConfig = { id: "test-stage", monsters: [] };
+  scene.stageConfig = { id: "test-stage", name: "Test Stage", monsters: [] };
   scene.stageIndex = 0;
   scene.currentMonsterIndex = 0;
   scene.currentEncounterSprite = null;
@@ -137,13 +137,68 @@ test("adventure completion stops child scenes before returning to pet UI", async
   scene.menuTitle = null;
   scene.menuBody = null;
   scene.promptText = { setText: () => {} };
-  scene.infoText = { setText: () => {} };
+  scene.infoText = { setVisible: () => {}, setText: () => {} };
+  scene.titleText = { setText: () => {}, setPosition: () => ({ setOrigin: () => {} }) };
   scene.runBuffs = { str: 0, agi: 0, vit: 0, wit: 0, dex: 0, luck: 0 };
   scene.state = createNewState();
 
   scene.finishAdventureFailure();
 
   assert.deepEqual(events, ["stop:fight", "stop:reward", "complete", "stop:adventure"]);
+});
+
+test("adventure success returns reward payload directly to pet UI summary", async () => {
+  globalThis.Phaser = {
+    Scene: class {
+      constructor(key) {
+        this.sceneKey = key;
+      }
+    }
+  };
+  globalThis.localStorage = {
+    setItem: () => {},
+    getItem: () => null,
+    removeItem: () => {}
+  };
+
+  const { default: AdventureScene } = await import("../scenes/AdventureScene.js");
+  const scene = new AdventureScene();
+  const events = [];
+
+  scene.scene = {
+    get: () => null,
+    launch: (sceneKey) => events.push(`launch:${sceneKey}`),
+    stop: () => events.push("stop:adventure")
+  };
+  scene.uiScene = {
+    onAdventureFlowComplete: (payload) => events.push(payload)
+  };
+  scene.stageConfig = {
+    id: "test-stage",
+    name: "Test Grove",
+    monsters: [],
+    reward: [{ itemId: "meal", qty: 2 }]
+  };
+  scene.currentEncounterSprite = null;
+  scene.menuPanel = null;
+  scene.menuTitle = null;
+  scene.menuBody = null;
+  scene.promptText = { setText: () => {} };
+  scene.infoText = { setVisible: () => {}, setText: () => {} };
+  scene.titleText = { setText: () => {}, setPosition: () => ({ setOrigin: () => {} }) };
+  scene.petSprite = { setVisible: () => {} };
+  scene.state = createNewState();
+  scene.collectedDrops = [{ itemId: "snack", qty: 1 }];
+
+  scene.finishAdventureSuccess();
+
+  assert.equal(events.includes("launch:RewardScene"), false);
+  assert.equal(events.at(-1), "stop:adventure");
+  const payload = events.find((entry) => typeof entry === "object");
+  assert.equal(payload.success, true);
+  assert.equal(payload.stageId, "test-stage");
+  assert.equal(payload.stageName, "Test Grove");
+  assert.deepEqual(payload.rewards, [{ itemId: "meal", qty: 2 }, { itemId: "snack", qty: 1 }]);
 });
 
 test("adventure loss leaves pet sick with low stats instead of dead", async () => {
@@ -172,14 +227,15 @@ test("adventure loss leaves pet sick with low stats instead of dead", async () =
   scene.uiScene = {
     onAdventureFlowComplete: (payload) => events.push(payload.success ? "success" : "failure")
   };
-  scene.stageConfig = { id: "test-stage", monsters: [{ name: "Slime" }] };
+  scene.stageConfig = { id: "test-stage", name: "Test Stage", monsters: [{ name: "Slime" }] };
   scene.currentMonsterIndex = 0;
   scene.currentEncounterSprite = null;
   scene.menuPanel = null;
   scene.menuTitle = null;
   scene.menuBody = null;
   scene.promptText = { setText: () => {} };
-  scene.infoText = { setText: () => {} };
+  scene.infoText = { setVisible: () => {}, setText: () => {} };
+  scene.titleText = { setText: () => {}, setPosition: () => ({ setOrigin: () => {} }) };
   scene.state = createNewState();
   scene.state.health = 92;
 

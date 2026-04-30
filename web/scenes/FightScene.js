@@ -25,9 +25,40 @@ const BATTLE_TARGET_PADDING_PX = 0;
 const BATTLE_HIT_TEXT_OFFSET_Y = 54;
 const BATTLE_HIT_TEXT_RISE_PX = 34;
 const BATTLE_HIT_TEXT_DURATION_MS = 720;
+const BATTLE_HIT_SPRITE_KEY = "battle-hit";
+const BATTLE_HIT_SPRITE_URL = "./assets/battle/hit.svg";
+const BATTLE_HIT_SPRITE_SIZE = 54;
+const BATTLE_HIT_SPRITE_DURATION_MS = 260;
 
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 const getStatValue = (source, key) => Math.max(0, Math.round(Number.isFinite(source?.[key]) ? source[key] : 0));
+
+const ensureBattleHitSpriteLoaded = (scene) => new Promise((resolve, reject) => {
+  if (scene.textures.exists(BATTLE_HIT_SPRITE_KEY)) {
+    resolve();
+    return;
+  }
+
+  const handleFileError = (file) => {
+    if (file?.key === BATTLE_HIT_SPRITE_KEY) {
+      cleanup();
+      reject(new Error("Failed to load battle hit sprite."));
+    }
+  };
+  const cleanup = () => {
+    scene.load.off(Phaser.Loader.Events.FILE_LOAD_ERROR, handleFileError);
+    scene.load.off(Phaser.Loader.Events.COMPLETE, handleComplete);
+  };
+  const handleComplete = () => {
+    cleanup();
+    resolve();
+  };
+
+  scene.load.on(Phaser.Loader.Events.FILE_LOAD_ERROR, handleFileError);
+  scene.load.once(Phaser.Loader.Events.COMPLETE, handleComplete);
+  scene.load.image(BATTLE_HIT_SPRITE_KEY, BATTLE_HIT_SPRITE_URL);
+  scene.load.start();
+});
 
 const buildResolvedStats = ({ baseStats, levelBonus, stageBonus, buffs = {} }) => {
   const effectiveBuffs = {
@@ -91,7 +122,8 @@ export default class FightScene extends Phaser.Scene {
     try {
       await Promise.all([
         ensurePetStageAssetsLoaded(this, this.state.petId, this.state.evolutionStage),
-        ensurePetStageAssetsLoaded(this, this.monster?.species || this.state.petId, "adult")
+        ensurePetStageAssetsLoaded(this, this.monster?.species || this.state.petId, "adult"),
+        ensureBattleHitSpriteLoaded(this)
       ]);
       if (!this.scene.isActive()) {
         return;
@@ -453,6 +485,8 @@ export default class FightScene extends Phaser.Scene {
           continue;
         }
 
+        this.showHitSprite((playerBullet.sprite.x + enemyBullet.sprite.x) / 2, playerBullet.sprite.y);
+
         if (playerBullet.power === enemyBullet.power) {
           playerBullet.sprite.destroy();
           enemyBullet.sprite.destroy();
@@ -494,6 +528,11 @@ export default class FightScene extends Phaser.Scene {
       return;
     }
 
+    const impactX = bullet.side === "player"
+      ? this.enemyAnchorX - BATTLE_TARGET_PADDING_PX
+      : this.playerSprite.x + this.playerSprite.displayWidth * 0.25;
+    this.showHitSprite(impactX, bullet.sprite.y, bullet.isCritical);
+
     const elementMultiplier = getBattleElementMultiplier(attackerElement, defenderElement);
     const damage = calculateBattleDamage({
       attack: bullet.power,
@@ -525,6 +564,31 @@ export default class FightScene extends Phaser.Scene {
     }
 
     bullet.sprite.destroy();
+  }
+
+  showHitSprite(x, y, isCritical = false) {
+    if (!this.textures.exists(BATTLE_HIT_SPRITE_KEY)) {
+      return;
+    }
+
+    const spark = this.add.image(
+      clamp(x, 24, this.scale.width - 24),
+      clamp(y, 24, this.scale.height - 24),
+      BATTLE_HIT_SPRITE_KEY
+    ).setDepth(17).setAlpha(0.98);
+    const baseSize = BATTLE_HIT_SPRITE_SIZE * (isCritical ? 1.22 : 1);
+    spark.setDisplaySize(baseSize, baseSize);
+    spark.setRotation(this.rng() * Math.PI);
+
+    this.tweens.add({
+      targets: spark,
+      alpha: 0,
+      scale: isCritical ? 1.45 : 1.25,
+      angle: spark.angle + (isCritical ? 35 : 22),
+      duration: BATTLE_HIT_SPRITE_DURATION_MS,
+      ease: "Cubic.easeOut",
+      onComplete: () => spark.destroy()
+    });
   }
 
   showHitText({ bullet, text, isCritical = false, isMiss = false }) {

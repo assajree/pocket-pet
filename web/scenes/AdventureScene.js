@@ -624,6 +624,7 @@ export default class AdventureScene extends Phaser.Scene {
     this.uiScene?.onAdventureFlowComplete?.({
       success: false,
       stageId: this.stageConfig.id,
+      stageName: this.stageConfig.name,
       result
     });
     this.scene.stop();
@@ -645,26 +646,14 @@ export default class AdventureScene extends Phaser.Scene {
     const grantedRewards = grantAdventureRewardBundle(this.state, this.stageConfig.reward);
     markAdventureStageCleared(this.state, this.stageConfig.id);
     saveState(this.state, "adventure:success");
-    const allLoot = [...grantedRewards, ...this.collectedDrops];
-    this.scene.launch("RewardScene", {
-      stageName: this.stageConfig.name,
-      rewards: allLoot,
-      autoCloseMs: this.autoCloseSummary ? this.summaryDurationMs : -1
-    });
     this.promptText.setText("Adventure cleared!");
     this.refreshInfo("Stage complete.");
-  }
-
-  handleRewardClosed() {
-    if (!this.isEnding) {
-      return;
-    }
-
     this.stopAdventureChildScenes();
     this.uiScene?.onAdventureFlowComplete?.({
       success: true,
       stageId: this.stageConfig.id,
-      rewards: [...this.stageConfig.reward, ...this.collectedDrops]
+      stageName: this.stageConfig.name,
+      rewards: [...grantedRewards, ...this.collectedDrops]
     });
     this.scene.stop();
   }
