@@ -20,7 +20,7 @@ const ADVENTURE_FAILURE_HEALTH = 10;
 const ADVENTURE_MENU_BACKGROUND = 0xb7c7b5;
 const ADVENTURE_MENU_TEXT = "#44514b";
 
-const createAdventureStatBuff = () => ({ str: 0, agi: 0, vit: 0, dex: 0, luck: 0, wit: 0 });
+const createAdventureStatBuff = () => ({ str: 0, agi: 0, vit: 0, dex: 0, luck: 0 });
 
 const applyAdventureFailurePenalty = (state, result = null) => {
   state.isAlive = true;

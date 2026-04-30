@@ -75,8 +75,7 @@ const buildResolvedStats = ({ baseStats, levelBonus, stageBonus, buffs = {} }) =
     agi: getStatValue(buffs, "agi"),
     vit: getStatValue(buffs, "vit"),
     dex: getStatValue(buffs, "dex"),
-    luck: getStatValue(buffs, "luck"),
-    wit: getStatValue(buffs, "wit")
+    luck: getStatValue(buffs, "luck")
   };
 
   return {
@@ -84,8 +83,7 @@ const buildResolvedStats = ({ baseStats, levelBonus, stageBonus, buffs = {} }) =
     agi: Math.max(0, Math.round(getStatValue(baseStats, "agi") + effectiveBuffs.agi)),
     vit: getBattleDefenseStat(baseStats.vit, { levelBonus, stageBonus, buff: effectiveBuffs.vit }),
     dex: Math.max(0, Math.round(getStatValue(baseStats, "dex") + effectiveBuffs.dex)),
-    luck: Math.max(0, Math.round(getStatValue(baseStats, "luck") + effectiveBuffs.luck)),
-    wit: Math.max(0, Math.round(getStatValue(baseStats, "wit") + effectiveBuffs.wit))
+    luck: Math.max(0, Math.round(getStatValue(baseStats, "luck") + effectiveBuffs.luck))
   };
 };
 
@@ -205,7 +203,7 @@ export default class FightScene extends Phaser.Scene {
       lineSpacing: 4
     });
 
-    this.resultBanner = this.add.text(this.scale.width / 2, this.scale.height / 2 - 30, "", {
+    this.resultBanner = this.add.text(this.scale.width / 2, this.scale.height / 2 - 34, "", {
       fontFamily: "Courier New",
       fontSize: "34px",
       color: "#2f3e2e",
@@ -218,7 +216,7 @@ export default class FightScene extends Phaser.Scene {
       .setDepth(30)
       .setVisible(false);
 
-    this.summaryText = this.add.text(this.scale.width / 2, this.scale.height / 2 - 30, "", {
+    this.summaryText = this.add.text(this.scale.width / 2, this.scale.height / 2 , "", {
       fontFamily: "Courier New",
       fontSize: "24px",
       color: "#2f3e2e",
@@ -235,27 +233,25 @@ export default class FightScene extends Phaser.Scene {
       align: "center"
     }).setOrigin(0.5).setDepth(31).setAlpha(0);
 
-    this.hintText = this.add.text(this.scale.width / 2, this.scale.height - 18, "Battle starts now. Trade shots and survive.", {
-      fontFamily: "Courier New",
-      fontSize: "14px",
-      color: "#44514b"
-    }).setOrigin(0.5, 1).setDepth(32);
+    // this.hintText = this.add.text(this.scale.width / 2, this.scale.height - 18, "Battle starts now. Trade shots and survive.", {
+    //   fontFamily: "Courier New",
+    //   fontSize: "14px",
+    //   color: "#44514b"
+    // }).setOrigin(0.5, 1).setDepth(32);
 
     const basePlayerStats = {
       str: getStatValue(this.state, "str"),
       agi: getStatValue(this.state, "agi"),
       vit: getStatValue(this.state, "vit"),
       dex: getStatValue(this.state, "dex"),
-      luck: getStatValue(this.state, "luck"),
-      wit: getStatValue(this.state, "wit")
+      luck: getStatValue(this.state, "luck")
     };
     const baseMonsterStats = {
       str: getStatValue(this.monster?.stats, "str"),
       agi: getStatValue(this.monster?.stats, "agi"),
       vit: getStatValue(this.monster?.stats, "vit"),
       dex: getStatValue(this.monster?.stats, "dex"),
-      luck: getStatValue(this.monster?.stats, "luck"),
-      wit: getStatValue(this.monster?.stats, "wit")
+      luck: getStatValue(this.monster?.stats, "luck")
     };
 
     this.playerStats = buildResolvedStats({
@@ -325,7 +321,7 @@ export default class FightScene extends Phaser.Scene {
     this.resultBanner.setText("FIGHT!");
     this.resultBanner.setAlpha(1);
     this.summaryText.setAlpha(0);
-    this.hintText.setText("O button summary | timer 30s");
+    // this.hintText.setText("O button summary | timer 30s");
     this.flashResultBanner("FIGHT!", 800, 0x2f3e2e);
   }
 
@@ -351,7 +347,7 @@ export default class FightScene extends Phaser.Scene {
 
       if (time >= this.regenNextAt) {
         this.regenNextAt = time + ADVENTURE_BATTLE_CONSTANTS.BATTLE_REGEN_INTERVAL_MS;
-        const regenAmount = getBattleRegenAmount(this.playerStats.wit);
+        const regenAmount = getBattleRegenAmount(this.playerStats.vit);
         this.playerHp = Math.min(this.playerMaxHp, this.playerHp + regenAmount);
         this.state.health = Math.min(100, Math.round(this.state.health + regenAmount));
         saveState(this.state, "fight:regen");
@@ -682,7 +678,7 @@ export default class FightScene extends Phaser.Scene {
       this.summaryDropText?.setText("");
       this.summaryDropText?.setAlpha(0);
     }
-    this.hintText.setText(this.autoCloseSummary ? "Closing summary automatically..." : "Press O or X to close.");
+    // this.hintText.setText(this.autoCloseSummary ? "Closing summary automatically..." : "Press O or X to close.");
     // this.summaryText.setText([
     //   `RESULT ${outcomeText}`,
     //   `DMG DEALT ${Math.round(this.playerDamage)}`,

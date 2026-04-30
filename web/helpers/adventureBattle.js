@@ -273,8 +273,8 @@ export const calculateBattleDamage = ({
 export const getBattleBulletScale = (attack = 0) =>
   clamp(0.65 + (Math.max(0, Number.isFinite(attack) ? attack : 0) / ADVENTURE_BATTLE_CONSTANTS.BULLET_SCALE_DIVISOR), ADVENTURE_BATTLE_CONSTANTS.BULLET_SCALE_MIN, ADVENTURE_BATTLE_CONSTANTS.BULLET_SCALE_MAX);
 
-export const getBattleRegenAmount = (wit = 0) =>
-  clamp(Math.round(1 + softValue(wit, 35) * 6), 1, ADVENTURE_BATTLE_CONSTANTS.REGEN_MAX_PER_TICK);
+export const getBattleRegenAmount = (vit = 0) =>
+  clamp(Math.round(1 + softValue(vit, 35) * 6), 1, ADVENTURE_BATTLE_CONSTANTS.REGEN_MAX_PER_TICK);
 
 export const getBattleStageAttackBonus = (stageIndex = 0) => getBattleStageBonus(stageIndex);
 

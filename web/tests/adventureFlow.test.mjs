@@ -14,7 +14,8 @@ import {
   createBattleSeededRng,
   getBattleAttackIntervalMs,
   getBattleCriticalChance,
-  getBattleDodgeChance
+  getBattleDodgeChance,
+  getBattleRegenAmount
 } from "../helpers/adventureBattle.js";
 
 test("adventure stages unlock in sequence and respect extra requirements", () => {
@@ -102,6 +103,14 @@ test("battle damage stays positive and critical hits deal more", () => {
   assert.ok(critDamage > normalDamage);
 });
 
+test("battle regen scales from vit without requiring wit", () => {
+  const lowVitRegen = getBattleRegenAmount(0);
+  const highVitRegen = getBattleRegenAmount(90);
+
+  assert.ok(highVitRegen > lowVitRegen);
+  assert.ok(highVitRegen <= ADVENTURE_BATTLE_CONSTANTS.REGEN_MAX_PER_TICK);
+});
+
 test("battle rng is deterministic for the same seed", () => {
   const rngA = createBattleSeededRng("seed-123");
   const rngB = createBattleSeededRng("seed-123");
@@ -173,7 +182,7 @@ test("adventure completion stops child scenes before returning to pet UI", async
   scene.promptText = { setText: () => {} };
   scene.infoText = { setVisible: () => {}, setText: () => {} };
   scene.titleText = { setText: () => {}, setPosition: () => ({ setOrigin: () => {} }) };
-  scene.runBuffs = { str: 0, agi: 0, vit: 0, wit: 0, dex: 0, luck: 0 };
+  scene.runBuffs = { str: 0, agi: 0, vit: 0, dex: 0, luck: 0 };
   scene.state = createNewState();
 
   scene.finishAdventureFailure();
@@ -409,7 +418,7 @@ test("fight summary shows full overlay with WIN and drop preview", async () => {
   assert.deepEqual(bannerAlphaUpdates, [0]);
   assert.ok(summaryUpdates.includes("WIN"));
   assert.ok(summaryUpdates.includes("alpha:1"));
-  assert.ok(dropUpdates.includes("FOUND Snack x2"));
+  assert.ok(dropUpdates.includes("FOUND \nSnack x2"));
   assert.ok(dropUpdates.includes("alpha:1"));
   assert.deepEqual(hintUpdates, ["Closing summary automatically..."]);
 });
