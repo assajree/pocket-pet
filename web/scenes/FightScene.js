@@ -39,7 +39,7 @@ const formatDropPreviewLine = (drop) => {
   }
 
   const qty = Math.max(1, Math.round(drop?.qty ?? 1));
-  return `FOUND ${getItemLabel(itemId)} x${qty}`;
+  return `\nFOUND \n${getItemLabel(itemId)} x${qty}`;
 };
 
 const ensureBattleHitSpriteLoaded = (scene) => new Promise((resolve, reject) => {
@@ -213,7 +213,7 @@ export default class FightScene extends Phaser.Scene {
       strokeThickness: 6
     }).setOrigin(0.5).setDepth(20).setAlpha(0);
 
-    this.summaryBackdrop = this.add.rectangle(0, 0, this.scale.width, this.scale.height, 0xf3f7ee, 1)
+    this.summaryBackdrop = this.add.rectangle(0, 0, this.scale.width, this.scale.height, 0xb7c7b5, 1)
       .setOrigin(0)
       .setDepth(30)
       .setVisible(false);
@@ -224,8 +224,8 @@ export default class FightScene extends Phaser.Scene {
       color: "#2f3e2e",
       align: "center",
       lineSpacing: 10,
-      stroke: "#f4f7f0",
-      strokeThickness: 4
+      // stroke: "#f4f7f0",
+      // strokeThickness: 4
     }).setOrigin(0.5).setDepth(31).setAlpha(0);
 
     this.hintText = this.add.text(this.scale.width / 2, this.scale.height - 18, "Battle starts now. Trade shots and survive.", {

@@ -619,7 +619,7 @@ export default class AdventureScene extends Phaser.Scene {
       const gained = grantAdventureRewardBundle(this.state, [drop]);
       if (gained.length) {
         this.collectedDrops.push(...gained);
-        this.showToast(`Found ${gained[0].itemId.toUpperCase()} x${gained[0].qty}.`, 1200);
+        this.showToast(`Found \n${gained[0].itemId.toUpperCase()} x${gained[0].qty}.`, 1200);
       }
     }
 
