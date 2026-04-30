@@ -19,17 +19,6 @@ hidden buff
 - funny
 อาจจะไม่ต้องมีก็ได้ ใช้การกำหนด previous specie จาก pet catalog ก็ได้
 
-pet battle status
-- str ความแรงการโจมตี
-- agi ความเร็วการโจมตี, อัตราการหลบ
-- vit เพิ่ม def, regen
-- dex อัตรา hit, อัตรา critical
-- luck อัตรา critical, อัตรา dodge, double item effect
-- lv attack, def bonus
-- อาจจะมีเกจท่าไม้ตาย เมื่อเต็มจะให้เล่นเกม quick match เพื่อใช้คำนวนความแรง
-- buff/debuff ที่มีผลกับ status ตะถูกคำนวนก่อนเอา status ไปใช้
-- stage มีผลกับ max level, max status
-
 damage type แยก sprite
 - acid
 - poison
@@ -40,93 +29,9 @@ damage type แยก sprite
 - impact
 - psychic
 
+- show enemy name at butom screen
+- adventure status item random level
+- add enemy flip sprite config
 
 
-- ก่อนการคำนวนให้เอา buff/debuff ไปคำนวน status ก่อน
-
-- เพิ่มระบบ element, pet element attack element
-- ทำโครงสร้างการคำนวนค่า atk def iscritical  critical damage, is dodge เพื่อให้กลับไปแก้ไจได้ง่าย
-
-ระบบ rpg
-- เดินอัตโนมัติ
-- ต่อสู้อัตโนมัติ
-- เพิ่ม ability ให้ pet เป็นตัวคูณ stat
-- คำนวน status จาก base status คูณด้วยค่าจาก ability
-- ability ได้มาจากตอน evolution
-- แต่ละ stage สุ่ม buff 3 อย่างเพื่อให้เลือกได้ 1 อย่าง
-
-เพิ่มเมนู ADVENTURE ใน main menu
-
-adventure menu
-- มีหลาย stage ให้เลือกโดยใช้ค่าจาก stage config ที่เก็บค่าของแต่ละ stage ในรูปแบบ array เพื่อให้เพิ่ม stage ทีหลังได้
-- config ของแต่ละ stage ประกอบด้วย ชื่อ stage, reward เป็น array เก็บ item id และจำนวน, array ของ monster ที่จะปรากฏใน stage
-- config ของ monster แต่ละตัวประกอบด้วย ชื่อ, สายพันธ์, drop item array,  status ได้แก่ str, agi, wit, dex, luck เพื่อ ใช้คำนวนในการต่อสู้
-- โดย stage ที่เลือกได้ต้องปลดล็อคโดยการเคลียร์ stage ก่อนหน้า บาง stage อาจมีเงื่อนไขเพิ่มเติมด้วย
-- เมื่อเลือก stage แล้ว จะเปิด adventure scene เพื่อเริ่มการผจญภัย
-- หลังผจญภัยสำเร็จจะแสดงหน้า reward โดยแสดงรางวัลที่ได้รับ
-
-adventure scene
-- ภาพรวมของ adventure scene คือรับค่า config ของ stage และให้ pet ปัจจุบันเดินผจญภัยใน stage โดยจะเจอหีบสมบัติก่อนจะเดินทางต่อไปเจอ monster สลับกับหีบสมบัติจนกว่าจะเอาชนะ monster ทั้งหมด หรือ hp ของ pet หมด เมื่อจบด้วยการชนะ จะได้รางวัลที่กำหนดไว้ใน stage config หากจบด้วยการแพ้จะไม่ได้รับรางวัล และทำให้ pet ป่วย
-- เมื่อเริ่ม adventure scene จะแสดง animation การเดินโดยวาง sprite pet ที่มุมซ้ายของหน้าจอ สลับระหว่าง idle กับ walk อยู่กับที่ และ background แบบเลื่อนเพื่อจำลองการเดินของ pet
-- เมื่อเล่น animation การเดินไประยะเวลาหนึ่งโดยสามารถกำหนดค่าใน constant ได้ จะ spawn sprite หีบสมบัติ ที่มุมซ้ายของจอ ค่อยๆ เคลื่อน เข้ามาหา pet ด้วยความเร็วเท่ากับ background เพื่อจำลองว่า pet เดินไปถึงหีบสมบัติ
-- เมื่อหีบมาถึง pet จะ random item ขึ้นมาให้เลือก 3 อย่าง จาก potion, temp increase status โดยแสดงผลแบบหน้าจอเมนู
-- หลังจากเลือก item จากหีบสมบัติแล้ว pet จะเดินต่อ จนไปเจอกับศัตรูแบบเดียวกับการเจอหีบสมบัติและเข้าสู่ battle scene
-- เมื่อเอาชนะศัตรูได้แล้วจะสุ่มได้รับไอเท็ม 1 ชิ้นจาก item drop array ของศัตรู
-- ระหว่างการเดิน hp จะ regen เรื่อยๆ โดยที่ความถี่ในการ regen สามารถกำหนดได้ผ่าน constant และจำนวนที่ regen คำนวนจากค่า wit
-
-fighting scene
-- แสดง sprite ของ ที่กลางหน้าจอศัตรู ด้วย angry sprite สลับกับ attack sprite 3 รอบ โดยสามารถกำหนดความถี่ในการสลับได้จาก constant และตั้งค่าการ flip sprite จากซ้ายเป็นขวาได้
-- เลื่อน sprite ของศัตรูไปทางซ้ายจนสุดหน้าจอ โดยสามารถปรับเวลาในการเคลื่อนที่จุดถึงจุดหมายได้จาก constant
-- แสดง idle sprite ของ pet ปัจจุบันยืนอยู่ด้านขวาของจอเพียงตัวเดียว
-- คำนวนเวลาในการยิงแต่ละครั้งด้วยค่า agi ของ pet และแยก method ในการคำนวนเวลาการยิงไว้ให้ง่ายต่อการแก้ไข
-- ตอนยิงเปลี่ยน pet sprite เป็น attack sprite พร้อม spawn bullet sprite วิ่งจากขวาไปซ้ายไปขวา 
-- bullet sprite จะหายไปเมื่อพ้นหน้าจอ และคำนวน attack damage
-- เปลี่ยน sprite ตัวละคร จาก attack sprite กลับไปเป็น idle sprite เมื่อผ่านไประยะเวลาหนึ่งโดยใช้ค่าจาก constant เพื่อการปรับภายหลัง และเริ่มคำนวนเวลาในการยิงรอบใหม่
-- ใช้ค่า constant เพื่อกำหนดเวลาการเคลื่อนที่ของ bullet ไปจนสุดขอบจอแสดงผล
-- bullet sprite กำหนดที่ pet catalog
-- ขนาดของ bullet sprite เปลี่ยนแปลงตามค่า atk ยิ่งมาก sprite ยิ่งใหญ่ สามารถกำหนดค่าตัวคูณขนาดได้ใน constant
-- bullet จะมีจุด spawn 3 จุด ตำแหน่ง บน กลาง ล่าง สามารถปรับได้จาก constant
-- การ spawn bullet แต่ละครั้งจะเป็นการ random จาก 3 จุดนี้
-- คำนวนการโจมตีของศัตรูเช่นเดียวกับของผู้เล่น แต่ปรับให้ bullet ของ ศัตรู spawn จากจอด้านซ้าย และเคลื่อนจากซ้ายไปขวาจนถึงจุด spawn bullet ของผู้เล่น และไม่ต้อง แสดง sprite ของ pet ศัตรู
-- เมื่อ bullet ของผู้เล่นและ ศัตรู spawn ในเลนเดียวกันและชนกัน จะเกิดการหักล้าง bullet ที่ atk น้อยกว่าจะหายไปเหลือแค่ bullet ที่ atk มากกว่าที่ถูกลดค่าด้วย atk ของ bullet ที่หายไป หรือหายไปทั้งคู่ถ้า atk เท่ากัน
-- fighting scene มีเวลาในการต่อสู้ 30 วินาที เริ่มจีบเวลาเมื่อ pet sprite ของผู้เล่นแสดงบนหน้าจอ
-- หาก hp ของฝ่ายใดฝ่ายหนึ่งหมดหรือหมดเวลาในการต่อสู้ทั้งสองฝ่ายจะหยุดการโจมตี แต่ bullet ที่ spawn แล้วจะยังทำงานอยู่จนกว่าจะจบ life cycle
-- หลังจากยุติการต่อสู้และไม่เหลือ bullet ในหน้าจอแล้วจะทำการสรุปผล โดยผู้ชนะคือฝ่ายที่ทำ damage ได้สูงกว่า หากผู้เล่นเป็นฝ่ายแพ้จะแสดงข้อความ WIN หากแพ้จะแสดงข้อความ LOST บนหน้าจอ 2 วินาที และปรับค่าด้วย constant ได้ หลังจากนั้นจะแสดงสถิติการต่อสู้ ประกอบด้วย ผลการต่อสู้ WIN/LOST, damage ที่ทำได้, damage ที่ได้รับ, hp คงเหลือ, จำนวนครั้งที่โจมตี ค้างไว้จนกว่าจะถึงเวลาที่กำหนดไว้ใน constant วินาที default 3 วินาที
-- สามารถส่ง parameter เพิ่มได้ว่าจะปิดหน้าจอหน้าจอสถิติการต่อสู้อัตโนมัติหลังจากครบการหน่วงเวลาหรือจะรอจนกว่าจะมีการกด hardware button
-- fighting scene รองรับ random seed เพื่อใช้ในการ link ในอนาคต
-- fighting scene รองรับระบบ element, critical, dodge
-
-ค่าที่มีผลกับ dodge rate
-- dex
-- luck
-- enemy agi
-- enemy luck
-- buff/debuff
-- enemy buff/debuff
-- max 80%
-
-ค่าที่มีผลกับ atk
-- str 
-- level bonus 
-- stage bonus
-- buff/debuff
-
-ค่าที่มีผลกับ def
-- vit 
-- level bonus 
-- stage bonus
-- buff/debuff
-
-ค่าที่มีผลกับ critical rate
-- dex 
-- luck
-- enemy luck
-- buff/debuff
-- max 80%
-
-การคำนวน critical 
-(atk * 1.5)
-
-การคำนวน damage
-atk - def + critical damage + buff - debuff
 

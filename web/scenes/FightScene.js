@@ -20,7 +20,7 @@ import {
 const BATTLE_LANE_Y_RATIOS = [0.58, 0.66, 0.74];
 const BATTLE_PLAYER_Y = 0.72;
 const BATTLE_ENEMY_ANCHOR_X_RATIO = 1;
-const BATTLE_PLAYER_X_RATIO = 0.18;
+const BATTLE_PLAYER_X_RATIO = 0.20;
 const BATTLE_TARGET_PADDING_PX = 0;
 const BATTLE_HIT_TEXT_OFFSET_Y = 54;
 const BATTLE_HIT_TEXT_RISE_PX = 34;
@@ -168,7 +168,7 @@ export default class FightScene extends Phaser.Scene {
       stage: this.state.evolutionStage,
       variant: "idle"
     })).setDepth(10);
-    this.playerSprite.setDisplaySize(160, 160);
+    this.playerSprite.setDisplaySize(150, 150);
 
     // this.headerText = this.add.text(18, 14, `${this.monster?.name || "ENEMY"}`.toUpperCase(), {
     //   fontFamily: "Courier New",

@@ -304,13 +304,15 @@ export default class AdventureScene extends Phaser.Scene {
     const container = this.add.container(0, 0);
     const sprite = this.add.image(0, -4, getPetTextureKey({ petId: monster.species, stage: "adult", variant: "idle" }));
     sprite.setDisplaySize(72, 72);
-    const label = this.add.text(0, 44, monster.name.toUpperCase(), {
-      fontFamily: "Courier New",
-      fontSize: "12px",
-      color: "#44514b",
-      align: "center"
-    }).setOrigin(0.5);
-    container.add([sprite, label]);
+    sprite.flipX = true;
+    // const label = this.add.text(0, 44, monster.name.toUpperCase(), {
+    //   fontFamily: "Courier New",
+    //   fontSize: "12px",
+    //   color: "#44514b",
+    //   align: "center"
+    // }).setOrigin(0.5);
+    // container.add([sprite, label]);
+    container.add([sprite]);
     return container;
   }
 
@@ -416,7 +418,8 @@ export default class AdventureScene extends Phaser.Scene {
     } else if (this.phase === "chest") {
       this.promptText?.setText("Left / Right choose, O take.");
     } else if (this.phase === "fight") {
-      this.promptText?.setText("Battle starting...");
+      const monster = this.stageConfig.monsters[this.currentMonsterIndex];
+      this.promptText?.setText(`${monster.name} want to fight.`);
     }
   }
 
@@ -506,7 +509,7 @@ export default class AdventureScene extends Phaser.Scene {
     this.titleText.setText(this.stageConfig.name.toUpperCase());
     this.titleText.setPosition(18, 14).setOrigin(0);
     this.infoText.setVisible(true);
-    this.promptText.setText("Battle starting...");
+    this.promptText.setText(`${monster.name} want to fight.`);
     this.refreshInfo(`Facing ${monster.name}.`);
 
     this.playFightIntro(monster);
@@ -546,6 +549,13 @@ export default class AdventureScene extends Phaser.Scene {
     if (!this.fightIntroSprite || this.isEnding || this.phase !== "fight-intro") {
       return;
     }
+    const enemySprite = this.fightIntroSprite.getAt?.(0);
+    if (enemySprite?.setFlipX) {
+      enemySprite.setFlipX(false);
+    } else if (enemySprite) {
+      enemySprite.flipX = false;
+    }
+
     const offscreenX = this.scale.width + ADVENTURE_BATTLE_CONSTANTS.ENEMY_INTRO_EXIT_OFFSCREEN_PADDING;
     const distance = Math.max(1, offscreenX - this.fightIntroSprite.x);
     const durationMs = Math.max(1, Math.round(distance / ADVENTURE_BATTLE_CONSTANTS.ENEMY_INTRO_EXIT_SPEED_PX_PER_MS));
