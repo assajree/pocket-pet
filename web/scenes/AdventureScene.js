@@ -330,6 +330,11 @@ export default class AdventureScene extends Phaser.Scene {
     this.currentEncounterSprite = null;
   }
 
+  destroySummaryOverlay() {
+    this.summaryOverlay?.destroy?.(true);
+    this.summaryOverlay = null;
+  }
+
   startFightEncounter() {
     const monster = this.stageConfig.monsters[this.currentMonsterIndex];
     if (!monster) {
@@ -392,6 +397,7 @@ export default class AdventureScene extends Phaser.Scene {
     this.isEnding = true;
     this.destroyEncounterSprite();
     this.destroyChestMenu();
+    this.stopAdventureChildScenes();
     this.promptText.setText("Adventure failed.");
     this.refreshInfo("Pet became sick.");
     this.uiScene?.onAdventureFlowComplete?.({
@@ -428,12 +434,22 @@ export default class AdventureScene extends Phaser.Scene {
       return;
     }
 
+    this.stopAdventureChildScenes();
     this.uiScene?.onAdventureFlowComplete?.({
       success: true,
       stageId: this.stageConfig.id,
       rewards: [...this.stageConfig.reward, ...this.collectedDrops]
     });
     this.scene.stop();
+  }
+
+  stopAdventureChildScenes() {
+    ["FightScene", "RewardScene"].forEach((sceneKey) => {
+      const childScene = this.scene.get(sceneKey);
+      if (childScene?.scene?.isActive()) {
+        childScene.scene.stop();
+      }
+    });
   }
 
   handleAdventureInput(button) {

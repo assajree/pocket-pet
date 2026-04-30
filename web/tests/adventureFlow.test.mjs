@@ -97,3 +97,51 @@ test("battle rng is deterministic for the same seed", () => {
   assert.notDeepEqual(valuesA, valuesC);
 });
 
+test("adventure completion stops child scenes before returning to pet UI", async () => {
+  globalThis.Phaser = {
+    Scene: class {
+      constructor(key) {
+        this.sceneKey = key;
+      }
+    }
+  };
+
+  const { default: AdventureScene } = await import("../scenes/AdventureScene.js");
+  const scene = new AdventureScene();
+  const events = [];
+  const fightScene = {
+    scene: {
+      isActive: () => true,
+      stop: () => events.push("stop:fight")
+    }
+  };
+  const rewardScene = {
+    scene: {
+      isActive: () => true,
+      stop: () => events.push("stop:reward")
+    }
+  };
+
+  scene.scene = {
+    get: (sceneKey) => (sceneKey === "FightScene" ? fightScene : sceneKey === "RewardScene" ? rewardScene : null),
+    stop: () => events.push("stop:adventure")
+  };
+  scene.uiScene = {
+    onAdventureFlowComplete: () => events.push("complete")
+  };
+  scene.stageConfig = { id: "test-stage", monsters: [] };
+  scene.stageIndex = 0;
+  scene.currentMonsterIndex = 0;
+  scene.currentEncounterSprite = null;
+  scene.menuPanel = null;
+  scene.menuTitle = null;
+  scene.menuBody = null;
+  scene.promptText = { setText: () => {} };
+  scene.infoText = { setText: () => {} };
+  scene.runBuffs = { str: 0, agi: 0, vit: 0, wit: 0, dex: 0, luck: 0 };
+  scene.state = createNewState();
+
+  scene.finishAdventureFailure();
+
+  assert.deepEqual(events, ["stop:fight", "stop:reward", "complete", "stop:adventure"]);
+});
