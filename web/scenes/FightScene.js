@@ -20,9 +20,13 @@ import {
 const BATTLE_LANE_Y_RATIOS = [0.58, 0.66, 0.74];
 const BATTLE_PLAYER_Y = 0.72;
 const BATTLE_ENEMY_ANCHOR_X_RATIO = 1;
-const BATTLE_PLAYER_X_RATIO = 0.24;
-const BATTLE_TARGET_PADDING_PX = 40;
+const BATTLE_PLAYER_X_RATIO = 0.18;
+const BATTLE_TARGET_PADDING_PX = 0;
+const BATTLE_HIT_TEXT_OFFSET_Y = 54;
+const BATTLE_HIT_TEXT_RISE_PX = 34;
+const BATTLE_HIT_TEXT_DURATION_MS = 720;
 
+const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 const getStatValue = (source, key) => Math.max(0, Math.round(Number.isFinite(source?.[key]) ? source[key] : 0));
 
 const buildResolvedStats = ({ baseStats, levelBonus, stageBonus, buffs = {} }) => {
@@ -480,6 +484,7 @@ export default class FightScene extends Phaser.Scene {
     });
     const dodged = this.rng() < dodgeChance;
     if (dodged) {
+      this.showHitText({ bullet, text: "miss", isMiss: true });
       if (bullet.side === "player") {
         this.enemyDodgeCount += 1;
       } else {
@@ -496,6 +501,11 @@ export default class FightScene extends Phaser.Scene {
       elementMultiplier,
       isCritical: bullet.isCritical,
       criticalMultiplier: bullet.criticalMultiplier
+    });
+    this.showHitText({
+      bullet,
+      text: `${damage}${bullet.isCritical ? "!!" : ""}`,
+      isCritical: bullet.isCritical
     });
 
     if (bullet.side === "player") {
@@ -515,6 +525,40 @@ export default class FightScene extends Phaser.Scene {
     }
 
     bullet.sprite.destroy();
+  }
+
+  showHitText({ bullet, text, isCritical = false, isMiss = false }) {
+    if (!bullet?.sprite?.active || !text) {
+      return;
+    }
+
+    const x = clamp(
+      bullet.side === "player" ? this.enemyAnchorX - 42 : this.playerSprite.x + this.playerSprite.displayWidth * 0.2,
+      28,
+      this.scale.width - 28
+    );
+    const y = clamp(
+      bullet.sprite.y - BATTLE_HIT_TEXT_OFFSET_Y,
+      42,
+      this.scale.height - 42
+    );
+    const label = this.add.text(x, y, text, {
+      fontFamily: "Courier New",
+      fontSize: isCritical ? "24px" : "20px",
+      color: isMiss ? "#5f6f75" : isCritical ? "#8d2f2f" : "#2f3e2e",
+      stroke: "#f4f7f0",
+      strokeThickness: 5
+    }).setOrigin(0.5).setDepth(18);
+
+    this.tweens.add({
+      targets: label,
+      y: y - BATTLE_HIT_TEXT_RISE_PX,
+      alpha: 0,
+      scale: isCritical ? 1.18 : 1,
+      duration: BATTLE_HIT_TEXT_DURATION_MS,
+      ease: "Cubic.easeOut",
+      onComplete: () => label.destroy()
+    });
   }
 
   stopBattle() {
@@ -540,15 +584,15 @@ export default class FightScene extends Phaser.Scene {
     const outcomeText = victory ? "WIN" : "LOST";
     this.resultBanner.setText(outcomeText);
     this.resultBanner.setAlpha(1);
-    this.summaryText.setText([
-      `RESULT ${outcomeText}`,
-      `DMG DEALT ${Math.round(this.playerDamage)}`,
-      `DMG TAKEN ${Math.round(this.enemyDamage)}`,
-      `HP LEFT ${Math.max(0, Math.round(this.playerHp))}/${this.playerMaxHp}`,
-      `ATKS ${this.playerAttackCount + this.enemyAttackCount}`
-    ].join("\n"));
-    this.summaryText.setAlpha(1);
-    this.hintText.setText(this.autoCloseSummary ? "Closing summary automatically..." : "Press O or X to close.");
+    // this.summaryText.setText([
+    //   `RESULT ${outcomeText}`,
+    //   `DMG DEALT ${Math.round(this.playerDamage)}`,
+    //   `DMG TAKEN ${Math.round(this.enemyDamage)}`,
+    //   `HP LEFT ${Math.max(0, Math.round(this.playerHp))}/${this.playerMaxHp}`,
+    //   `ATKS ${this.playerAttackCount + this.enemyAttackCount}`
+    // ].join("\n"));
+    // this.summaryText.setAlpha(1);
+    // this.hintText.setText(this.autoCloseSummary ? "Closing summary automatically..." : "Press O or X to close.");
 
     if (this.autoCloseSummary) {
       this.summaryAutoCloseTimer = this.time.delayedCall(this.summaryDurationMs, () => {
