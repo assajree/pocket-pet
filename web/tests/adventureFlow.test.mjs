@@ -284,6 +284,160 @@ test("adventure success summary shows earned rewards while inventory stays cappe
   assert.equal(getInventoryCount(scene.state, "meal"), 2);
 });
 
+test("adventure victory grants pending monster drop without resampling", async () => {
+  globalThis.Phaser = {
+    Scene: class {
+      constructor(key) {
+        this.sceneKey = key;
+      }
+    }
+  };
+  globalThis.localStorage = {
+    setItem: () => {},
+    getItem: () => null,
+    removeItem: () => {}
+  };
+
+  const { default: AdventureScene } = await import("../scenes/AdventureScene.js");
+  const scene = new AdventureScene();
+  const events = [];
+
+  scene.scene = {
+    get: () => null,
+    stop: () => events.push("stop:adventure")
+  };
+  scene.uiScene = {
+    onAdventureFlowComplete: (payload) => events.push(payload)
+  };
+  scene.stageConfig = {
+    id: "test-stage",
+    name: "Test Stage",
+    monsters: [{ name: "Slime", drops: ["meal"] }],
+    reward: []
+  };
+  scene.currentMonsterIndex = 0;
+  scene.currentEncounterSprite = null;
+  scene.menuPanel = null;
+  scene.menuTitle = null;
+  scene.menuBody = null;
+  scene.promptText = { setText: () => {} };
+  scene.infoText = { setVisible: () => {}, setText: () => {} };
+  scene.titleText = { setText: () => {}, setPosition: () => ({ setOrigin: () => {} }) };
+  scene.petSprite = { setVisible: () => {} };
+  scene.state = createNewState();
+  scene.collectedDrops = [];
+  scene.pendingMonsterDrop = { itemId: "snack", qty: 1 };
+  const initialSnack = getInventoryCount(scene.state, "snack");
+  const initialMeal = getInventoryCount(scene.state, "meal");
+
+  scene.handleFightResolved({ victory: true, playerHp: 80 });
+
+  assert.equal(scene.pendingMonsterDrop, null);
+  assert.equal(getInventoryCount(scene.state, "snack"), initialSnack + 1);
+  assert.equal(getInventoryCount(scene.state, "meal"), initialMeal);
+  const payload = events.find((entry) => typeof entry === "object");
+  assert.deepEqual(payload.rewards, [{ itemId: "snack", qty: 1 }]);
+});
+
+test("fight summary shows full overlay with WIN and drop preview", async () => {
+  globalThis.Phaser = {
+    Scene: class {
+      constructor(key) {
+        this.sceneKey = key;
+      }
+    }
+  };
+
+  const { default: FightScene } = await import("../scenes/FightScene.js");
+  const scene = new FightScene();
+  const summaryUpdates = [];
+  const backdropUpdates = [];
+  const bannerAlphaUpdates = [];
+  const hintUpdates = [];
+
+  scene.playerDamage = 10;
+  scene.enemyDamage = 1;
+  scene.dropPreview = { itemId: "snack", qty: 2 };
+  scene.summaryBackdrop = {
+    setVisible: (value) => {
+      backdropUpdates.push(value);
+      return scene.summaryBackdrop;
+    }
+  };
+  scene.resultBanner = {
+    setAlpha: (value) => {
+      bannerAlphaUpdates.push(value);
+      return scene.resultBanner;
+    }
+  };
+  scene.summaryText = {
+    setText: (value) => {
+      summaryUpdates.push(value);
+      return scene.summaryText;
+    },
+    setAlpha: (value) => {
+      summaryUpdates.push(`alpha:${value}`);
+      return scene.summaryText;
+    }
+  };
+  scene.hintText = {
+    setText: (value) => {
+      hintUpdates.push(value);
+      return scene.hintText;
+    }
+  };
+  scene.time = {
+    delayedCall: () => ({ remove: () => {} })
+  };
+  scene.summaryDurationMs = 1;
+  scene.autoCloseSummary = true;
+
+  scene.showSummary();
+
+  assert.deepEqual(backdropUpdates, [true]);
+  assert.deepEqual(bannerAlphaUpdates, [0]);
+  assert.ok(summaryUpdates.includes("WIN\nFOUND Snack x2"));
+  assert.ok(summaryUpdates.includes("alpha:1"));
+  assert.deepEqual(hintUpdates, ["Closing summary automatically..."]);
+});
+
+test("fight summary overlay shows LOST without drop preview", async () => {
+  globalThis.Phaser = {
+    Scene: class {
+      constructor(key) {
+        this.sceneKey = key;
+      }
+    }
+  };
+
+  const { default: FightScene } = await import("../scenes/FightScene.js");
+  const scene = new FightScene();
+  const summaryUpdates = [];
+
+  scene.playerDamage = 1;
+  scene.enemyDamage = 10;
+  scene.dropPreview = { itemId: "snack", qty: 2 };
+  scene.summaryBackdrop = { setVisible: () => scene.summaryBackdrop };
+  scene.resultBanner = { setAlpha: () => scene.resultBanner };
+  scene.summaryText = {
+    setText: (value) => {
+      summaryUpdates.push(value);
+      return scene.summaryText;
+    },
+    setAlpha: () => scene.summaryText
+  };
+  scene.hintText = { setText: () => scene.hintText };
+  scene.time = {
+    delayedCall: () => ({ remove: () => {} })
+  };
+  scene.summaryDurationMs = 1;
+  scene.autoCloseSummary = true;
+
+  scene.showSummary();
+
+  assert.deepEqual(summaryUpdates, ["LOST"]);
+});
+
 test("adventure loss leaves pet sick with low stats instead of dead", async () => {
   globalThis.Phaser = {
     Scene: class {

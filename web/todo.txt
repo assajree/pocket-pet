@@ -29,9 +29,8 @@ damage type แยก sprite
 - impact
 - psychic
 
-- show enemy name at butom screen
 - adventure status item random level
-- add enemy flip sprite config
+- fight scene regen and show regen amount
 
 
 

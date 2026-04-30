@@ -1,4 +1,4 @@
-import { saveState } from "../gameState.js";
+import { getItemLabel, saveState } from "../gameState.js";
 import { getPetCombatElements, getPetTextureKey, getPetBattleBulletTextureKey, ensurePetStageAssetsLoaded } from "../helpers/petAssets.js";
 import {
   ADVENTURE_BATTLE_CONSTANTS,
@@ -32,6 +32,15 @@ const BATTLE_HIT_SPRITE_DURATION_MS = 260;
 
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 const getStatValue = (source, key) => Math.max(0, Math.round(Number.isFinite(source?.[key]) ? source[key] : 0));
+const formatDropPreviewLine = (drop) => {
+  const itemId = String(drop?.itemId || "").trim();
+  if (!itemId) {
+    return "";
+  }
+
+  const qty = Math.max(1, Math.round(drop?.qty ?? 1));
+  return `FOUND ${getItemLabel(itemId)} x${qty}`;
+};
 
 const ensureBattleHitSpriteLoaded = (scene) => new Promise((resolve, reject) => {
   if (scene.textures.exists(BATTLE_HIT_SPRITE_KEY)) {
@@ -96,6 +105,7 @@ export default class FightScene extends Phaser.Scene {
     this.stageId = data.stageId || "";
     this.stageIndex = Number.isFinite(data.stageIndex) ? data.stageIndex : 0;
     this.monster = data.monster || null;
+    this.dropPreview = data.dropPreview || null;
     this.runBuffs = data.runBuffs || {};
     this.autoCloseSummary = data.autoCloseSummary !== false;
     this.summaryDurationMs = Number.isFinite(data.summaryDurationMs) ? data.summaryDurationMs : ADVENTURE_BATTLE_CONSTANTS.SUMMARY_DURATION_MS;
@@ -203,19 +213,26 @@ export default class FightScene extends Phaser.Scene {
       strokeThickness: 6
     }).setOrigin(0.5).setDepth(20).setAlpha(0);
 
-    this.summaryText = this.add.text(this.scale.width / 2, this.scale.height / 2 + 20, "", {
+    this.summaryBackdrop = this.add.rectangle(0, 0, this.scale.width, this.scale.height, 0xf3f7ee, 1)
+      .setOrigin(0)
+      .setDepth(30)
+      .setVisible(false);
+
+    this.summaryText = this.add.text(this.scale.width / 2, this.scale.height / 2, "", {
       fontFamily: "Courier New",
-      fontSize: "18px",
+      fontSize: "24px",
       color: "#2f3e2e",
       align: "center",
-      lineSpacing: 8
-    }).setOrigin(0.5).setDepth(20).setAlpha(0);
+      lineSpacing: 10,
+      stroke: "#f4f7f0",
+      strokeThickness: 4
+    }).setOrigin(0.5).setDepth(31).setAlpha(0);
 
     this.hintText = this.add.text(this.scale.width / 2, this.scale.height - 18, "Battle starts now. Trade shots and survive.", {
       fontFamily: "Courier New",
       fontSize: "14px",
       color: "#44514b"
-    }).setOrigin(0.5, 1);
+    }).setOrigin(0.5, 1).setDepth(32);
 
     const basePlayerStats = {
       str: getStatValue(this.state, "str"),
@@ -646,8 +663,12 @@ export default class FightScene extends Phaser.Scene {
     this.summaryVisible = true;
     const victory = this.playerDamage > this.enemyDamage;
     const outcomeText = victory ? "WIN" : "LOST";
-    this.resultBanner.setText(outcomeText);
-    this.resultBanner.setAlpha(1);
+    this.summaryBackdrop?.setVisible(true);
+    this.resultBanner.setAlpha(0);
+    const dropLine = victory ? formatDropPreviewLine(this.dropPreview) : "";
+    this.summaryText.setText([outcomeText, dropLine].filter(Boolean).join("\n"));
+    this.summaryText.setAlpha(1);
+    this.hintText.setText(this.autoCloseSummary ? "Closing summary automatically..." : "Press O or X to close.");
     // this.summaryText.setText([
     //   `RESULT ${outcomeText}`,
     //   `DMG DEALT ${Math.round(this.playerDamage)}`,

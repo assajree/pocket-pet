@@ -1824,7 +1824,7 @@ export default class UIScene extends Phaser.Scene {
     if (result?.success) {
       const stageName = result.stageName || "Adventure";
       this.showSummary({
-        title: `${stageName} cleared!`,
+        title: `${stageName} \ncleared!`,
         text: this.formatAdventureRewardSummary(result.rewards)
       });
       return;

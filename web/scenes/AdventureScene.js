@@ -72,6 +72,7 @@ export default class AdventureScene extends Phaser.Scene {
     this.rng = createBattleSeededRng("adventure");
     this.runBuffs = createAdventureStatBuff();
     this.collectedDrops = [];
+    this.pendingMonsterDrop = null;
     this.exitConfirmActive = false;
     this.phaseBeforeExitConfirm = null;
     this.pausedTravelRemainingMs = null;
@@ -88,6 +89,7 @@ export default class AdventureScene extends Phaser.Scene {
     this.summaryDurationMs = Number.isFinite(data.summaryDurationMs) ? data.summaryDurationMs : ADVENTURE_BATTLE_CONSTANTS.SUMMARY_DURATION_MS;
     this.runBuffs = createAdventureStatBuff();
     this.collectedDrops = [];
+    this.pendingMonsterDrop = null;
     this.menuIndex = 0;
     this.chestChoices = [];
     this.currentMonsterIndex = 0;
@@ -583,16 +585,18 @@ export default class AdventureScene extends Phaser.Scene {
         }
         this.petSprite.setVisible(true);
         this.phase = "fight";
+        this.pendingMonsterDrop = chooseMonsterDrop(monster, this.rng);
         this.scene.launch("FightScene", {
-      stageId: this.stageConfig.id,
-      stageIndex: this.stageIndex,
-      seed: `${this.seed}:${this.currentMonsterIndex}:${monster.name}`,
-      monster,
-      runBuffs: { ...this.runBuffs },
-      autoCloseSummary: this.autoCloseSummary,
-      summaryDurationMs: ADVENTURE_BATTLE_CONSTANTS.SUMMARY_DURATION_MS,
-      resultFlashMs: ADVENTURE_BATTLE_CONSTANTS.RESULT_FLASH_MS
-    });
+          stageId: this.stageConfig.id,
+          stageIndex: this.stageIndex,
+          seed: `${this.seed}:${this.currentMonsterIndex}:${monster.name}`,
+          monster,
+          dropPreview: this.pendingMonsterDrop,
+          runBuffs: { ...this.runBuffs },
+          autoCloseSummary: this.autoCloseSummary,
+          summaryDurationMs: ADVENTURE_BATTLE_CONSTANTS.SUMMARY_DURATION_MS,
+          resultFlashMs: ADVENTURE_BATTLE_CONSTANTS.RESULT_FLASH_MS
+        });
       }
     });
   }
@@ -601,15 +605,16 @@ export default class AdventureScene extends Phaser.Scene {
     if (this.isEnding) {
       return;
     }
-    const monster = this.stageConfig.monsters[this.currentMonsterIndex];
     if (!result?.victory) {
+      this.pendingMonsterDrop = null;
       applyAdventureFailurePenalty(this.state, result);
       saveState(this.state, "adventure:loss");
       this.finishAdventureFailure(result);
       return;
     }
 
-    const drop = chooseMonsterDrop(monster, this.rng);
+    const drop = this.pendingMonsterDrop;
+    this.pendingMonsterDrop = null;
     if (drop) {
       const gained = grantAdventureRewardBundle(this.state, [drop]);
       if (gained.length) {
