@@ -351,6 +351,7 @@ test("fight summary shows full overlay with WIN and drop preview", async () => {
   const { default: FightScene } = await import("../scenes/FightScene.js");
   const scene = new FightScene();
   const summaryUpdates = [];
+  const dropUpdates = [];
   const backdropUpdates = [];
   const bannerAlphaUpdates = [];
   const hintUpdates = [];
@@ -380,6 +381,16 @@ test("fight summary shows full overlay with WIN and drop preview", async () => {
       return scene.summaryText;
     }
   };
+  scene.summaryDropText = {
+    setText: (value) => {
+      dropUpdates.push(value);
+      return scene.summaryDropText;
+    },
+    setAlpha: (value) => {
+      dropUpdates.push(`alpha:${value}`);
+      return scene.summaryDropText;
+    }
+  };
   scene.hintText = {
     setText: (value) => {
       hintUpdates.push(value);
@@ -396,8 +407,10 @@ test("fight summary shows full overlay with WIN and drop preview", async () => {
 
   assert.deepEqual(backdropUpdates, [true]);
   assert.deepEqual(bannerAlphaUpdates, [0]);
-  assert.ok(summaryUpdates.includes("WIN\nFOUND Snack x2"));
+  assert.ok(summaryUpdates.includes("WIN"));
   assert.ok(summaryUpdates.includes("alpha:1"));
+  assert.ok(dropUpdates.includes("FOUND Snack x2"));
+  assert.ok(dropUpdates.includes("alpha:1"));
   assert.deepEqual(hintUpdates, ["Closing summary automatically..."]);
 });
 
@@ -413,6 +426,7 @@ test("fight summary overlay shows LOST without drop preview", async () => {
   const { default: FightScene } = await import("../scenes/FightScene.js");
   const scene = new FightScene();
   const summaryUpdates = [];
+  const dropUpdates = [];
 
   scene.playerDamage = 1;
   scene.enemyDamage = 10;
@@ -426,6 +440,16 @@ test("fight summary overlay shows LOST without drop preview", async () => {
     },
     setAlpha: () => scene.summaryText
   };
+  scene.summaryDropText = {
+    setText: (value) => {
+      dropUpdates.push(value);
+      return scene.summaryDropText;
+    },
+    setAlpha: (value) => {
+      dropUpdates.push(`alpha:${value}`);
+      return scene.summaryDropText;
+    }
+  };
   scene.hintText = { setText: () => scene.hintText };
   scene.time = {
     delayedCall: () => ({ remove: () => {} })
@@ -436,6 +460,7 @@ test("fight summary overlay shows LOST without drop preview", async () => {
   scene.showSummary();
 
   assert.deepEqual(summaryUpdates, ["LOST"]);
+  assert.deepEqual(dropUpdates, ["", "alpha:0"]);
 });
 
 test("adventure loss leaves pet sick with low stats instead of dead", async () => {

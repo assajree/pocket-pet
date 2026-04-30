@@ -56,14 +56,14 @@ const adventureStages = [
         species: "classic",
         element: "water",
         drops: ["snack", "meal", "element-water"],
-        stats: { str: 1, agi: 0, vit: 0, wit: 0, dex: 0, luck: 0 }
+        stats: { str: 1, agi: 0, vit: 0, dex: 0, luck: 0 }
       },
       {
         name: "Moss Moth",
         species: "specie1",
         element: "wind",
         drops: ["snack", "element-wind", "medicine-food"],
-        stats: { str: 1, agi: 1, vit: 0, wit: 0, dex: 0, luck: 0 }
+        stats: { str: 1, agi: 1, vit: 0, dex: 0, luck: 0 }
       }
     ]
   },
@@ -83,14 +83,14 @@ const adventureStages = [
         species: "classic",
         element: "earth",
         drops: ["snack", "meal", "element-earth"],
-        stats: { str: 9, agi: 6, vit: 8, wit: 5, dex: 6, luck: 5 }
+        stats: { str: 9, agi: 6, vit: 8, dex: 6, luck: 5 }
       },
       {
         name: "Cave Spark",
         species: "specie2",
         element: "shadow",
         drops: ["medicine-food", "element-shadow", "snack"],
-        stats: { str: 10, agi: 8, vit: 7, wit: 6, dex: 7, luck: 6 }
+        stats: { str: 10, agi: 8, vit: 7, dex: 7, luck: 6 }
       }
     ]
   },
@@ -113,14 +113,14 @@ const adventureStages = [
         species: "specie2",
         element: "shadow",
         drops: ["element-shadow", "snack", "medicine-food"],
-        stats: { str: 12, agi: 9, vit: 10, wit: 7, dex: 8, luck: 7 }
+        stats: { str: 12, agi: 9, vit: 10, dex: 8, luck: 7 }
       },
       {
         name: "Sky Wisp",
         species: "specie1",
         element: "holy",
         drops: ["element-holy", "element-shadow", "medicine-food"],
-        stats: { str: 13, agi: 10, vit: 10, wit: 8, dex: 9, luck: 8 }
+        stats: { str: 13, agi: 10, vit: 10, dex: 9, luck: 8 }
       }
     ]
   }
@@ -131,21 +131,21 @@ export const ADVENTURE_STAGE_CONFIGS = adventureStages;
 export const ADVENTURE_CHEST_OFFERS = [
   {
     key: "chest-heal-small",
-    label: "Potion",
+    label: "Heal 12 HP",
     caption: "Restore 12 HP now.",
     type: "heal",
     amount: 12
   },
   {
     key: "chest-heal-medium",
-    label: "Potion+",
+    label: "Heal 22 HP",
     caption: "Restore 22 HP now.",
     type: "heal",
     amount: 22
   },
   {
     key: "chest-str",
-    label: "STR Up",
+    label: "STR +2",
     caption: "Gain +2 STR for this adventure.",
     type: "buff",
     stat: "str",
@@ -153,7 +153,7 @@ export const ADVENTURE_CHEST_OFFERS = [
   },
   {
     key: "chest-agi",
-    label: "AGI Up",
+    label: "AGI +2",
     caption: "Gain +2 AGI for this adventure.",
     type: "buff",
     stat: "agi",
@@ -161,18 +161,10 @@ export const ADVENTURE_CHEST_OFFERS = [
   },
   {
     key: "chest-vit",
-    label: "VIT Up",
+    label: "VIT +2",
     caption: "Gain +2 VIT for this adventure.",
     type: "buff",
     stat: "vit",
-    amount: 2
-  },
-  {
-    key: "chest-wit",
-    label: "WIT Up",
-    caption: "Gain +2 WIT for this adventure.",
-    type: "buff",
-    stat: "wit",
     amount: 2
   },
   {
@@ -193,7 +185,7 @@ export const ADVENTURE_CHEST_OFFERS = [
   },
   {
     key: "chest-item",
-    label: "Supply",
+    label: "Snack x1",
     caption: "Gain one snack item.",
     type: "item",
     itemId: "snack",

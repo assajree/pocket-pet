@@ -39,7 +39,7 @@ const formatDropPreviewLine = (drop) => {
   }
 
   const qty = Math.max(1, Math.round(drop?.qty ?? 1));
-  return `\nFOUND \n${getItemLabel(itemId)} x${qty}`;
+  return `FOUND \n${getItemLabel(itemId)} x${qty}`;
 };
 
 const ensureBattleHitSpriteLoaded = (scene) => new Promise((resolve, reject) => {
@@ -218,7 +218,7 @@ export default class FightScene extends Phaser.Scene {
       .setDepth(30)
       .setVisible(false);
 
-    this.summaryText = this.add.text(this.scale.width / 2, this.scale.height / 2, "", {
+    this.summaryText = this.add.text(this.scale.width / 2, this.scale.height / 2 - 30, "", {
       fontFamily: "Courier New",
       fontSize: "24px",
       color: "#2f3e2e",
@@ -226,6 +226,13 @@ export default class FightScene extends Phaser.Scene {
       lineSpacing: 10,
       // stroke: "#f4f7f0",
       // strokeThickness: 4
+    }).setOrigin(0.5).setDepth(31).setAlpha(0);
+
+    this.summaryDropText = this.add.text(this.scale.width / 2, this.scale.height / 2 , "", {
+      fontFamily: "Courier New",
+      fontSize: "16px",
+      color: "#44514b",
+      align: "center"
     }).setOrigin(0.5).setDepth(31).setAlpha(0);
 
     this.hintText = this.add.text(this.scale.width / 2, this.scale.height - 18, "Battle starts now. Trade shots and survive.", {
@@ -666,8 +673,15 @@ export default class FightScene extends Phaser.Scene {
     this.summaryBackdrop?.setVisible(true);
     this.resultBanner.setAlpha(0);
     const dropLine = victory ? formatDropPreviewLine(this.dropPreview) : "";
-    this.summaryText.setText([outcomeText, dropLine].filter(Boolean).join("\n"));
+    this.summaryText.setText(outcomeText);
     this.summaryText.setAlpha(1);
+    if (dropLine) {
+      this.summaryDropText?.setText(dropLine);
+      this.summaryDropText?.setAlpha(1);
+    } else {
+      this.summaryDropText?.setText("");
+      this.summaryDropText?.setAlpha(0);
+    }
     this.hintText.setText(this.autoCloseSummary ? "Closing summary automatically..." : "Press O or X to close.");
     // this.summaryText.setText([
     //   `RESULT ${outcomeText}`,
