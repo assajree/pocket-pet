@@ -18,10 +18,10 @@ import {
 } from "../helpers/adventureBattle.js";
 
 const BATTLE_LANE_Y_RATIOS = [0.40, 0.54, 0.68];
-const BATTLE_ENEMY_START_Y = 0.38;
 const BATTLE_PLAYER_Y = 0.72;
-const BATTLE_ENEMY_TARGET_X_RATIO = 0.24;
-const BATTLE_PLAYER_X_RATIO = 0.76;
+const BATTLE_ENEMY_ANCHOR_X_RATIO = 1;
+const BATTLE_PLAYER_X_RATIO = 0.24;
+const BATTLE_TARGET_PADDING_PX = 40;
 
 const getStatValue = (source, key) => Math.max(0, Math.round(Number.isFinite(source?.[key]) ? source[key] : 0));
 
@@ -125,9 +125,7 @@ export default class FightScene extends Phaser.Scene {
 
     this.playerX = this.scale.width * BATTLE_PLAYER_X_RATIO;
     this.playerY = this.scale.height * BATTLE_PLAYER_Y;
-    this.enemyStartX = this.scale.width * 0.52;
-    this.enemyTargetX = this.scale.width * BATTLE_ENEMY_TARGET_X_RATIO;
-    this.enemyY = this.scale.height * BATTLE_ENEMY_START_Y;
+    this.enemyAnchorX = this.scale.width * BATTLE_ENEMY_ANCHOR_X_RATIO;
 
     this.playerSprite = this.add.image(this.playerX, this.playerY, getPetTextureKey({
       petId: this.state.petId,
@@ -135,14 +133,6 @@ export default class FightScene extends Phaser.Scene {
       variant: "idle"
     })).setDepth(10);
     this.playerSprite.setDisplaySize(160, 160);
-
-    this.enemySprite = this.add.image(this.enemyStartX, this.enemyY, getPetTextureKey({
-      petId: this.monster?.species || this.state.petId,
-      stage: "adult",
-      variant: "angry"
-    })).setDepth(10);
-    this.enemySprite.setDisplaySize(144, 144);
-    this.enemySprite.setFlipX(true);
 
     this.headerText = this.add.text(18, 14, `${this.monster?.name || "ENEMY"}`.toUpperCase(), {
       fontFamily: "Courier New",
@@ -185,7 +175,7 @@ export default class FightScene extends Phaser.Scene {
       lineSpacing: 8
     }).setOrigin(0.5).setDepth(20).setAlpha(0);
 
-    this.hintText = this.add.text(this.scale.width / 2, this.scale.height - 18, "Battle starts when the enemy reaches the lane.", {
+    this.hintText = this.add.text(this.scale.width / 2, this.scale.height - 18, "Battle starts now. Trade shots and survive.", {
       fontFamily: "Courier New",
       fontSize: "14px",
       color: "#44514b"
@@ -247,8 +237,6 @@ export default class FightScene extends Phaser.Scene {
   }
 
   clearTimers() {
-    this.introTween?.stop();
-    this.introTween = null;
     this.introTimer?.remove(false);
     this.introTimer = null;
     this.resultTimer?.remove(false);
@@ -259,47 +247,12 @@ export default class FightScene extends Phaser.Scene {
     this.summaryAutoCloseTimer = null;
     this.playerRevertTimer?.remove(false);
     this.playerRevertTimer = null;
-    this.enemyRevertTimer?.remove(false);
-    this.enemyRevertTimer = null;
   }
 
   startIntro() {
-    const introSwapCount = 6;
-    let swapIndex = 0;
-    this.enemySprite.setTexture(getPetTextureKey({
-      petId: this.monster?.species || this.state.petId,
-      stage: "adult",
-      variant: "angry"
-    }));
-    this.introTween = this.tweens.add({
-      targets: this.enemySprite,
-      x: this.enemyTargetX,
-      duration: ADVENTURE_BATTLE_CONSTANTS.ENEMY_INTRO_MOVE_MS,
-      ease: "Sine.easeInOut",
-      onComplete: () => {
-        this.introTween = null;
-        this.introTimer?.remove(false);
-        this.introTimer = null;
-        this.enemySprite.setTexture(getPetTextureKey({
-          petId: this.monster?.species || this.state.petId,
-          stage: "adult",
-          variant: "angry"
-        }));
-        this.beginBattle();
-      }
-    });
-    this.introTimer = this.time.addEvent({
-      delay: ADVENTURE_BATTLE_CONSTANTS.ENEMY_INTRO_TOGGLE_MS,
-      repeat: introSwapCount - 1,
-      callback: () => {
-        swapIndex += 1;
-        const variant = swapIndex % 2 === 0 ? "angry" : "attack";
-        this.enemySprite.setTexture(getPetTextureKey({
-          petId: this.monster?.species || this.state.petId,
-          stage: "adult",
-          variant
-        }));
-      }
+    this.introTimer = this.time.delayedCall(ADVENTURE_BATTLE_CONSTANTS.ENEMY_INTRO_MOVE_MS, () => {
+      this.introTimer = null;
+      this.beginBattle();
     });
   }
 
@@ -400,8 +353,8 @@ export default class FightScene extends Phaser.Scene {
     const bulletTexture = isPlayer
       ? getPetBattleBulletTextureKey({ petId: this.state.petId, stage: this.state.evolutionStage })
       : getPetBattleBulletTextureKey({ petId: this.monster?.species || this.state.petId, stage: "adult" });
-    const x = isPlayer ? this.playerSprite.x - this.playerSprite.displayWidth * 0.25 : this.enemySprite.x + this.enemySprite.displayWidth * 0.25;
-    const direction = isPlayer ? -1 : 1;
+    const x = isPlayer ? this.playerSprite.x + this.playerSprite.displayWidth * 0.25 : this.enemyAnchorX;
+    const direction = isPlayer ? 1 : -1;
     const sprite = this.add.image(x, laneY, bulletTexture).setDepth(12);
     sprite.setDisplaySize(32 * bulletScale, 32 * bulletScale);
     sprite.setFlipX(!isPlayer);
@@ -430,11 +383,6 @@ export default class FightScene extends Phaser.Scene {
       });
     } else {
       this.enemyAttackCount += 1;
-      this.enemySprite.setTexture(getPetTextureKey({ petId: this.monster?.species || this.state.petId, stage: "adult", variant: "attack" }));
-      this.enemyRevertTimer?.remove(false);
-      this.enemyRevertTimer = this.time.delayedCall(ADVENTURE_BATTLE_CONSTANTS.ATTACK_IDLE_RETURN_MS, () => {
-        this.enemySprite.setTexture(getPetTextureKey({ petId: this.monster?.species || this.state.petId, stage: "adult", variant: "angry" }));
-      });
     }
   }
 
@@ -466,8 +414,8 @@ export default class FightScene extends Phaser.Scene {
       const maxX = this.scale.width + ADVENTURE_BATTLE_CONSTANTS.BULLET_OFFSCREEN_PADDING;
       const isOffscreen = bullet.sprite.x < offscreenX || bullet.sprite.x > maxX;
       const targetHit = bullet.side === "player"
-        ? bullet.sprite.x <= this.enemySprite.x - this.enemySprite.displayWidth * 0.25
-        : bullet.sprite.x >= this.playerSprite.x + this.playerSprite.displayWidth * 0.25;
+        ? bullet.sprite.x >= this.enemyAnchorX - BATTLE_TARGET_PADDING_PX
+        : bullet.sprite.x <= this.playerSprite.x + this.playerSprite.displayWidth * 0.25;
 
       if (isOffscreen) {
         bullet.sprite.destroy();
