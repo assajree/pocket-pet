@@ -1,4 +1,4 @@
-import { saveState } from "../gameState.js";
+import { saveState, startSicknessEpisode } from "../gameState.js";
 import {
   ADVENTURE_CHEST_OFFERS,
   ADVENTURE_STAGE_CONFIGS,
@@ -19,8 +19,23 @@ const ADVENTURE_PANEL_WIDTH = 260;
 const ADVENTURE_PANEL_HEIGHT = 116;
 const ADVENTURE_PANEL_Y = 88;
 const ADVENTURE_MENU_Y = 92;
+const ADVENTURE_FAILURE_LOW_STAT = 20;
+const ADVENTURE_FAILURE_HEALTH = 10;
 
 const createAdventureStatBuff = () => ({ str: 0, agi: 0, vit: 0, dex: 0, luck: 0, wit: 0 });
+
+const applyAdventureFailurePenalty = (state, result = null) => {
+  state.isAlive = true;
+  state.isSleeping = false;
+  startSicknessEpisode(state, "Adventure failed. Your pet became sick.");
+
+  const remainingHp = Math.round(result?.playerHp ?? state.health ?? 0);
+  state.health = Math.max(ADVENTURE_FAILURE_HEALTH, remainingHp);
+  state.hunger = Math.min(state.hunger, ADVENTURE_FAILURE_LOW_STAT);
+  state.happiness = Math.min(state.happiness, ADVENTURE_FAILURE_LOW_STAT);
+  state.energy = Math.min(state.energy, ADVENTURE_FAILURE_LOW_STAT);
+  state.cleanliness = Math.min(state.cleanliness, ADVENTURE_FAILURE_LOW_STAT);
+};
 
 const formatLootText = (entries = []) =>
   entries.length
@@ -366,8 +381,7 @@ export default class AdventureScene extends Phaser.Scene {
     }
     const monster = this.stageConfig.monsters[this.currentMonsterIndex];
     if (!result?.victory) {
-      this.state.isSick = true;
-      this.state.health = Math.max(0, Math.round(result?.playerHp ?? this.state.health));
+      applyAdventureFailurePenalty(this.state, result);
       saveState(this.state, "adventure:loss");
       this.finishAdventureFailure(result);
       return;

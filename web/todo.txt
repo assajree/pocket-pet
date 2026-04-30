@@ -30,18 +30,6 @@ pet battle status
 - buff/debuff ที่มีผลกับ status ตะถูกคำนวนก่อนเอา status ไปใช้
 - stage มีผลกับ max level, max status
 
-ระบบธาตุ
-- ใช้ type ของฝั่งที่ถูกโจมตี vs attack element ของฝั่งโจมตี
-- damage type มีได้แค่ 1 ธาตุต่อการโจมตี
-- type ติดตัวตาม specie สามารถมีได้หลาย type พร้อมกัน
-
-type : กำหนดตามรูปร่าง ที่อยู่อาศัย
-- water สัตว์น้ำ
-- organic สิ่งมีชีวิต
-- metal ทำจากเหล็ก หุ่นยนต์
-- ต้อง cofig effective damage type multiplier ด้วย มากกว่า 1 คือ damage ปกติ ต่ำกว่า 1 คือกันได้ มากกว่า 1 คือแพ้ทาง
-- การคำนวน damage = <atk> * <type 1 multiplyer> … * <type n multiplyer>
-
 damage type แยก sprite
 - acid
 - poison
@@ -52,39 +40,7 @@ damage type แยก sprite
 - impact
 - psychic
 
-ค่าที่มีผลกับ dodge rate
-- dex
-- luck
-- enemy agi
-- enemy luck
-- buff/debuff
-- enemy buff/debuff
-- max 80%
 
-ค่าที่มีผลกับ atk
-- str 
-- level bonus 
-- stage bonus
-- buff/debuff
-
-ค่าที่มีผลกับ def
-- vit 
-- level bonus 
-- stage bonus
-- buff/debuff
-
-ค่าที่มีผลกับ critical rate
-- dex 
-- luck
-- enemy luck
-- buff/debuff
-- max 80%
-
-การคำนวน critical 
-(atk * 1.5)
-
-การคำนวน damage
-atk - def + critical damage + buff - debuff
 
 - ก่อนการคำนวนให้เอา buff/debuff ไปคำนวน status ก่อน
 
@@ -99,10 +55,10 @@ atk - def + critical damage + buff - debuff
 - ability ได้มาจากตอน evolution
 - แต่ละ stage สุ่ม buff 3 อย่างเพื่อให้เลือกได้ 1 อย่าง
 
-adventure mode
-- เพื่มเมนู adventure ใน main menu
-- เมนู adventure จะแสดง stage ให้เลือก
-- adventure stage จะดึงค่าจาก stage config โดย config จะเก็บ ค่าของแต่ละ stage เป็น array
+เพิ่มเมนู ADVENTURE ใน main menu
+
+adventure menu
+- มีหลาย stage ให้เลือกโดยใช้ค่าจาก stage config ที่เก็บค่าของแต่ละ stage ในรูปแบบ array เพื่อให้เพิ่ม stage ทีหลังได้
 - config ของแต่ละ stage ประกอบด้วย ชื่อ stage, reward เป็น array เก็บ item id และจำนวน, array ของ monster ที่จะปรากฏใน stage
 - config ของ monster แต่ละตัวประกอบด้วย ชื่อ, สายพันธ์, drop item array,  status ได้แก่ str, agi, wit, dex, luck เพื่อ ใช้คำนวนในการต่อสู้
 - โดย stage ที่เลือกได้ต้องปลดล็อคโดยการเคลียร์ stage ก่อนหน้า บาง stage อาจมีเงื่อนไขเพิ่มเติมด้วย
@@ -138,4 +94,39 @@ fighting scene
 - หลังจากยุติการต่อสู้และไม่เหลือ bullet ในหน้าจอแล้วจะทำการสรุปผล โดยผู้ชนะคือฝ่ายที่ทำ damage ได้สูงกว่า หากผู้เล่นเป็นฝ่ายแพ้จะแสดงข้อความ WIN หากแพ้จะแสดงข้อความ LOST บนหน้าจอ 2 วินาที และปรับค่าด้วย constant ได้ หลังจากนั้นจะแสดงสถิติการต่อสู้ ประกอบด้วย ผลการต่อสู้ WIN/LOST, damage ที่ทำได้, damage ที่ได้รับ, hp คงเหลือ, จำนวนครั้งที่โจมตี ค้างไว้จนกว่าจะถึงเวลาที่กำหนดไว้ใน constant วินาที default 3 วินาที
 - สามารถส่ง parameter เพิ่มได้ว่าจะปิดหน้าจอหน้าจอสถิติการต่อสู้อัตโนมัติหลังจากครบการหน่วงเวลาหรือจะรอจนกว่าจะมีการกด hardware button
 - fighting scene รองรับ random seed เพื่อใช้ในการ link ในอนาคต
+- fighting scene รองรับระบบ element, critical, dodge
+
+ค่าที่มีผลกับ dodge rate
+- dex
+- luck
+- enemy agi
+- enemy luck
+- buff/debuff
+- enemy buff/debuff
+- max 80%
+
+ค่าที่มีผลกับ atk
+- str 
+- level bonus 
+- stage bonus
+- buff/debuff
+
+ค่าที่มีผลกับ def
+- vit 
+- level bonus 
+- stage bonus
+- buff/debuff
+
+ค่าที่มีผลกับ critical rate
+- dex 
+- luck
+- enemy luck
+- buff/debuff
+- max 80%
+
+การคำนวน critical 
+(atk * 1.5)
+
+การคำนวน damage
+atk - def + critical damage + buff - debuff
 

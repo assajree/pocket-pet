@@ -145,3 +145,54 @@ test("adventure completion stops child scenes before returning to pet UI", async
 
   assert.deepEqual(events, ["stop:fight", "stop:reward", "complete", "stop:adventure"]);
 });
+
+test("adventure loss leaves pet sick with low stats instead of dead", async () => {
+  globalThis.Phaser = {
+    Scene: class {
+      constructor(key) {
+        this.sceneKey = key;
+      }
+    }
+  };
+  const saved = [];
+  globalThis.localStorage = {
+    setItem: (key, value) => saved.push({ key, value }),
+    getItem: () => null,
+    removeItem: () => {}
+  };
+
+  const { default: AdventureScene } = await import("../scenes/AdventureScene.js");
+  const scene = new AdventureScene();
+  const events = [];
+
+  scene.scene = {
+    get: () => null,
+    stop: () => events.push("stop:adventure")
+  };
+  scene.uiScene = {
+    onAdventureFlowComplete: (payload) => events.push(payload.success ? "success" : "failure")
+  };
+  scene.stageConfig = { id: "test-stage", monsters: [{ name: "Slime" }] };
+  scene.currentMonsterIndex = 0;
+  scene.currentEncounterSprite = null;
+  scene.menuPanel = null;
+  scene.menuTitle = null;
+  scene.menuBody = null;
+  scene.promptText = { setText: () => {} };
+  scene.infoText = { setText: () => {} };
+  scene.state = createNewState();
+  scene.state.health = 92;
+
+  scene.handleFightResolved({ victory: false, playerHp: 0 });
+
+  assert.equal(scene.state.isAlive, true);
+  assert.equal(scene.state.isSick, true);
+  assert.equal(scene.state.isSleeping, false);
+  assert.equal(scene.state.health, 10);
+  assert.equal(scene.state.hunger, 20);
+  assert.equal(scene.state.happiness, 20);
+  assert.equal(scene.state.energy, 20);
+  assert.equal(scene.state.cleanliness, 20);
+  assert.deepEqual(events, ["failure", "stop:adventure"]);
+  assert.ok(saved.some((entry) => entry.value.includes('"isAlive":true')));
+});

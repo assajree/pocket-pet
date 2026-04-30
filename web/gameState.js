@@ -27,7 +27,7 @@ const SLEEP_ENERGY_PER_SECOND = 2;
 const AWAKE_ENERGY_CHANGE_PER_MINUTE = -4;
 const MAX_COMBAT_STAT = 999;
 const MAX_MONEY = 9999;
-const EGG_HATCH_SECONDS = 60;
+const EGG_HATCH_SECONDS = 10;
 const CHILD_HATCH_CORE_STAT = 20;
 const MEDICINE_LOVE_GAIN_ON_SICK_HEAL = 8;
 const MEDICINE_LOVE_LOSS_ON_UNNEEDED_USE = 6;
@@ -385,7 +385,7 @@ const resetSicknessEpisode = (state) => {
   state.timers.sickUntreatedHealthDrainLogged = false;
 };
 
-const startSicknessEpisode = (state, message = "Your pet caught a bug and needs treatment.") => {
+export const startSicknessEpisode = (state, message = "Your pet caught a bug and needs treatment.") => {
   state.isSick = true;
   resetSicknessEpisode(state);
   addLog(state, message);
