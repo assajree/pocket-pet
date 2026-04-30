@@ -15,12 +15,10 @@ const ADVENTURE_SCROLL_SPEED = 0.16;
 const ADVENTURE_TRAVEL_SEGMENT_MS = 2200;
 const ADVENTURE_PET_TOGGLE_MS = 260;
 const ADVENTURE_ARRIVAL_THRESHOLD = 118;
-const ADVENTURE_PANEL_WIDTH = 260;
-const ADVENTURE_PANEL_HEIGHT = 116;
-const ADVENTURE_PANEL_Y = 88;
-const ADVENTURE_MENU_Y = 92;
 const ADVENTURE_FAILURE_LOW_STAT = 20;
 const ADVENTURE_FAILURE_HEALTH = 10;
+const ADVENTURE_MENU_BACKGROUND = 0xb7c7b5;
+const ADVENTURE_MENU_TEXT = "#44514b";
 
 const createAdventureStatBuff = () => ({ str: 0, agi: 0, vit: 0, dex: 0, luck: 0, wit: 0 });
 
@@ -37,10 +35,11 @@ const applyAdventureFailurePenalty = (state, result = null) => {
   state.cleanliness = Math.min(state.cleanliness, ADVENTURE_FAILURE_LOW_STAT);
 };
 
-const formatLootText = (entries = []) =>
-  entries.length
-    ? entries.map((entry) => `${entry.itemId.toUpperCase()} x${entry.qty}`).join("\n")
-    : "No loot yet.";
+const formatChestHeader = (stageName, stageIndex, totalStages) =>
+  `${stageName} ${stageIndex + 1}/${totalStages}`;
+
+const formatChestChoiceLines = (choices = [], activeIndex = 0) =>
+  choices.map((choice, index) => `${index === activeIndex ? ">" : " "} ${choice.label}`);
 
 const pickUniqueOffers = (count, rng) => {
   const pool = [...ADVENTURE_CHEST_OFFERS];
@@ -63,6 +62,8 @@ export default class AdventureScene extends Phaser.Scene {
     this.rng = createBattleSeededRng("adventure");
     this.runBuffs = createAdventureStatBuff();
     this.collectedDrops = [];
+    this.exitConfirmActive = false;
+    this.phaseBeforeExitConfirm = null;
   }
 
   async create(data = {}) {
@@ -84,6 +85,8 @@ export default class AdventureScene extends Phaser.Scene {
     this.phase = "loading";
     this.resultSummary = null;
     this.isEnding = false;
+    this.exitConfirmActive = false;
+    this.phaseBeforeExitConfirm = null;
     this.rng = createBattleSeededRng(this.seed);
     this.uiScene = this.scene.get("UIScene");
     this.uiScene?.setAdventureFlowActive?.(true);
@@ -117,6 +120,7 @@ export default class AdventureScene extends Phaser.Scene {
       this.destroyEncounterSprite();
       this.destroyChestMenu();
       this.destroySummaryOverlay();
+      this.destroyExitConfirmOverlay();
       this.uiScene?.setAdventureFlowActive?.(false);
     });
   }
@@ -158,10 +162,12 @@ export default class AdventureScene extends Phaser.Scene {
     this.titleText = this.add.text(18, 14, this.stageConfig.name.toUpperCase(), {
       fontFamily: "Courier New",
       fontSize: "20px",
-      color: "#2f3e2e",
-      stroke: "#f4f7f0",
-      strokeThickness: 4
-    });
+       color: ADVENTURE_MENU_TEXT,
+      align: "center",
+      // color: "#2f3e2e",
+      // stroke: "#f4f7f0",
+      // strokeThickness: 4
+    }).setDepth(21);
 
     this.infoText = this.add.text(18, 40, "", {
       fontFamily: "Courier New",
@@ -170,25 +176,25 @@ export default class AdventureScene extends Phaser.Scene {
       stroke: "#f4f7f0",
       strokeThickness: 3,
       lineSpacing: 4
-    });
+    }).setDepth(21);
 
-    this.menuPanel = this.add.rectangle(this.scale.width / 2, this.scale.height - ADVENTURE_PANEL_Y, ADVENTURE_PANEL_WIDTH, ADVENTURE_PANEL_HEIGHT, 0xf4f7f0, 0.9)
-      .setStrokeStyle(2, 0x44514b)
-      .setDepth(20)
+    this.chestBackdrop = this.add.rectangle(0, 0, this.scale.width, this.scale.height, ADVENTURE_MENU_BACKGROUND, 1)
+      .setOrigin(0)
+      .setDepth(19)
       .setVisible(false);
-    this.menuTitle = this.add.text(this.scale.width / 2, this.scale.height - ADVENTURE_PANEL_Y - 38, "", {
+
+    this.menuTitle = this.add.text(this.scale.width / 2, 92, "", {
       fontFamily: "Courier New",
-      fontSize: "20px",
-      color: "#2f3e2e",
-      stroke: "#f4f7f0",
-      strokeThickness: 4
+      fontSize: "18px",
+      color: ADVENTURE_MENU_TEXT,
+      align: "center"
     }).setOrigin(0.5).setDepth(21).setVisible(false);
-    this.menuBody = this.add.text(this.scale.width / 2, this.scale.height - ADVENTURE_PANEL_Y, "", {
+    this.menuBody = this.add.text(this.scale.width / 2, this.scale.height / 2 + 8, "", {
       fontFamily: "Courier New",
-      fontSize: "15px",
-      color: "#44514b",
-      align: "center",
-      lineSpacing: 6
+      fontSize: "16px",
+      color: ADVENTURE_MENU_TEXT,
+      align: "left",
+      lineSpacing: 12
     }).setOrigin(0.5).setDepth(21).setVisible(false);
 
     this.promptText = this.add.text(this.scale.width / 2, this.scale.height - 20, "", {
@@ -206,6 +212,24 @@ export default class AdventureScene extends Phaser.Scene {
       align: "center"
     }).setOrigin(0.5).setDepth(25).setAlpha(0);
 
+    this.exitConfirmBackdrop = this.add.rectangle(0, 0, this.scale.width, this.scale.height, ADVENTURE_MENU_BACKGROUND, 0.96)
+      .setOrigin(0)
+      .setDepth(30)
+      .setVisible(false);
+    this.exitConfirmTitle = this.add.text(this.scale.width / 2, this.scale.height * 0.42, "Exit adventure?", {
+      fontFamily: "Courier New",
+      fontSize: "22px",
+      color: ADVENTURE_MENU_TEXT,
+      align: "center"
+    }).setOrigin(0.5).setDepth(31).setVisible(false);
+    this.exitConfirmBody = this.add.text(this.scale.width / 2, this.scale.height * 0.52, "O confirm\nX continue", {
+      fontFamily: "Courier New",
+      fontSize: "16px",
+      color: ADVENTURE_MENU_TEXT,
+      align: "center",
+      lineSpacing: 8
+    }).setOrigin(0.5).setDepth(31).setVisible(false);
+
     this.refreshInfo();
   }
 
@@ -222,28 +246,18 @@ export default class AdventureScene extends Phaser.Scene {
     return getPetTextureKey({ petId: this.state.petId, stage: this.state.evolutionStage, variant });
   }
 
-  refreshInfo(extraLine = "") {
-    const monster = this.stageConfig.monsters[this.currentMonsterIndex];
-    const clearedCount = Array.isArray(this.state.adventure?.clearedStageIds) ? this.state.adventure.clearedStageIds.length : 0;
-    const lines = [
-      `Stage ${this.stageIndex + 1}/${ADVENTURE_STAGE_CONFIGS.length}`,
-      `HP ${Math.max(0, Math.round(this.state.health))}`,
-      `Buffs STR ${this.runBuffs.str} AGI ${this.runBuffs.agi} VIT ${this.runBuffs.vit} WIT ${this.runBuffs.wit} DEX ${this.runBuffs.dex} LUCK ${this.runBuffs.luck}`,
-      `Clear ${clearedCount} stages`
-    ];
-    if (monster) {
-      lines.push(`Next: ${this.currentEncounterType === "chest" ? "Treasure" : monster.name}`);
-    }
-    if (extraLine) {
-      lines.push(extraLine);
-    }
-    this.infoText.setText(lines.join("\n"));
+  refreshInfo() {
+    this.infoText.setVisible(true);
+    this.infoText.setText(`Stage ${this.stageIndex + 1}/${ADVENTURE_STAGE_CONFIGS.length}`);
   }
 
   beginTravel(nextEncounterType) {
     this.clearTimers();
     this.destroyEncounterSprite();
     this.destroyChestMenu();
+    this.titleText.setText(this.stageConfig.name.toUpperCase());
+    this.titleText.setPosition(18, 14).setOrigin(0);
+    this.infoText.setVisible(true);
     this.phase = "travel";
     this.currentEncounterType = nextEncounterType;
     this.walkToggleAt = this.time.now + ADVENTURE_PET_TOGGLE_MS;
@@ -313,25 +327,24 @@ export default class AdventureScene extends Phaser.Scene {
     this.destroyEncounterSprite();
     this.chestChoices = pickUniqueOffers(3, this.rng);
     this.menuIndex = 0;
-    this.menuPanel.setVisible(true);
+    this.titleText.setText(formatChestHeader(this.stageConfig.name, this.stageIndex, ADVENTURE_STAGE_CONFIGS.length));
+    this.titleText.setPosition(this.scale.width / 2, 32).setOrigin(0.5);
+    this.infoText.setVisible(false);
+    this.chestBackdrop.setVisible(true);
     this.menuTitle.setVisible(true);
     this.menuBody.setVisible(true);
-    this.menuTitle.setText("TREASURE");
+    this.menuTitle.setText("Treasure Found");
     this.refreshChestMenu();
     this.promptText.setText("Left / Right choose, O take.");
-    this.refreshInfo("Treasure found.");
   }
 
   refreshChestMenu() {
-    const lines = this.chestChoices.map((choice, index) => {
-      const marker = index === this.menuIndex ? ">" : " ";
-      return `${marker} ${choice.label}\n${choice.caption}`;
-    });
-    this.menuBody.setText(lines.join("\n\n"));
+    const lines = formatChestChoiceLines(this.chestChoices, this.menuIndex);
+    this.menuBody.setText(lines.join("\n"));
   }
 
   destroyChestMenu() {
-    this.menuPanel?.setVisible(false);
+    this.chestBackdrop?.setVisible(false);
     this.menuTitle?.setVisible(false);
     this.menuBody?.setVisible(false);
   }
@@ -350,6 +363,71 @@ export default class AdventureScene extends Phaser.Scene {
     this.summaryOverlay = null;
   }
 
+  openExitConfirm() {
+    if (this.isEnding || this.exitConfirmActive) {
+      return;
+    }
+    if (!["travel", "chest", "fight"].includes(this.phase)) {
+      return;
+    }
+
+    this.phaseBeforeExitConfirm = this.phase;
+    this.exitConfirmActive = true;
+    this.phase = "confirm-exit";
+    this.exitConfirmBackdrop?.setVisible(true);
+    this.exitConfirmTitle?.setVisible(true);
+    this.exitConfirmBody?.setVisible(true);
+    this.promptText?.setText("Confirm exit.");
+  }
+
+  closeExitConfirm() {
+    if (!this.exitConfirmActive) {
+      return;
+    }
+    this.exitConfirmActive = false;
+    this.exitConfirmBackdrop?.setVisible(false);
+    this.exitConfirmTitle?.setVisible(false);
+    this.exitConfirmBody?.setVisible(false);
+    this.phase = this.phaseBeforeExitConfirm || "travel";
+    this.phaseBeforeExitConfirm = null;
+    if (this.phase === "travel") {
+      this.promptText?.setText("Traveling...");
+    } else if (this.phase === "chest") {
+      this.promptText?.setText("Left / Right choose, O take.");
+    } else if (this.phase === "fight") {
+      this.promptText?.setText("Battle starting...");
+    }
+  }
+
+  destroyExitConfirmOverlay() {
+    this.exitConfirmBackdrop?.destroy?.(true);
+    this.exitConfirmTitle?.destroy?.(true);
+    this.exitConfirmBody?.destroy?.(true);
+    this.exitConfirmBackdrop = null;
+    this.exitConfirmTitle = null;
+    this.exitConfirmBody = null;
+    this.exitConfirmActive = false;
+    this.phaseBeforeExitConfirm = null;
+  }
+
+  abortAdventure() {
+    if (this.isEnding) {
+      return;
+    }
+    this.isEnding = true;
+    this.closeExitConfirm();
+    this.clearTimers();
+    this.destroyEncounterSprite();
+    this.destroyChestMenu();
+    this.stopAdventureChildScenes();
+    this.uiScene?.onAdventureFlowComplete?.({
+      success: false,
+      aborted: true,
+      stageId: this.stageConfig.id
+    });
+    this.scene.stop();
+  }
+
   startFightEncounter() {
     const monster = this.stageConfig.monsters[this.currentMonsterIndex];
     if (!monster) {
@@ -360,6 +438,9 @@ export default class AdventureScene extends Phaser.Scene {
     this.phase = "fight";
     this.destroyEncounterSprite();
     this.destroyChestMenu();
+    this.titleText.setText(this.stageConfig.name.toUpperCase());
+    this.titleText.setPosition(18, 14).setOrigin(0);
+    this.infoText.setVisible(true);
     this.promptText.setText("Battle starting...");
     this.refreshInfo(`Facing ${monster.name}.`);
 
@@ -412,6 +493,9 @@ export default class AdventureScene extends Phaser.Scene {
     this.destroyEncounterSprite();
     this.destroyChestMenu();
     this.stopAdventureChildScenes();
+    this.titleText.setText(this.stageConfig.name.toUpperCase());
+    this.titleText.setPosition(18, 14).setOrigin(0);
+    this.infoText.setVisible(true);
     this.promptText.setText("Adventure failed.");
     this.refreshInfo("Pet became sick.");
     this.uiScene?.onAdventureFlowComplete?.({
@@ -430,6 +514,9 @@ export default class AdventureScene extends Phaser.Scene {
     this.isEnding = true;
     this.destroyEncounterSprite();
     this.destroyChestMenu();
+    this.titleText.setText(this.stageConfig.name.toUpperCase());
+    this.titleText.setPosition(18, 14).setOrigin(0);
+    this.infoText.setVisible(true);
     const grantedRewards = grantAdventureRewardBundle(this.state, this.stageConfig.reward);
     markAdventureStageCleared(this.state, this.stageConfig.id);
     saveState(this.state, "adventure:success");
@@ -467,6 +554,26 @@ export default class AdventureScene extends Phaser.Scene {
   }
 
   handleAdventureInput(button) {
+    if (this.isEnding) {
+      return;
+    }
+
+    if (this.exitConfirmActive) {
+      if (button === "ok") {
+        this.abortAdventure();
+        return;
+      }
+      if (button === "cancel") {
+        this.closeExitConfirm();
+      }
+      return;
+    }
+
+    if (button === "cancel" && ["travel", "chest", "fight"].includes(this.phase)) {
+      this.openExitConfirm();
+      return;
+    }
+
     if (this.phase === "chest") {
       if (button === "left") {
         this.menuIndex = (this.menuIndex + this.chestChoices.length - 1) % this.chestChoices.length;
@@ -480,7 +587,7 @@ export default class AdventureScene extends Phaser.Scene {
         return;
       }
 
-      if (button === "ok" || button === "cancel") {
+      if (button === "ok") {
         const choice = this.chestChoices[this.menuIndex];
         const outcome = applyAdventureChestChoice(this.state, choice, this.runBuffs);
         this.showToast(outcome.message || "Treasure taken.", 900);

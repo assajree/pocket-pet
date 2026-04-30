@@ -2191,7 +2191,7 @@ export default class UIScene extends Phaser.Scene {
     this.view = "pet";
     this.render(this.state);
 
-    if (!result?.success) {
+    if (!result?.success && !result?.aborted) {
       this.showMessage("Adventure failed. Your pet became sick.", false, {
         returnState: {
           view: "pet",
