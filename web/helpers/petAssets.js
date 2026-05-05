@@ -2,7 +2,7 @@ export const DEFAULT_PET_ID = "classic";
 export const PET_RPG_STAT_KEYS = ["str", "agi", "vit", "dex", "luck"];
 
 const FALLBACK_STAGE = "child";
-const VARIANT_ORDER = ["idle", "attack", "sick", "angry", "dead"];
+const VARIANT_ORDER = ["idle", "happy" , "angry", "sad", "dead"];
 const PET_ELEMENT_ORDER = ["neutral", "water", "earth", "fire", "wind", "poison", "holy", "shadow", "ghost", "undead"];
 const PET_ELEMENT_LABELS = Object.fromEntries(
   PET_ELEMENT_ORDER.map((element) => [element, element.charAt(0).toUpperCase() + element.slice(1)])

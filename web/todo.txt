@@ -29,9 +29,13 @@ damage type แยก sprite
 - impact
 - psychic
 
-- adventure status item random level
-- fight scene regen and show regen amount
+- adventure status item have level and random level eg. heal lv1, heal lv2
 - adventure mode auto collect item after 30s
 - flip sprite when player dodge
+- win/lost animation
+
+อยากเพิ่ม animation pet หลังจากจบ fight scene ก่อนโชว์ summary 
+เมื่อต่อสู้ชนะให้แสดง sprite happy และกระโดด 3 ครั้ง
+ถ้าแพ้ให้เปลี่ยนเป็น sad sprite flip ไปมา
 
 

@@ -30,6 +30,11 @@ const BATTLE_HIT_SPRITE_KEY = "battle-hit";
 const BATTLE_HIT_SPRITE_URL = "./assets/battle/hit.svg";
 const BATTLE_HIT_SPRITE_SIZE = 54;
 const BATTLE_HIT_SPRITE_DURATION_MS = 260;
+const RESULT_WIN_JUMP_COUNT = 3;
+const RESULT_WIN_JUMP_HEIGHT_PX = 34;
+const RESULT_WIN_JUMP_DURATION_MS = 220;
+const RESULT_LOSS_FLIP_COUNT = 6;
+const RESULT_LOSS_FLIP_DURATION_MS = 160;
 
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 const getStatValue = (source, key) => Math.max(0, Math.round(Number.isFinite(source?.[key]) ? source[key] : 0));
@@ -97,6 +102,8 @@ export default class FightScene extends Phaser.Scene {
     this.resultResolved = false;
     this.battleStarted = false;
     this.battleStopped = false;
+    this.resultAnimationStarted = false;
+    this.resultAnimationTween = null;
   }
 
   async create(data = {}) {
@@ -295,6 +302,8 @@ export default class FightScene extends Phaser.Scene {
     this.battleStopped = false;
     this.summaryVisible = false;
     this.resultResolved = false;
+    this.resultAnimationStarted = false;
+    this.resultAnimationTween = null;
   }
 
   clearTimers() {
@@ -308,6 +317,8 @@ export default class FightScene extends Phaser.Scene {
     this.summaryAutoCloseTimer = null;
     this.playerRevertTimer?.remove(false);
     this.playerRevertTimer = null;
+    this.resultAnimationTween?.stop?.();
+    this.resultAnimationTween = null;
   }
 
   startIntro() {
@@ -694,6 +705,74 @@ export default class FightScene extends Phaser.Scene {
     this.regenNextAt = Number.POSITIVE_INFINITY;
   }
 
+  getPlayerPetTextureKey(variant = "idle") {
+    return getPetTextureKey({
+      petId: this.state.petId,
+      stage: this.state.evolutionStage,
+      variant
+    });
+  }
+
+  restorePlayerResultPose({ x, y, flipX }) {
+    if (!this.playerSprite) {
+      return;
+    }
+
+    this.playerSprite.setTexture?.(this.getPlayerPetTextureKey("idle"));
+    this.playerSprite.setPosition?.(x, y);
+    this.playerSprite.setFlipX?.(flipX);
+    this.playerSprite.flipX = flipX;
+  }
+
+  playResultPetAnimation(victory) {
+    if (this.resultAnimationStarted) {
+      return;
+    }
+
+    this.resultAnimationStarted = true;
+    this.playerRevertTimer?.remove(false);
+    this.playerRevertTimer = null;
+
+    if (!this.playerSprite || !this.tweens) {
+      this.showSummary();
+      return;
+    }
+
+    const startX = this.playerSprite.x;
+    const startY = this.playerSprite.y;
+    const startFlipX = !!this.playerSprite.flipX;
+    this.playerSprite.setTexture?.(this.getPlayerPetTextureKey(victory ? "happy" : "sad"));
+
+    const finish = () => {
+      this.resultAnimationTween = null;
+      this.restorePlayerResultPose({ x: startX, y: startY, flipX: startFlipX });
+      this.showSummary();
+    };
+
+    this.resultAnimationTween = victory
+      ? this.tweens.add({
+          targets: this.playerSprite,
+          y: startY - RESULT_WIN_JUMP_HEIGHT_PX,
+          duration: RESULT_WIN_JUMP_DURATION_MS,
+          ease: "Sine.easeOut",
+          yoyo: true,
+          repeat: RESULT_WIN_JUMP_COUNT - 1,
+          onComplete: finish
+        })
+      : this.tweens.addCounter({
+          from: 0,
+          to: RESULT_LOSS_FLIP_COUNT,
+          duration: RESULT_LOSS_FLIP_COUNT * RESULT_LOSS_FLIP_DURATION_MS,
+          onUpdate: (tween) => {
+            const value = Math.floor(tween.getValue());
+            const flipX = value % 2 === 0 ? startFlipX : !startFlipX;
+            this.playerSprite.setFlipX?.(flipX);
+            this.playerSprite.flipX = flipX;
+          },
+          onComplete: finish
+        });
+  }
+
   showSummary() {
     if (this.summaryVisible) {
       return;
@@ -771,8 +850,8 @@ export default class FightScene extends Phaser.Scene {
   }
 
   checkForResolution(time) {
-    if (this.battleStopped && !this.summaryVisible && !this.activeBullets.length) {
-      this.showSummary();
+    if (this.battleStopped && !this.summaryVisible && !this.resultAnimationStarted && !this.activeBullets.length) {
+      this.playResultPetAnimation(this.playerDamage > this.enemyDamage);
     }
   }
 }

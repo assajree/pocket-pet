@@ -833,6 +833,143 @@ test("fight summary overlay shows LOST without drop preview", async () => {
   assert.deepEqual(dropUpdates, ["", "alpha:0"]);
 });
 
+test("fight victory result animation uses happy sprite and jumps before summary", async () => {
+  globalThis.Phaser = {
+    Scene: class {
+      constructor(key) {
+        this.sceneKey = key;
+      }
+    }
+  };
+
+  const { default: FightScene } = await import("../scenes/FightScene.js");
+  const scene = new FightScene();
+  const textureUpdates = [];
+  const tweenConfigs = [];
+  let summaryCount = 0;
+
+  scene.state = { petId: "classic", evolutionStage: "child" };
+  scene.playerDamage = 10;
+  scene.enemyDamage = 1;
+  scene.battleStopped = true;
+  scene.summaryVisible = false;
+  scene.activeBullets = [];
+  scene.playerSprite = {
+    x: 64,
+    y: 172,
+    flipX: false,
+    setTexture(value) {
+      textureUpdates.push(value);
+      return scene.playerSprite;
+    },
+    setPosition(x, y) {
+      scene.playerSprite.x = x;
+      scene.playerSprite.y = y;
+      return scene.playerSprite;
+    },
+    setFlipX(value) {
+      scene.playerSprite.flipX = value;
+      return scene.playerSprite;
+    }
+  };
+  scene.playerRevertTimer = { remove: () => {} };
+  scene.tweens = {
+    add: (config) => {
+      tweenConfigs.push(config);
+      return { stop: () => {} };
+    }
+  };
+  scene.showSummary = () => {
+    summaryCount += 1;
+  };
+
+  scene.checkForResolution();
+  scene.checkForResolution();
+
+  assert.equal(summaryCount, 0);
+  assert.equal(tweenConfigs.length, 1);
+  assert.ok(textureUpdates[0].includes("happy"));
+  assert.equal(tweenConfigs[0].y, 138);
+  assert.equal(tweenConfigs[0].yoyo, true);
+  assert.equal(tweenConfigs[0].repeat, 2);
+
+  tweenConfigs[0].onComplete();
+
+  assert.equal(summaryCount, 1);
+  assert.equal(scene.playerSprite.x, 64);
+  assert.equal(scene.playerSprite.y, 172);
+  assert.equal(scene.playerSprite.flipX, false);
+  assert.ok(textureUpdates.at(-1).includes("idle"));
+});
+
+test("fight loss result animation uses sad sprite and flips before summary", async () => {
+  globalThis.Phaser = {
+    Scene: class {
+      constructor(key) {
+        this.sceneKey = key;
+      }
+    }
+  };
+
+  const { default: FightScene } = await import("../scenes/FightScene.js");
+  const scene = new FightScene();
+  const textureUpdates = [];
+  const counterConfigs = [];
+  let summaryCount = 0;
+
+  scene.state = { petId: "classic", evolutionStage: "child" };
+  scene.playerDamage = 1;
+  scene.enemyDamage = 10;
+  scene.battleStopped = true;
+  scene.summaryVisible = false;
+  scene.activeBullets = [];
+  scene.playerSprite = {
+    x: 64,
+    y: 172,
+    flipX: false,
+    setTexture(value) {
+      textureUpdates.push(value);
+      return scene.playerSprite;
+    },
+    setPosition(x, y) {
+      scene.playerSprite.x = x;
+      scene.playerSprite.y = y;
+      return scene.playerSprite;
+    },
+    setFlipX(value) {
+      scene.playerSprite.flipX = value;
+      return scene.playerSprite;
+    }
+  };
+  scene.tweens = {
+    addCounter: (config) => {
+      counterConfigs.push(config);
+      return { stop: () => {} };
+    }
+  };
+  scene.showSummary = () => {
+    summaryCount += 1;
+  };
+
+  scene.checkForResolution();
+  scene.checkForResolution();
+
+  assert.equal(summaryCount, 0);
+  assert.equal(counterConfigs.length, 1);
+  assert.ok(textureUpdates[0].includes("sad"));
+  assert.equal(counterConfigs[0].to, 6);
+
+  counterConfigs[0].onUpdate({ getValue: () => 1 });
+  assert.equal(scene.playerSprite.flipX, true);
+  counterConfigs[0].onComplete();
+
+  assert.equal(summaryCount, 1);
+  assert.equal(scene.playerSprite.x, 64);
+  assert.equal(scene.playerSprite.y, 172);
+  assert.equal(scene.playerSprite.flipX, false);
+  assert.ok(textureUpdates.at(-1).includes("idle"));
+});
+
 test("fight regen text floats above pet only for restored HP", async () => {
   globalThis.Phaser = {
     Scene: class {

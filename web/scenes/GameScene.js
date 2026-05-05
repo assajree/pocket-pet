@@ -208,11 +208,11 @@ export default class GameScene extends Phaser.Scene {
     }
 
     if (this.jumpTween) {
-      return getPetTextureKey({ petId, stage, variant: "attack" });
+      return getPetTextureKey({ petId, stage, variant: "happy" });
     }
 
     if (this.state.isSick) {
-      return getPetTextureKey({ petId, stage, variant: "sick" });
+      return getPetTextureKey({ petId, stage, variant: "sad" });
     }
 
     if (this.state.happiness < LOW_HAPPINESS_THRESHOLD) {
