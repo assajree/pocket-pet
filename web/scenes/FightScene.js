@@ -35,6 +35,7 @@ const RESULT_WIN_JUMP_HEIGHT_PX = 34;
 const RESULT_WIN_JUMP_DURATION_MS = 220;
 const RESULT_LOSS_FLIP_COUNT = 6;
 const RESULT_LOSS_FLIP_DURATION_MS = 160;
+const PLAYER_DODGE_FLIP_DURATION_MS = 220;
 
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 const getStatValue = (source, key) => Math.max(0, Math.round(Number.isFinite(source?.[key]) ? source[key] : 0));
@@ -104,6 +105,7 @@ export default class FightScene extends Phaser.Scene {
     this.battleStopped = false;
     this.resultAnimationStarted = false;
     this.resultAnimationTween = null;
+    this.playerDodgeTween = null;
   }
 
   async create(data = {}) {
@@ -304,6 +306,7 @@ export default class FightScene extends Phaser.Scene {
     this.resultResolved = false;
     this.resultAnimationStarted = false;
     this.resultAnimationTween = null;
+    this.playerDodgeTween = null;
   }
 
   clearTimers() {
@@ -319,6 +322,8 @@ export default class FightScene extends Phaser.Scene {
     this.playerRevertTimer = null;
     this.resultAnimationTween?.stop?.();
     this.resultAnimationTween = null;
+    this.playerDodgeTween?.stop?.();
+    this.playerDodgeTween = null;
   }
 
   startIntro() {
@@ -459,7 +464,7 @@ export default class FightScene extends Phaser.Scene {
 
     if (isPlayer) {
       this.playerAttackCount += 1;
-      this.playerSprite.setTexture(getPetTextureKey({ petId: this.state.petId, stage: this.state.evolutionStage, variant: "attack" }));
+      this.playerSprite.setTexture(getPetTextureKey({ petId: this.state.petId, stage: this.state.evolutionStage, variant: "angry" }));
       this.playerRevertTimer?.remove(false);
       this.playerRevertTimer = this.time.delayedCall(ADVENTURE_BATTLE_CONSTANTS.ATTACK_IDLE_RETURN_MS, () => {
         this.playerSprite.setTexture(getPetTextureKey({ petId: this.state.petId, stage: this.state.evolutionStage, variant: "idle" }));
@@ -568,6 +573,7 @@ export default class FightScene extends Phaser.Scene {
         this.enemyDodgeCount += 1;
       } else {
         this.playerDodgeCount += 1;
+        this.playPlayerDodgeFlip();
       }
       bullet.sprite.destroy();
       return;
@@ -691,6 +697,29 @@ export default class FightScene extends Phaser.Scene {
       duration: BATTLE_HIT_TEXT_DURATION_MS,
       ease: "Cubic.easeOut",
       onComplete: () => label.destroy()
+    });
+  }
+
+  playPlayerDodgeFlip() {
+    if (!this.playerSprite || !this.tweens || this.resultAnimationStarted) {
+      return;
+    }
+
+    const startFlipX = !!this.playerSprite.flipX;
+    this.playerDodgeTween?.stop?.();
+    this.playerSprite.setFlipX?.(!startFlipX);
+    this.playerSprite.flipX = !startFlipX;
+    this.playerDodgeTween = this.tweens.addCounter({
+      from: 0,
+      to: 1,
+      duration: PLAYER_DODGE_FLIP_DURATION_MS,
+      onComplete: () => {
+        this.playerDodgeTween = null;
+        this.playerSprite?.setFlipX?.(startFlipX);
+        if (this.playerSprite) {
+          this.playerSprite.flipX = startFlipX;
+        }
+      }
     });
   }
 

@@ -226,6 +226,68 @@ test("fight bullet hit applies remaining damage without recalculating defense", 
   assert.equal(bullet.sprite.active, false);
 });
 
+test("fight player dodge flips pet sprite once", async () => {
+  globalThis.Phaser = {
+    Scene: class {
+      constructor(key) {
+        this.sceneKey = key;
+      }
+    }
+  };
+
+  const { default: FightScene } = await import("../scenes/FightScene.js");
+  const scene = new FightScene();
+  const hitTexts = [];
+  const counterConfigs = [];
+  const flipUpdates = [];
+  const bullet = {
+    side: "enemy",
+    damage: 5,
+    isCritical: false,
+    sprite: {
+      y: 120,
+      active: true,
+      destroy() {
+        this.active = false;
+      }
+    }
+  };
+
+  scene.enemyStats = { agi: 0, luck: 0 };
+  scene.playerStats = { dex: 999, luck: 999 };
+  scene.rng = () => 0;
+  scene.playerDodgeCount = 0;
+  scene.resultAnimationStarted = false;
+  scene.playerSprite = {
+    flipX: false,
+    setFlipX(value) {
+      flipUpdates.push(value);
+      scene.playerSprite.flipX = value;
+      return scene.playerSprite;
+    }
+  };
+  scene.tweens = {
+    addCounter: (config) => {
+      counterConfigs.push(config);
+      return { stop: () => {} };
+    }
+  };
+  scene.showHitText = ({ text }) => hitTexts.push(text);
+
+  scene.resolveBulletHit(bullet);
+
+  assert.equal(scene.playerDodgeCount, 1);
+  assert.deepEqual(hitTexts, ["miss"]);
+  assert.deepEqual(flipUpdates, [true]);
+  assert.equal(counterConfigs.length, 1);
+  assert.equal(bullet.sprite.active, false);
+
+  counterConfigs[0].onComplete();
+
+  assert.deepEqual(flipUpdates, [true, false]);
+  assert.equal(scene.playerSprite.flipX, false);
+});
+
 test("fight spawn stores final bullet damage", async () => {
   globalThis.Phaser = {
     Scene: class {
