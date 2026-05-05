@@ -20,6 +20,8 @@ const ADVENTURE_FAILURE_LOW_STAT = 20;
 const ADVENTURE_FAILURE_HEALTH = 10;
 const ADVENTURE_MENU_BACKGROUND = UI_COLORS.screenBackground.value;
 const ADVENTURE_MENU_TEXT = UI_COLORS.screenInk.hex;
+export const ADVENTURE_CHEST_AUTO_PICK_DELAY_MS = 15000;
+export const ADVENTURE_CHEST_INPUT_CANCELS_AUTO_PICK = true;
 
 const createAdventureStatBuff = () => ({ str: 0, agi: 0, vit: 0, dex: 0, luck: 0 });
 
@@ -70,6 +72,9 @@ export default class AdventureScene extends Phaser.Scene {
     this.travelTween = null;
     this.walkTimer = null;
     this.autoAdvanceTimer = null;
+    this.chestAutoPickTimer = null;
+    this.chestAutoPickEndsAt = 0;
+    this.chestInputCancelsAutoPick = ADVENTURE_CHEST_INPUT_CANCELS_AUTO_PICK;
     this.rng = createBattleSeededRng("adventure");
     this.runBuffs = createAdventureStatBuff();
     this.collectedDrops = [];
@@ -106,6 +111,9 @@ export default class AdventureScene extends Phaser.Scene {
     this.pausedTravelRemainingMs = null;
     this.travelSegmentStartedAt = 0;
     this.travelSegmentDurationMs = ADVENTURE_TRAVEL_SEGMENT_MS;
+    this.chestAutoPickTimer = null;
+    this.chestAutoPickEndsAt = 0;
+    this.chestInputCancelsAutoPick = ADVENTURE_CHEST_INPUT_CANCELS_AUTO_PICK;
     this.rng = createBattleSeededRng(this.seed);
     this.uiScene = this.scene.get("UIScene");
     this.uiScene?.setAdventureFlowActive?.(true);
@@ -259,6 +267,7 @@ export default class AdventureScene extends Phaser.Scene {
     this.walkTimer = null;
     this.autoAdvanceTimer?.remove(false);
     this.autoAdvanceTimer = null;
+    this.clearChestAutoPick();
     this.fightIntroExitTween?.stop();
     this.fightIntroExitTween = null;
     this.fightIntroJumpTween?.stop();
@@ -358,7 +367,8 @@ export default class AdventureScene extends Phaser.Scene {
     this.menuBody.setVisible(true);
     this.menuTitle.setText("Treasure Found");
     this.refreshChestMenu();
-    this.promptText.setText("Left / Right choose, O take.");
+    this.refreshChestPrompt();
+    this.scheduleChestAutoPick();
   }
 
   refreshChestMenu() {
@@ -366,7 +376,67 @@ export default class AdventureScene extends Phaser.Scene {
     this.menuBody.setText(lines.join("\n"));
   }
 
+  getChestAutoPickSecondsRemaining() {
+    if (!this.chestAutoPickTimer || !this.chestAutoPickEndsAt) {
+      return 0;
+    }
+    return Math.max(0, Math.ceil((this.chestAutoPickEndsAt - this.time.now) / 1000));
+  }
+
+  refreshChestPrompt() {
+    const secondsRemaining = this.getChestAutoPickSecondsRemaining();
+    const autoText = secondsRemaining > 0 ? ` Auto in ${secondsRemaining}s.` : "";
+    this.promptText?.setText(`Left / Right choose, O take.${autoText}`);
+  }
+
+  scheduleChestAutoPick() {
+    this.clearChestAutoPick();
+    const delayMs = Math.max(0, Math.round(Number.isFinite(ADVENTURE_CHEST_AUTO_PICK_DELAY_MS) ? ADVENTURE_CHEST_AUTO_PICK_DELAY_MS : 0));
+    if (delayMs <= 0 || this.phase !== "chest") {
+      this.refreshChestPrompt();
+      return;
+    }
+
+    this.chestAutoPickEndsAt = this.time.now + delayMs;
+    this.chestAutoPickTimer = this.time.delayedCall(delayMs, () => {
+      this.chestAutoPickTimer = null;
+      this.chestAutoPickEndsAt = 0;
+      if (this.isEnding || this.exitConfirmActive || this.phase !== "chest") {
+        return;
+      }
+      this.takeSelectedChestChoice();
+    });
+    this.refreshChestPrompt();
+  }
+
+  clearChestAutoPick() {
+    this.chestAutoPickTimer?.remove(false);
+    this.chestAutoPickTimer = null;
+    this.chestAutoPickEndsAt = 0;
+  }
+
+  cancelChestAutoPickForInput() {
+    if (this.chestInputCancelsAutoPick) {
+      this.clearChestAutoPick();
+      this.refreshChestPrompt();
+    }
+  }
+
+  takeSelectedChestChoice() {
+    if (this.isEnding || this.exitConfirmActive || this.phase !== "chest") {
+      return;
+    }
+
+    this.clearChestAutoPick();
+    const choice = this.chestChoices[this.menuIndex];
+    const outcome = applyAdventureChestChoice(this.state, choice, this.runBuffs);
+    this.showToast(outcome.message || "Treasure taken.", 900);
+    saveState(this.state, "adventure:treasure");
+    this.beginTravel("monster");
+  }
+
   destroyChestMenu() {
+    this.clearChestAutoPick();
     this.chestBackdrop?.setVisible(false);
     this.menuTitle?.setVisible(false);
     this.menuBody?.setVisible(false);
@@ -405,6 +475,9 @@ export default class AdventureScene extends Phaser.Scene {
     this.phaseBeforeExitConfirm = this.phase;
     this.exitConfirmActive = true;
     this.phase = "confirm-exit";
+    if (this.phaseBeforeExitConfirm === "chest") {
+      this.clearChestAutoPick();
+    }
     if (this.phaseBeforeExitConfirm === "travel") {
       this.pauseTravelTimerForConfirm();
     }
@@ -430,7 +503,7 @@ export default class AdventureScene extends Phaser.Scene {
     if (this.phase === "travel") {
       this.promptText?.setText("Traveling...");
     } else if (this.phase === "chest") {
-      this.promptText?.setText("Left / Right choose, O take.");
+      this.refreshChestPrompt();
     } else if (this.phase === "fight") {
       const monster = this.stageConfig.monsters[this.currentMonsterIndex];
       this.promptText?.setText(`${monster.name} want to fight.`);
@@ -712,11 +785,15 @@ export default class AdventureScene extends Phaser.Scene {
     }
 
     if (button === "cancel" && ["travel", "chest", "fight"].includes(this.phase)) {
+      if (this.phase === "chest") {
+        this.clearChestAutoPick();
+      }
       this.openExitConfirm();
       return;
     }
 
     if (this.phase === "chest") {
+      this.cancelChestAutoPickForInput();
       if (button === "left") {
         this.menuIndex = (this.menuIndex + this.chestChoices.length - 1) % this.chestChoices.length;
         this.refreshChestMenu();
@@ -730,17 +807,18 @@ export default class AdventureScene extends Phaser.Scene {
       }
 
       if (button === "ok") {
-        const choice = this.chestChoices[this.menuIndex];
-        const outcome = applyAdventureChestChoice(this.state, choice, this.runBuffs);
-        this.showToast(outcome.message || "Treasure taken.", 900);
-        saveState(this.state, "adventure:treasure");
-        this.beginTravel("monster");
+        this.takeSelectedChestChoice();
       }
       return;
     }
   }
 
   update(time, delta) {
+    if (this.phase === "chest") {
+      this.refreshChestPrompt();
+      return;
+    }
+
     if (this.phase !== "travel" || !this.currentEncounterSprite) {
       return;
     }

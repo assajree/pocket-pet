@@ -140,6 +140,180 @@ test("grantInventoryItem returns earned quantity while storing no more than max 
   assert.equal(grantInventoryItem(fullState, "snack", 0), 0);
 });
 
+const setupAdventureSceneGlobals = () => {
+  globalThis.Phaser = {
+    Scene: class {
+      constructor(key) {
+        this.sceneKey = key;
+      }
+    }
+  };
+  globalThis.localStorage = {
+    setItem: () => {},
+    getItem: () => null,
+    removeItem: () => {}
+  };
+};
+
+const createMockText = () => ({
+  value: "",
+  visible: true,
+  setText(value) {
+    this.value = value;
+    return this;
+  },
+  setPosition() {
+    return this;
+  },
+  setOrigin() {
+    return this;
+  },
+  setVisible(value) {
+    this.visible = value;
+    return this;
+  }
+});
+
+const createChestTestScene = async () => {
+  setupAdventureSceneGlobals();
+  const {
+    default: AdventureScene,
+    ADVENTURE_CHEST_AUTO_PICK_DELAY_MS
+  } = await import("../scenes/AdventureScene.js");
+  const scene = new AdventureScene();
+  const events = [];
+  const timers = [];
+
+  scene.state = createNewState();
+  scene.stageConfig = { id: "test-stage", name: "Test Stage", monsters: [{ name: "Slime" }], reward: [] };
+  scene.currentMonsterIndex = 0;
+  scene.phase = "travel";
+  scene.isEnding = false;
+  scene.exitConfirmActive = false;
+  scene.runBuffs = { str: 0, agi: 0, vit: 0, dex: 0, luck: 0 };
+  scene.rng = createBattleSeededRng("chest-test");
+  scene.scale = { width: 320, height: 240 };
+  scene.titleText = createMockText();
+  scene.infoText = createMockText();
+  scene.menuTitle = createMockText();
+  scene.menuBody = createMockText();
+  scene.promptText = createMockText();
+  scene.chestBackdrop = createMockText();
+  scene.currentEncounterSprite = {
+    destroy: () => events.push("destroy:encounter")
+  };
+  scene.petSprite = { x: 64 };
+  scene.scene = {
+    get: () => null,
+    stop: () => events.push("stop")
+  };
+  scene.time = {
+    now: 1000,
+    delayedCall: (delay, callback) => {
+      const timer = {
+        delay,
+        callback,
+        removed: false,
+        remove: () => {
+          timer.removed = true;
+        }
+      };
+      timers.push(timer);
+      return timer;
+    }
+  };
+  scene.showToast = (message) => events.push(`toast:${message}`);
+  scene.beginTravel = (nextEncounterType) => {
+    events.push(`travel:${nextEncounterType}`);
+    scene.phase = "travel";
+    scene.clearChestAutoPick();
+  };
+
+  return { scene, events, timers, autoPickDelayMs: ADVENTURE_CHEST_AUTO_PICK_DELAY_MS };
+};
+
+test("adventure chest schedules auto pick when opened", async () => {
+  const { scene, timers, autoPickDelayMs } = await createChestTestScene();
+
+  scene.openTreasureChest();
+
+  assert.equal(scene.phase, "chest");
+  assert.equal(timers.length, 1);
+  assert.equal(timers[0].delay, autoPickDelayMs);
+  assert.match(scene.promptText.value, /Auto in 15s/);
+});
+
+test("adventure chest auto pick takes the currently highlighted choice", async () => {
+  const { scene, events, timers } = await createChestTestScene();
+
+  scene.openTreasureChest();
+  scene.chestChoices = [
+    { key: "heal", label: "Heal 12 HP", type: "heal", amount: 12 },
+    { key: "str", label: "STR +2", type: "buff", stat: "str", amount: 2 },
+    { key: "agi", label: "AGI +2", type: "buff", stat: "agi", amount: 2 }
+  ];
+  scene.menuIndex = 1;
+  timers[0].callback();
+
+  assert.equal(scene.runBuffs.str, 2);
+  assert.ok(events.includes("travel:monster"));
+});
+
+test("adventure chest input cancels auto pick countdown by default", async () => {
+  const { scene, timers } = await createChestTestScene();
+
+  scene.openTreasureChest();
+  scene.handleAdventureInput("right");
+
+  assert.equal(timers[0].removed, true);
+  assert.equal(scene.chestAutoPickTimer, null);
+  assert.doesNotMatch(scene.promptText.value, /Auto in/);
+});
+
+test("adventure chest can keep auto pick countdown after navigation input", async () => {
+  const { scene, timers } = await createChestTestScene();
+
+  scene.chestInputCancelsAutoPick = false;
+  scene.openTreasureChest();
+  scene.chestChoices = [
+    { key: "heal", label: "Heal 12 HP", type: "heal", amount: 12 },
+    { key: "str", label: "STR +2", type: "buff", stat: "str", amount: 2 },
+    { key: "agi", label: "AGI +2", type: "buff", stat: "agi", amount: 2 }
+  ];
+  scene.handleAdventureInput("right");
+  timers[0].callback();
+
+  assert.equal(timers[0].removed, false);
+  assert.equal(scene.menuIndex, 1);
+  assert.equal(scene.runBuffs.str, 2);
+});
+
+test("adventure chest ok uses the shared take choice path and clears auto pick", async () => {
+  const { scene, events, timers } = await createChestTestScene();
+
+  scene.openTreasureChest();
+  scene.chestChoices = [
+    { key: "heal", label: "Heal 12 HP", type: "heal", amount: 12 },
+    { key: "str", label: "STR +2", type: "buff", stat: "str", amount: 2 },
+    { key: "agi", label: "AGI +2", type: "buff", stat: "agi", amount: 2 }
+  ];
+  scene.handleAdventureInput("ok");
+
+  assert.equal(timers[0].removed, true);
+  assert.ok(events.includes("travel:monster"));
+});
+
+test("adventure chest cancel clears auto pick before exit confirm", async () => {
+  const { scene, timers } = await createChestTestScene();
+
+  scene.openTreasureChest();
+  scene.handleAdventureInput("cancel");
+
+  assert.equal(timers[0].removed, true);
+  assert.equal(scene.chestAutoPickTimer, null);
+  assert.equal(scene.phase, "confirm-exit");
+});
+
 test("adventure completion stops child scenes before returning to pet UI", async () => {
   globalThis.Phaser = {
     Scene: class {
