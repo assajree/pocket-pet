@@ -103,6 +103,193 @@ test("battle damage stays positive and critical hits deal more", () => {
   assert.ok(critDamage > normalDamage);
 });
 
+test("fight bullet collisions subtract final damage directly", async () => {
+  globalThis.Phaser = {
+    Scene: class {
+      constructor(key) {
+        this.sceneKey = key;
+      }
+    }
+  };
+
+  const { default: FightScene } = await import("../scenes/FightScene.js");
+  const scene = new FightScene();
+  const makeSprite = (x) => ({
+    x,
+    y: 120,
+    displayWidth: 32,
+    active: true,
+    destroy() {
+      this.active = false;
+    }
+  });
+  const playerBullet = {
+    laneIndex: 1,
+    damage: 9,
+    sprite: makeSprite(100)
+  };
+  const enemyBullet = {
+    laneIndex: 1,
+    damage: 4,
+    sprite: makeSprite(120)
+  };
+  scene.showHitSprite = () => {};
+
+  scene.resolveBulletCollisions([playerBullet], [enemyBullet]);
+
+  assert.equal(playerBullet.sprite.active, true);
+  assert.equal(playerBullet.damage, 5);
+  assert.equal(enemyBullet.sprite.active, false);
+  assert.equal(enemyBullet.damage, 0);
+});
+
+test("fight bullet collisions destroy equal final damage bullets", async () => {
+  globalThis.Phaser = {
+    Scene: class {
+      constructor(key) {
+        this.sceneKey = key;
+      }
+    }
+  };
+
+  const { default: FightScene } = await import("../scenes/FightScene.js");
+  const scene = new FightScene();
+  const makeSprite = (x) => ({
+    x,
+    y: 120,
+    displayWidth: 32,
+    active: true,
+    destroy() {
+      this.active = false;
+    }
+  });
+  const playerBullet = {
+    laneIndex: 0,
+    damage: 6,
+    sprite: makeSprite(100)
+  };
+  const enemyBullet = {
+    laneIndex: 0,
+    damage: 6,
+    sprite: makeSprite(120)
+  };
+  scene.showHitSprite = () => {};
+
+  scene.resolveBulletCollisions([playerBullet], [enemyBullet]);
+
+  assert.equal(playerBullet.sprite.active, false);
+  assert.equal(playerBullet.damage, 0);
+  assert.equal(enemyBullet.sprite.active, false);
+  assert.equal(enemyBullet.damage, 0);
+});
+
+test("fight bullet hit applies remaining damage without recalculating defense", async () => {
+  globalThis.Phaser = {
+    Scene: class {
+      constructor(key) {
+        this.sceneKey = key;
+      }
+    }
+  };
+
+  const { default: FightScene } = await import("../scenes/FightScene.js");
+  const scene = new FightScene();
+  const hitTexts = [];
+  const bullet = {
+    side: "player",
+    damage: 1,
+    isCritical: false,
+    sprite: {
+      y: 120,
+      active: true,
+      destroy() {
+        this.active = false;
+      }
+    }
+  };
+  scene.enemyStats = { dex: 0, luck: 0, agi: 0, vit: 999 };
+  scene.playerStats = { agi: 0, luck: 0 };
+  scene.rng = () => 0.99;
+  scene.enemyAnchorX = 300;
+  scene.playerSprite = { x: 64, displayWidth: 80 };
+  scene.enemyHp = 20;
+  scene.playerDamage = 0;
+  scene.playerCriticalCount = 0;
+  scene.showHitSprite = () => {};
+  scene.showHitText = ({ text }) => hitTexts.push(text);
+
+  scene.resolveBulletHit(bullet);
+
+  assert.equal(scene.enemyHp, 19);
+  assert.equal(scene.playerDamage, 1);
+  assert.deepEqual(hitTexts, ["-1"]);
+  assert.equal(bullet.sprite.active, false);
+});
+
+test("fight spawn stores final bullet damage", async () => {
+  globalThis.Phaser = {
+    Scene: class {
+      constructor(key) {
+        this.sceneKey = key;
+      }
+    }
+  };
+
+  const { default: FightScene } = await import("../scenes/FightScene.js");
+  const scene = new FightScene();
+  const rngValues = [0, 0.99];
+  const expectedDamage = calculateBattleDamage({
+    attack: 20,
+    defense: 14,
+    elementMultiplier: 1,
+    isCritical: false,
+    criticalMultiplier: 1.5
+  });
+  scene.rng = () => rngValues.shift() ?? 0.99;
+  scene.scale = { width: 320, height: 240 };
+  scene.state = { petId: "classic", evolutionStage: "adult" };
+  scene.monster = { species: "classic" };
+  scene.playerCombatElements = { attackElement: "neutral", defenseElement: "neutral" };
+  scene.monsterCombatElement = "neutral";
+  scene.playerStats = { str: 20, agi: 0, vit: 0, dex: 0, luck: 0 };
+  scene.enemyStats = { str: 1, agi: 0, vit: 14, dex: 0, luck: 0 };
+  scene.playerSprite = {
+    x: 64,
+    displayWidth: 80,
+    setTexture: () => scene.playerSprite
+  };
+  scene.enemyAnchorX = 300;
+  scene.add = {
+    image: (x, y, texture) => ({
+      x,
+      y,
+      texture,
+      setDepth() {
+        return this;
+      },
+      setDisplaySize(width, height) {
+        this.displayWidth = width;
+        this.displayHeight = height;
+        return this;
+      },
+      setFlipX(value) {
+        this.flipX = value;
+        return this;
+      }
+    })
+  };
+  scene.time = {
+    delayedCall: () => ({ remove: () => {} })
+  };
+
+  scene.spawnBullet("player");
+
+  assert.equal(scene.activeBullets.length, 1);
+  assert.equal(scene.activeBullets[0].power, 20);
+  assert.equal(scene.activeBullets[0].damage, expectedDamage);
+  assert.equal(scene.activeBullets[0].defenseStat, 14);
+});
+
 test("battle regen scales from vit without requiring wit", () => {
   const lowVitRegen = getBattleRegenAmount(0);
   const highVitRegen = getBattleRegenAmount(90);

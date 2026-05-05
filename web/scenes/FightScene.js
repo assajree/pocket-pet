@@ -412,6 +412,14 @@ export default class FightScene extends Phaser.Scene {
     const criticalMultiplier = getBattleCriticalMultiplier(shooterStats.luck);
     const attackMultiplier = getBattleElementMultiplier(shooterElement, defenderElement);
     const bulletPower = Math.max(1, Math.round(shooterStats.str));
+    const defenseStat = Math.max(0, Math.round(defenderStats.vit));
+    const bulletDamage = calculateBattleDamage({
+      attack: bulletPower,
+      defense: defenseStat,
+      elementMultiplier: attackMultiplier,
+      isCritical,
+      criticalMultiplier
+    });
     const bulletScale = getBattleBulletScale(bulletPower);
     const bulletTexture = isPlayer
       ? getPetBattleBulletTextureKey({ petId: this.state.petId, stage: this.state.evolutionStage })
@@ -428,7 +436,8 @@ export default class FightScene extends Phaser.Scene {
       sprite,
       power: bulletPower,
       attackStat: bulletPower,
-      defenseStat: Math.max(0, Math.round(defenderStats.vit)),
+      defenseStat,
+      damage: bulletDamage,
       dodgeChance,
       isCritical,
       criticalMultiplier,
@@ -514,19 +523,19 @@ export default class FightScene extends Phaser.Scene {
 
         this.showHitSprite((playerBullet.sprite.x + enemyBullet.sprite.x) / 2, playerBullet.sprite.y);
 
-        if (playerBullet.power === enemyBullet.power) {
+        if (playerBullet.damage === enemyBullet.damage) {
           playerBullet.sprite.destroy();
           enemyBullet.sprite.destroy();
-          playerBullet.power = 0;
-          enemyBullet.power = 0;
-        } else if (playerBullet.power > enemyBullet.power) {
-          playerBullet.power = Math.max(1, playerBullet.power - enemyBullet.power);
+          playerBullet.damage = 0;
+          enemyBullet.damage = 0;
+        } else if (playerBullet.damage > enemyBullet.damage) {
+          playerBullet.damage = Math.max(1, playerBullet.damage - enemyBullet.damage);
           enemyBullet.sprite.destroy();
-          enemyBullet.power = 0;
+          enemyBullet.damage = 0;
         } else {
-          enemyBullet.power = Math.max(1, enemyBullet.power - playerBullet.power);
+          enemyBullet.damage = Math.max(1, enemyBullet.damage - playerBullet.damage);
           playerBullet.sprite.destroy();
-          playerBullet.power = 0;
+          playerBullet.damage = 0;
         }
       }
     }
@@ -535,8 +544,6 @@ export default class FightScene extends Phaser.Scene {
   resolveBulletHit(bullet) {
     const defenderIsEnemy = bullet.side === "player";
     const defenderStats = defenderIsEnemy ? this.enemyStats : this.playerStats;
-    const defenderElement = defenderIsEnemy ? this.monsterCombatElement : this.playerCombatElements.defenseElement;
-    const attackerElement = bullet.side === "player" ? this.playerCombatElements.attackElement : this.monsterCombatElement;
     const dodgeChance = getBattleDodgeChance({
       dex: defenderStats.dex,
       luck: defenderStats.luck,
@@ -560,14 +567,7 @@ export default class FightScene extends Phaser.Scene {
       : this.playerSprite.x + this.playerSprite.displayWidth * 0.25;
     this.showHitSprite(impactX, bullet.sprite.y, bullet.isCritical);
 
-    const elementMultiplier = getBattleElementMultiplier(attackerElement, defenderElement);
-    const damage = calculateBattleDamage({
-      attack: bullet.power,
-      defense: bullet.defenseStat,
-      elementMultiplier,
-      isCritical: bullet.isCritical,
-      criticalMultiplier: bullet.criticalMultiplier
-    });
+    const damage = Math.max(1, Math.round(bullet.damage));
     this.showHitText({
       bullet,
       text: `${damage*-1}${bullet.isCritical ? "!!" : ""}`,
